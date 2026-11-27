@@ -4,7 +4,7 @@
 non_code = ["docs/**", "README.md", "CLAUDE.md", ".claude/**"]
 always_code = [
     "docs/specs/00-umbrella.md", "docs/specs/phases/**", "docs/gate.md",
-    "**/*.ts", "**/*.tsx", "**/Cargo.toml", "**/Cargo.lock", "**/rust-toolchain",
+    "**/*.ts", "**/*.tsx", "**/eslint.config.*", "**/Cargo.toml", "**/Cargo.lock", "**/rust-toolchain",
     "**/rust-toolchain.toml", "**/clippy.toml", "**/.clippy.toml", "**/rustfmt.toml",
     "**/.rustfmt.toml", "**/.cargo/**", "**/.gitignore", "**/.gitattributes",
     "web/package.json", "web/pnpm-lock.yaml",

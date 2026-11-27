@@ -146,6 +146,7 @@ mod tests {
             "gate/tools.toml",
             "web/src/App.tsx",
             "notes/x.ts",
+            "docs/plans/eslint.config.js",
             "Cargo.toml",
             "crates/a/Cargo.toml",
             "rust-toolchain.toml",
