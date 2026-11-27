@@ -22,7 +22,6 @@ const HEADINGS: [&str; 7] = [
     "Trial",
 ];
 
-// AC: TU-00.2
 #[test]
 fn the_template_has_every_section() {
     assert_eq!(template_sections(TEMPLATE), HEADINGS);
