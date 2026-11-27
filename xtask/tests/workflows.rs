@@ -1210,6 +1210,7 @@ fn the_xtask_cache_is_saved_by_gate_on_main_and_restored_by_exact_key() -> TestR
     for input in [
         "runner.os",
         "'xtask/**'",
+        "'Cargo.toml'",
         "'Cargo.lock'",
         "'rust-toolchain.toml'",
         "'.cargo/**'",

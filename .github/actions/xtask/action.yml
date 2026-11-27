@@ -27,7 +27,7 @@ runs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: target/xtask-bin/debug/xtask
-        key: xtask-${{ runner.os }}-${{ hashFiles('xtask/**', 'Cargo.lock', 'rust-toolchain.toml', '.cargo/**') }}
+        key: xtask-${{ runner.os }}-${{ hashFiles('xtask/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.cargo/**') }}
 
     - name: Install the Rust toolchain
       if: steps.restore.outputs.cache-hit != 'true' && (inputs.args != '' || inputs.save == 'true')
@@ -46,7 +46,7 @@ runs:
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: target/xtask-bin/debug/xtask
-        key: xtask-${{ runner.os }}-${{ hashFiles('xtask/**', 'Cargo.lock', 'rust-toolchain.toml', '.cargo/**') }}
+        key: xtask-${{ runner.os }}-${{ hashFiles('xtask/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.cargo/**') }}
 
     # The arguments come in through `env:`, never as text of the script. The token of the calling
     # step, if it has one, is in the environment of this step too.
