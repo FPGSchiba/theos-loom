@@ -25,7 +25,3 @@ rustc-ice-*.txt
 
 # Worktrees for phase work
 .worktrees/
-
-# Web UI
-node_modules/
-web/dist/
