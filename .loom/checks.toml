@@ -1,0 +1,32 @@
+# The checks of this repository (umbrella R2, docs/gate.md §1): each is a required status check
+# on `main` and a CI job of the same name; `command` gives its verdict locally. P06 owns the
+# full format.
+[[check]]
+name = "gate"
+command = "cargo xtask gate --skip test,coverage,ui"
+parts = ["fmt", "lints", "commit-msg", "secrets", "clippy", "docs", "deny", "ac-trace"]
+
+[[check]]
+name = "test"
+command = "cargo xtask gate --only test"
+parts = ["test"]
+
+[[check]]
+name = "coverage"
+command = "cargo xtask gate --only coverage"
+parts = ["coverage"]
+
+[[check]]
+name = "ui"
+command = "cargo xtask gate --only ui"
+parts = ["ui"]
+
+[[check]]
+name = "pr"
+command = "cargo xtask pr --title <title> --body-file <file>"
+parts = ["pr-title", "pr-body"]
+
+[[check]]
+name = "approval"
+command = "cargo xtask approval"
+parts = ["approval"]

@@ -1,0 +1,66 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "xtask"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.99.1"
+publish = false
+repository = "https://github.com/FPGSchiba/theos-loom"
+license = "MIT"
+
+# Mirror of `gate/lints.toml`; the `lints` check keeps the two identical.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "deny"
+unexpected_cfgs = "forbid"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+ignore_without_reason = "deny"
+exit = "deny"
+mem_forget = "deny"
+
+# Every third-party crate any member uses is pinned here; members use `dep.workspace = true`.
+[workspace.dependencies]
+anyhow = "1.0"
+cargo_metadata = "0.23"
+clap = { version = "4.6", features = ["derive"] }
+git-conventional = "0.12"
+globset = "0.4"
+proc-macro2 = { version = "1.0", features = ["span-locations"] }
+pulldown-cmark = { version = "0.13", default-features = false }
+quick-xml = "0.41"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["float_roundtrip"] }
+sha2 = "0.11"
+syn = { version = "2.0", features = ["full", "visit", "extra-traits"] }
+tempfile = "3.27"
+thiserror = "2.0"
+toml = "1.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+which = "8.0"
+yaml-rust2 = "0.13"
+
+# Third-party crates are optimised also in the dev profile, which `cargo test`, nextest and the
+# coverage run use. Workspace crates keep the dev profile, so debugging and coverage see their
+# code as written.
+[profile.dev.package."*"]
+opt-level = 1
