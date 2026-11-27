@@ -12,7 +12,7 @@
 //! - a clippy or rustfmt configuration, or a `.cargo` folder, anywhere else (the root `.cargo`
 //!   and `gate/clippy.toml` are the only exceptions), because clippy and cargo find these files
 //!   by walking up from the crate;
-//! - an `eslint.config.*` anywhere but directly in `web/`, because ESLint takes the config
+//! - an `eslint.config.*` anywhere but directly in `web/`, because `ESLint` takes the config
 //!   nearest to each file it lints, so a nested one could switch the `ui` rules off;
 //! - a file called `rust-toolchain` anywhere, which rustup reads instead of the pinned
 //!   `rust-toolchain.toml`.
@@ -228,7 +228,7 @@ fn mirror(
     Ok(())
 }
 
-/// Whether the lower-case file name `name` is an ESLint flat config: `eslint.config.` and an
+/// Whether the lower-case file name `name` is an `ESLint` flat config: `eslint.config.` and an
 /// extension.
 fn is_eslint_config(name: &str) -> bool {
     name.strip_prefix("eslint.config.")
