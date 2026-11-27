@@ -239,6 +239,11 @@ Put this in every implementer, reviewer and fix brief:
 - Ruling: `**/eslint.config.*` is always-code in `gate/code-paths.toml` (final review round 3,
   approved by Jann) — an ESLint config can switch rules off, so a change to one anywhere in the
   tree must run every part — a PR that only edits an eslint config runs the full gate.
+- Ruling: `web/tsconfig.app.json` includes `**/*.ts` and `**/*.tsx` (excluding `node_modules`, `dist`
+  and `vite.config.ts`, which `tsconfig.node.json` owns), so `tsc -b` type-checks every TypeScript
+  file under `web/` (final review, extra round after round 5, approved by Jann) — Vitest and ESLint
+  already cover all of `web/`, and a test outside `src/` had type errors the `ui` part never saw —
+  a new top-level directory with generated TypeScript would be type-checked too.
 
 ## Review Focus
 
