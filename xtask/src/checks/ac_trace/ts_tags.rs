@@ -112,7 +112,7 @@ mod tests {
     use super::*;
 
     fn scan_lines(lines: &[&str]) -> (Vec<Tag>, Vec<Finding>) {
-        scan("editor-ui/e2e/editor.spec.ts", &lines.join("\n"))
+        scan("web/e2e/editor.spec.ts", &lines.join("\n"))
     }
 
     // AC: TU-00.4
@@ -159,10 +159,7 @@ mod tests {
                 (18, &ids(&["TU-11.7"])[..], Some("vitest style"), true),
             ]
         );
-        assert!(
-            tags.iter()
-                .all(|tag| tag.file == "editor-ui/e2e/editor.spec.ts")
-        );
+        assert!(tags.iter().all(|tag| tag.file == "web/e2e/editor.spec.ts"));
     }
 
     // AC: TU-00.4
@@ -198,10 +195,7 @@ mod tests {
             assert!(tags.is_empty(), "{lines:?}: {tags:?}");
             assert_eq!(findings.len(), 1, "{lines:?}: {findings:?}");
             assert_eq!(findings[0].line, Some(1));
-            assert_eq!(
-                findings[0].file.as_deref(),
-                Some("editor-ui/e2e/editor.spec.ts")
-            );
+            assert_eq!(findings[0].file.as_deref(), Some("web/e2e/editor.spec.ts"));
         }
     }
 

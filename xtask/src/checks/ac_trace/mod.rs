@@ -331,9 +331,9 @@ fn scan_files(root: &Path, view: &View) -> Result<(Vec<Tag>, Vec<Finding>)> {
     Ok((tags, findings))
 }
 
-/// Whether `path` (repo-relative, with `/`) is a TypeScript file that is read: `.ts` or `.tsx`, except
-/// fixtures (`tests/fixtures/`) and anything under `target/` or `node_modules/`. Research
-/// folders are read like any other.
+/// Whether `path` (repo-relative, with `/`) is a TypeScript file that is read: `.ts` or `.tsx`,
+/// except fixtures (`tests/fixtures/`) and anything under `target/` or `node_modules/`. Every
+/// other folder is read, `web/` and the crates alike.
 fn is_typescript(path: &str) -> bool {
     let built = path
         .split('/')
@@ -791,10 +791,10 @@ mod tests {
     #[test]
     fn typescript_files_are_tracked_outside_fixtures_node_modules_and_target() {
         for path in [
-            "editor-ui/e2e/editor.spec.ts",
-            "editor-ui/src/lib/store.test.ts",
-            "research/prose/prototype.spec.ts",
-            "crates/theos-content/tests/fixturesX/a.ts",
+            "web/e2e/editor.spec.ts",
+            "web/src/lib/store.test.ts",
+            "web/src/prototype.spec.ts",
+            "crates/loom-core/tests/fixturesX/a.ts",
             "web/src/App.test.tsx",
         ] {
             assert!(is_typescript(path), "{path}");
@@ -802,14 +802,14 @@ mod tests {
         for path in [
             "README.md",
             "src/lib.rs",
-            "editor-ui/src/App.svelte",
-            "editor-ui/src/main.js",
+            "web/src/App.svelte",
+            "web/src/main.js",
             "tests/fixtures/a.ts",
             "xtask/tests/fixtures/ac-trace/case/e2e/a.ts",
-            "crates/theos-content/tests/fixtures/records/a.ts",
+            "crates/loom-core/tests/fixtures/records/a.ts",
             "target/debug/build/x.ts",
             "crates/a/target/x.ts",
-            "editor-ui/node_modules/pkg/index.ts",
+            "web/node_modules/pkg/index.ts",
             "web/node_modules/x/a.tsx",
             "node_modules/pkg/index.ts",
         ] {

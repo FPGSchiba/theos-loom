@@ -259,12 +259,12 @@ fn a_file_of_the_view_that_does_not_parse_is_a_finding() -> TestResult {
 }
 
 #[test]
-fn research_folders_are_scanned() -> TestResult {
+fn typescript_outside_the_e2e_folder_is_scanned() -> TestResult {
     // Without a phase the table lists every criterion that has a tag, wherever the test is.
     let (verdict, table) = trace("complete-phase", None)?;
     assert!(verdict.passed(), "{:?}", verdict.findings);
     assert!(
-        table.contains("TU-91.1   research/prose/prototype.spec.ts:3 loads the corpus\n"),
+        table.contains("TU-91.1   web/src/prototype.spec.ts:3 loads the corpus\n"),
         "{table}"
     );
     Ok(())
