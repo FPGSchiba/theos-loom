@@ -32,9 +32,9 @@ fn read_manifest(path: &Path) -> Result<toml::Table, Box<dyn Error>> {
     Ok(fs::read_to_string(path)?.parse::<toml::Table>()?)
 }
 
-// AC: CE-08.1
+// AC: TU-00.1
 #[test]
-fn workspace_members_are_the_g4_crates() -> TestResult {
+fn workspace_members_are_the_t1_crates() -> TestResult {
     let (root, packages) = load_workspace()?;
     let mut actual = Vec::new();
     for package in &packages {
@@ -46,14 +46,14 @@ fn workspace_members_are_the_g4_crates() -> TestResult {
     }
     actual.sort();
     let mut expected: Vec<String> = [
-        "theos-content@crates/theos-content",
-        "theos-vcs@crates/theos-vcs",
-        "theos-studio@crates/theos-studio",
-        "theos-map-format@crates/theos-map-format",
-        "theos-maps@crates/theos-maps",
-        "theos@crates/theos",
-        "theos-mcp@crates/theos-mcp",
-        "theos-editor@crates/theos-editor",
+        "loom-api@crates/loom-api",
+        "loom-context@crates/loom-context",
+        "loom-core@crates/loom-core",
+        "loom-gate@crates/loom-gate",
+        "loom-plan@crates/loom-plan",
+        "loom-run@crates/loom-run",
+        "loom-store@crates/loom-store",
+        "loom@crates/loom",
         "xtask@xtask",
     ]
     .into_iter()
@@ -64,7 +64,7 @@ fn workspace_members_are_the_g4_crates() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.1
+// AC: TU-00.1
 #[test]
 fn every_member_has_readme_and_crate_docs() -> TestResult {
     let (root, packages) = load_workspace()?;
@@ -97,17 +97,24 @@ fn every_member_has_readme_and_crate_docs() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.11
+// AC: TU-00.1
 #[test]
-fn every_member_inherits_the_workspace_version() -> TestResult {
+fn every_member_inherits_the_workspace_package() -> TestResult {
     let (root, packages) = load_workspace()?;
     let root_manifest = read_manifest(&root.join("Cargo.toml"))?;
-    let workspace_version = root_manifest
+    let workspace_package = root_manifest
         .get("workspace")
         .and_then(|workspace| workspace.get("package"))
-        .and_then(|package| package.get("version"))
+        .ok_or("no `[workspace.package]`")?;
+    let workspace_version = workspace_package
+        .get("version")
         .and_then(toml::Value::as_str)
         .ok_or("`[workspace.package]` has no `version`")?;
+    assert_eq!(
+        workspace_package.get("license").and_then(toml::Value::as_str),
+        Some("MIT"),
+        "`[workspace.package]` must have `license = \"MIT\"`"
+    );
     let inherited = toml::Value::Table(toml::Table::from_iter([(
         "workspace".to_owned(),
         toml::Value::Boolean(true),
@@ -120,15 +127,24 @@ fn every_member_inherits_the_workspace_version() -> TestResult {
             package.name
         );
         let manifest = read_manifest(package.manifest_path.as_std_path())?;
-        let declared = manifest
-            .get("package")
-            .and_then(|table| table.get("version"))
-            .ok_or("`[package]` has no `version`")?;
-        assert_eq!(
-            declared, &inherited,
-            "{} must declare `version.workspace = true`",
-            package.name
-        );
+        for key in [
+            "version",
+            "edition",
+            "rust-version",
+            "publish",
+            "repository",
+            "license",
+        ] {
+            let declared = manifest
+                .get("package")
+                .and_then(|table| table.get(key))
+                .ok_or_else(|| format!("{} `[package]` has no `{key}`", package.name))?;
+            assert_eq!(
+                declared, &inherited,
+                "{} must declare `{key}.workspace = true`",
+                package.name
+            );
+        }
     }
     Ok(())
 }
