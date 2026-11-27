@@ -1,6 +1,6 @@
 # P00 · Foundation and gate — phase spec
 
-Status: draft for Jann's approval (decider approval, trial step 1) · 27 Nov 2026
+Status: approved by Jann (decider approval, trial step 1) · 27 Nov 2026
 Source: `docs/specs/00-umbrella.md` §9 P00. Scope and acceptance criteria come from there; this
 spec decides how.
 
@@ -41,8 +41,9 @@ workflows `ci`, `pr`, `approval` and `settings`; `docs/gate.md`; `CONTRIBUTING.m
 template; `deny.toml`; the toolchain pin; the PostgreSQL service in CI (unused until P02).
 
 **Out:** any Loom behaviour (P01 onwards); the `loom-*` checks (P05–P07); releases (no release
-phase in stage 1); Windows and macOS (Loom runs on Linux only); a local throwaway database for
-`cargo xtask` (P02, the first phase that needs one).
+phase in stage 1); Windows and macOS for Loom itself and in CI (Loom runs on Linux only; the
+local gate runs on Windows too, D6); a local throwaway database for `cargo xtask` (P02, the first
+phase that needs one).
 
 ## 4. Decisions
 
@@ -54,6 +55,9 @@ phase in stage 1); Windows and macOS (Loom runs on Linux only); a local throwawa
 | D2 | **MIT licence** for theos-loom, theos-editor and Theos-Engine. Decision 0002. |
 | D3 | **Mirror the editor's gate.** Same checks and the same rules, adapted to Loom. |
 | D4 | **Lean and fast CI anyway**: heavy caching, especially for Rust, and nothing run that can't change a verdict. |
+| D5 | **A check is a required status check**: `gate`, `test`, `coverage`, `ui`, `pr` and `approval`. `docs/gate.md` lists these six and what each runs; the `cargo xtask` subcommands are their parts. TU-00.2 holds as written. Decision 0003. |
+| D6 | **The local gate runs on Windows and Linux**; CI on Linux only. The port keeps the editor's Windows handling. Decision 0004. |
+| D7 | **The toolchain's default linker** (`rust-lld`) instead of `mold` with `clang`; nothing to install. Approved with the plan. Decision 0005. |
 
 ### 4.2 Claude's calls (Rulings, for Jann to check)
 
@@ -73,6 +77,8 @@ phase in stage 1); Windows and macOS (Loom runs on Linux only); a local throwawa
   While the crates are empty they pass, as the editor's did.
 - **R-e Toolchain as the editor's pin** (`1.99.1`), so both repos move together.
 - **R-f The `ui` check runs from P00**, not from a later phase, because `web/` exists from P00.
+- **R-g Phase ids and branches:** `phase/PNN-<slug>`, `spec/PNN-<slug>`, `gate/<slug>`,
+  `docs/<slug>` and `fix/<slug>`, as in the editor. AC ids are `TU-\d{2}\.\d+`.
 - **R-h Repo contract from day one where it's cheap.** P00 already uses the paths of umbrella
   §6.2: protected paths live in `.loom/protected.toml` (R5) instead of `gate/protected-paths.toml`,
   and `.loom/checks.toml` (R2) lists every check with its local command. A secret scan (R10,
@@ -93,8 +99,6 @@ phase in stage 1); Windows and macOS (Loom runs on Linux only); a local throwawa
 - **R-l Speed budgets are measured on the first PR after P00 merges** (P01's), because `main` has
   no caches before P00 is merged. P00 itself records its cold-run times and sets timeouts from
   them. If P01's PR misses a budget, a `gate/` fix comes before P01 continues.
-- **R-g Phase ids and branches:** `phase/PNN-<slug>`, `spec/PNN-<slug>`, `gate/<slug>`,
-  `docs/<slug>` and `fix/<slug>`, as in the editor. AC ids are `TU-\d{2}\.\d+`.
 
 ## 5. Design
 
@@ -107,7 +111,7 @@ Cargo.toml              workspace (members crates/*, xtask; resolver 3); [worksp
 Cargo.lock              committed
 rust-toolchain.toml     1.99.1; rustfmt, clippy, llvm-tools-preview; profile minimal
 .cargo/config.toml      alias xtask = run --locked --package xtask --target-dir target/xtask-bin --
-                        [target.x86_64-unknown-linux-gnu] linker clang + mold (CI and local)
+                        and nothing else: the toolchain's default linker (D7)
 .gitattributes          * text=auto eol=lf
 clippy.toml             copy of gate/clippy.toml
 .config/nextest.toml    copy of gate/nextest.toml
@@ -134,7 +138,7 @@ web/                    React app (§5.5)
 | `--only`/`--skip`, docs-only rule | editor P50 spec §5.1–5.3 (not built in the editor yet) | A filter over the gate's check order; the two-list path rule |
 | Build cache | `Swatinem/rust-cache` via `.github/actions/setup` (`shared-key`, `save-if` on `main` only) | none |
 | Cached xtask for `pr` and `approval` | `actions/cache`, exact key, saved by `gate` on `main` (editor P50 §5.5) | none |
-| Faster linking | `mold` with `clang`, installed by the setup action | none |
+| Fast linking | the toolchain's default `rust-lld` (default on `x86_64-unknown-linux-gnu` since Rust 1.90; D7) | none |
 | Test runner, coverage, licences | `cargo-nextest`, `cargo-llvm-cov`, `cargo-deny`, pinned in `gate/tools.toml` | none |
 | PostgreSQL in CI | a `postgres:18` service container in `test` and `coverage` | none |
 | UI toolchain | pnpm, Vite, TypeScript, ESLint, Vitest; cache via `actions/setup-node` with `cache: pnpm` | none |
@@ -142,9 +146,11 @@ web/                    React app (§5.5)
 
 ### 5.3 `gate/`
 
-The editor's files, adapted: `lints.toml` (the same final lint list), `clippy.toml`,
-`nextest.toml`, `thresholds.toml` (Loom's crates and classes: the seven libraries and `xtask` are
-`library`, `loom` is `binary`), `tools.toml` (also Node, pnpm and gitleaks), `cfg-names.toml`,
+The editor's files, adapted: `lints.toml` (the same final lint list), `clippy.toml` (the test
+allowances only; the editor's G20 float rules go), `nextest.toml`, `thresholds.toml` (Loom's
+crates and classes: the seven libraries and `xtask` are `library`, `loom` is `binary`),
+`tools.toml` (also Node, pnpm and gitleaks), `cfg-names.toml` (the target keys of the Linux and
+Windows targets, D6),
 `code-paths.toml` (non-code, always-code and ui lists), `ruleset-main.json`,
 `repo-settings.toml`. Protected paths move to `.loom/protected.toml` (R-h), and `.loom/checks.toml`
 lists every check with its local command. No `engine-crates.toml` and no
@@ -173,7 +179,8 @@ except `docs/plans/**` and `docs/trial/**`, `.github/**`, `gate/**`, `xtask/**`,
 | `github` | Loom's required checks and labels (no `windows`/`macos`). |
 
 Everything else is ported as it is, including the guard lints, the `lints` code reading,
-the verdict table and the CI context handling, which keeps PR text out of shell commands.
+the verdict table, the CI context handling, which keeps PR text out of shell commands, and the
+Windows handling (D6).
 
 ### 5.5 `web/`
 
@@ -192,7 +199,7 @@ stays MIT-clean. Advisories: deny, and every ignore needs a reason. Sources: cra
 
 | Workflow | Job (= required check) | Runs | Notes |
 |---|---|---|---|
-| `ci` | `gate` | `cargo xtask gate --skip test,coverage` | saves the xtask cache on `main` |
+| `ci` | `gate` | `cargo xtask gate --skip test,coverage,ui` | saves the xtask cache on `main` |
 | `ci` | `test` | `cargo xtask gate --only test` (nextest, doc tests, slow tests) | PostgreSQL service |
 | `ci` | `coverage` | `cargo xtask gate --only coverage`, baseline cached by commit | PostgreSQL service |
 | `ci` | `ui` | `cargo xtask gate --only ui` | not needed unless `web/` or the UI toolchain changed |
@@ -206,15 +213,16 @@ stays MIT-clean. Advisories: deny, and every ignore needs a reason. Sources: cra
 - Pull requests restore caches but never save them; only `main` saves. Concurrency cancels an
   older run of the same pull request.
 - `run:` steps contain no `${{ }}` expressions (ported rule); xtask reads the event payload.
-- **Speed budgets on a warm cache**, measured on the P00 PR and recorded in the trial record: a
-  code pull request's `gate`, `test` and `coverage` each within 3 minutes of the run's start;
-  `pr` and `approval` within 20 seconds; a docs-only pull request's required jobs within
-  1 minute. They're measured on P01's PR (R-l); P00 records its cold-run times.
+- **Speed budgets on a warm cache**: a code pull request's `gate`, `test` and `coverage` each
+  within 3 minutes of the run's start; `pr` and `approval` within 20 seconds; a docs-only pull
+  request's required jobs within 1 minute. They're measured on P01's PR (R-l) and recorded in
+  P01's trial record; P00 records its cold-run times in its own.
 
 ### 5.8 Documents
 
 - **`docs/gate.md`**: the editor's structure (checks, lints, coverage, AC tags, protected paths,
-  merging, the docs-only rule with its per-check reasons), with Loom's lists.
+  merging, the docs-only rule with its per-check reasons), with Loom's lists. §1 lists the six
+  checks of D5 and, for each, the `cargo xtask` subcommands it runs.
 - **`CONTRIBUTING.md`**: branches, Conventional Commits (types as the editor's; scopes `core`,
   `plan`, `store`, `run`, `gate`, `context`, `api`, `cli`, `web`, `xtask`, `spec`, `docs`, `ci`),
   footers `Refs:`, `Phase:` and the Claude trailers, PR rules, tests.
@@ -226,7 +234,7 @@ stays MIT-clean. Advisories: deny, and every ignore needs a reason. Sources: cra
 | AC | Proof |
 |---|---|
 | TU-00.1 | A workspace test asserts that every crate of T1 exists with crate docs and inherits `[workspace.package]`; the binary's smoke test; the `web/` Vitest smoke test; the CI run of the P00 PR. |
-| TU-00.2 | `xtask` tests that the required contexts in `gate/ruleset-main.json` equal the job names of the workflows, and that `docs/gate.md` lists exactly those checks; `cargo xtask github check` passes against the live repo once Jann has applied the settings. |
+| TU-00.2 | `xtask` tests that the required contexts in `gate/ruleset-main.json` equal the job names of the workflows, and that `docs/gate.md` and `.loom/checks.toml` list exactly those checks (D5); `cargo xtask github check` passes against the live repo once Jann has applied the settings. |
 | TU-00.3 | The ported test that `cargo xtask gate` and the CI jobs call the same check functions with the same inputs, plus the CI run compared with a local run on the same commit. |
 | TU-00.4 | The editor's tests for `ac-trace`, `pr-title`, `commit-msg`, `lints` and `approval`, ported with their fixtures and adapted to Loom's ids, branches and scopes. Every adaptation of §5.4 has a test of its own. |
 
@@ -242,7 +250,8 @@ stays MIT-clean. Advisories: deny, and every ignore needs a reason. Sources: cra
 
 - **Porting carries editor-specific assumptions** (Windows paths, the engine, releases) into
   Loom. Mitigation: every adaptation listed in §5.4, the reviews read the port against this list,
-  and unused code is removed rather than left dormant (directive 19).
+  and code Loom doesn't use is removed rather than left dormant (directive 1). The Windows
+  handling stays on purpose (D6).
 - **The first cold-cache run is slow.** Budgets are measured on a warm cache; the cold numbers
   go into the trial record too.
 - **Settings can't be applied by Claude.** `cargo xtask github apply` needs Jann's agreement and
