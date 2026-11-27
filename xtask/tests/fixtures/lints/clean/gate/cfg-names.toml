@@ -3,9 +3,9 @@
 # between the builds the checks make (`clippy`, `debug_assertions`, `miri`, …) and any name a
 # build script declares. `names` may stand alone, `keys` take a value, which rustc checks.
 # `keys` are the target keys the pinned toolchain (rustc 1.99.1) sets itself on stable for the
-# G2 targets: the union of `rustc --print cfg --target <t>` for x86_64-pc-windows-msvc,
-# x86_64-unknown-linux-gnu, aarch64-apple-darwin and x86_64-apple-darwin, without
-# `debug_assertions` and `panic`. Re-run the four commands at every toolchain pin change.
+# two targets of the local gate (D6): the union of `rustc --print cfg --target <t>` for
+# x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc, without `debug_assertions` and `panic`,
+# plus `feature`, which cargo sets. Re-run the two commands at every toolchain pin change.
 names = ["test", "doc", "unix", "windows"]
 keys = [
     "feature",

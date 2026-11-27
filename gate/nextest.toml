@@ -2,26 +2,15 @@
 # its copy, which is where nextest looks; `cargo xtask lints` keeps the two identical.
 # Reports are written to `target/nextest/<profile>/junit.xml`.
 #
-# A test is slow when a segment of its name starts with `slow_`, such as
-# `maps::parity::slow_recipes_match` or `stages::slow_runs::full_pipeline` (`docs/gate.md` §1).
-# `default` (local) and `ci` (CI) leave the slow tests out; they are the `test` check and the
-# coverage run. `slow` runs only them; it is the `slow-tests` check. A filter given on the command
-# line narrows the profile's filter further; `--ignore-default-filter` lifts it.
+# There is no slow-test split: `test` runs every test, locally and in CI (`default` is the local
+# profile, `ci` the CI one). Loom has no slow tests yet; a later split is a `gate/` change.
 
 [profile.default]
 retries = 0
 fail-fast = false
 junit.path = "junit.xml"
-default-filter = 'not test(/(^|::)slow_/)'
 
 [profile.ci]
 retries = 0
 fail-fast = false
 junit.path = "junit.xml"
-default-filter = 'not test(/(^|::)slow_/)'
-
-[profile.slow]
-retries = 0
-fail-fast = false
-junit.path = "junit.xml"
-default-filter = 'test(/(^|::)slow_/)'
