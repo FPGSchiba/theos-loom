@@ -6,8 +6,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
-    // Run exactly what `tsc -b` checks: .ts/.tsx tests outside dot-folders.
+    // Run exactly what `tsc -b` checks: .ts/.tsx tests outside dot-folders and dot-files.
     include: ['**/*.{test,spec}.{ts,tsx}'],
-    exclude: [...configDefaults.exclude, '**/.*/**', '**/node_modules/**', '**/dist/**'],
+    exclude: [...configDefaults.exclude, '**/.*/**', '**/.*', '**/node_modules/**', '**/dist/**'],
   },
 })

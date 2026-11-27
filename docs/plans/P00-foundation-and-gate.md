@@ -245,11 +245,12 @@ Put this in every implementer, reviewer and fix brief:
   already cover all of `web/`, and a test outside `src/` had type errors the `ui` part never saw —
   a new top-level directory with generated TypeScript would be type-checked too.
 - Ruling: Vitest runs exactly what `tsc -b` checks: `web/vite.config.ts` sets `test.include` to
-  `**/*.{test,spec}.{ts,tsx}` and `test.exclude` to Vitest's defaults plus `**/.*/**`,
+  `**/*.{test,spec}.{ts,tsx}` and `test.exclude` to Vitest's defaults plus `**/.*/**`, `**/.*`,
   `**/node_modules/**` and `**/dist/**` (a targeted review after the ruling above showed Vitest
-  still ran `.mts`/`.cts` tests and tests in dot-folders, which `tsc` never type-checks; approach
+  still ran `.mts`/`.cts` tests and tests in dot-folders, and a second one tests named
+  with a leading dot, which `tsc` never type-checks; approach
   changed from widening tsc to narrowing Vitest, approved by Jann) — a `.mts`/`.cts` test or a
-  test in a dot-folder is silently not run; ac-trace still reads `.ts`/`.tsx` in dot-folders, so
+  test in a dot-folder or dot-file is silently not run; ac-trace still reads `.ts`/`.tsx` in dot-folders, so
   a tag there counts as traced without a run.
 
 ## Review Focus
