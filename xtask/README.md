@@ -25,10 +25,11 @@ The checks (required status checks) and the parts each runs are in `.loom/checks
 - `gate`, `need`, `changes`, `code_paths`: the gate's runner, which parts are needed, the changed
   paths, and `gate/code-paths.toml`.
 - `checks`: one module per part; `checks::lints` and `checks::approval` have a module per rule.
-- `github`: the settings as files and the `gh` command line behind them.
+- `github`: the settings as files and the `gh` command line behind them; `github::gh_cli` is the
+  one place that starts `gh`.
 - `umbrella`, `branch`, `conventional`: the umbrella spec's phases and criteria, the branch names
   and the commit message rules that `CONTRIBUTING.md` describes.
 - `git`, `files`, `process`, `markdown`, `view`: the only places that start git and other
-  programs, walk the tree, read Markdown, and read the code cargo compiles.
+  programs (apart from `github::gh_cli`, which starts `gh`), walk the tree, read Markdown, and read the code cargo compiles.
 
 Tests are in `tests/`; fixtures are in `tests/fixtures/`.

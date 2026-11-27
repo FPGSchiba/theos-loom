@@ -9,7 +9,6 @@
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use serde::Deserialize;
 
@@ -177,16 +176,7 @@ pub fn run(root: &Path, ci: Option<&CiEvent>, _out: &mut dyn Write) -> Result<Ve
     let program = which::which("gitleaks").map_err(|_| Error::Missing {
         what: "gitleaks on PATH (see `cargo xtask tools`)".to_owned(),
     })?;
-    let output = Command::new(&program)
-        .args(&args)
-        .current_dir(root)
-        .output()
-        .map_err(|source| Error::Command {
-            program: "gitleaks".to_owned(),
-            args: args.clone(),
-            status: None,
-            stderr: source.to_string(),
-        })?;
+    let output = crate::process::output_program(program.as_os_str(), root, &args)?;
     if !output.status.success() {
         return Err(Error::Command {
             program: "gitleaks".to_owned(),

@@ -216,6 +216,27 @@ pub(crate) fn capture_program(
         .then(|| String::from_utf8_lossy(&output.stdout).into_owned()))
 }
 
+/// Runs `program` with `args` in `root` and returns everything it produced, whatever its exit
+/// status. Only failing to start it is an error.
+pub(crate) fn output_program(program: &OsStr, root: &Path, args: &[String]) -> Result<Output> {
+    tracing::debug!(
+        program = %program.to_string_lossy(),
+        args = ?args,
+        root = %root.display(),
+        "output"
+    );
+    Command::new(program)
+        .args(args)
+        .current_dir(root)
+        .output()
+        .map_err(|source| Error::Command {
+            program: program.to_string_lossy().into_owned(),
+            args: args.to_vec(),
+            status: None,
+            stderr: source.to_string(),
+        })
+}
+
 pub(crate) fn run_program(program: &OsStr, root: &Path, cmd: &CargoCommand) -> Result<bool> {
     tracing::debug!(
         program = %program.to_string_lossy(),
