@@ -1,5 +1,6 @@
-# The checks of the title and the description of a pull request. xtask reads both from the event
-# payload, so no `run:` step has an expression with text of the pull request in it.
+# The checks of the title and the description of a pull request, in one `cargo xtask pr` call: one
+# table, and both parts always run. xtask reads both from the event payload, so no `run:` step has
+# an expression with text of the pull request in it. It runs the cached xtask.
 name: pr
 
 on:
@@ -14,24 +15,14 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  pr-title:
-    name: pr-title
+  pr:
+    name: pr
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup
-      - run: cargo xtask pr-title
-
-  pr-body:
-    name: pr-body
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/xtask
         with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup
-      - run: cargo xtask pr-body
+          args: pr

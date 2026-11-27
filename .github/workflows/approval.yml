@@ -43,12 +43,11 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       # The job runs on pull requests only, so a cache of its own would never be on `main`, where
-      # every pull request can restore it. It restores the xtask build `fmt` saved on `main`
-      # instead, and saves nothing.
-      - uses: ./.github/actions/setup
+      # every pull request can restore it. It restores the xtask that `gate` saved on `main` for
+      # the key of this checkout (the base commit), builds it on a miss, and saves nothing. The
+      # token reaches xtask through the environment of this step.
+      - uses: ./.github/actions/xtask
         with:
-          cache-key: xtask
-          save-cache: false
-      - run: cargo xtask approval
+          args: approval
         env:
           GH_TOKEN: ${{ github.token }}

@@ -6,8 +6,9 @@
 //! at another version, so the same code cannot give different verdicts. Node is pinned by its
 //! major version, every other tool exactly. [`run_for`] checks only the tools of the parts that
 //! will run, since a tool no part uses cannot change a verdict. `cargo xtask tools --install`
-//! installs the cargo tools that are wrong and prints how to install the others, and
-//! `--print-install-spec` prints the pins of the cargo tools in the form the setup action takes.
+//! installs the cargo tools that are wrong and prints how to install the others,
+//! `--print-install-spec` prints the pins of the cargo tools (with `--for`, of those parts only) in
+//! the form the setup action takes, and `--print-pin` prints the version of one tool.
 
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -104,6 +105,15 @@ pub fn needed_by(check: Check) -> &'static [Tool] {
         | Check::Approval
         | Check::Github => &[],
     }
+}
+
+/// The tools that any of `checks` runs, in the order of [`Tool::ALL`].
+#[must_use]
+pub fn needed_by_all(checks: &[Check]) -> Vec<Tool> {
+    Tool::ALL
+        .into_iter()
+        .filter(|tool| checks.iter().any(|check| needed_by(*check).contains(tool)))
+        .collect()
 }
 
 /// A tool and the exact version the gate runs with.
@@ -256,6 +266,32 @@ pub fn install_spec(pins: &[ToolPin]) -> String {
         .map(|pin| format!("{}@{}", pin.name, pin.version))
         .collect::<Vec<_>>()
         .join(",")
+}
+
+/// [`install_spec`] for the cargo tools that the parts `checks` run, and no other.
+#[must_use]
+pub fn install_spec_for(pins: &[ToolPin], checks: &[Check]) -> String {
+    let needed: Vec<&str> = needed_by_all(checks).into_iter().map(Tool::name).collect();
+    let wanted: Vec<ToolPin> = pins
+        .iter()
+        .filter(|pin| needed.contains(&pin.name.as_str()))
+        .cloned()
+        .collect();
+    install_spec(&wanted)
+}
+
+/// The pinned version of the tool called `name`.
+///
+/// # Errors
+///
+/// Fails when `name` is not a tool the gate pins.
+pub fn pin_version<'a>(pins: &'a [ToolPin], name: &str) -> Result<&'a str> {
+    pins.iter()
+        .find(|pin| pin.name == name)
+        .map(|pin| pin.version.as_str())
+        .ok_or_else(|| Error::Usage {
+            message: format!("`{name}` is not a tool pinned in gate/tools.toml"),
+        })
 }
 
 /// `cargo install --locked <tool> --version <version>`, as a command to run.
@@ -484,10 +520,7 @@ pub fn check_installed(root: &Path) -> Result<Verdict> {
 ///
 /// Fails when the pins cannot be loaded or a program cannot be started.
 pub fn run_for(root: &Path, checks: &[Check], _out: &mut dyn Write) -> Result<Verdict> {
-    let needed: Vec<Tool> = Tool::ALL
-        .into_iter()
-        .filter(|tool| checks.iter().any(|check| needed_by(*check).contains(tool)))
-        .collect();
+    let needed = needed_by_all(checks);
     let mut verdict = check_tools(root, &needed)?;
     if needed.is_empty() {
         verdict

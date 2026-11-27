@@ -92,3 +92,56 @@ fn a_name_that_is_not_a_gate_part_exits_with_2_and_names_it() -> TestResult {
     assert!(!stderr.contains("==> "), "no part ran: {stderr}");
     Ok(())
 }
+
+/// The stdout of a run that must have passed.
+fn stdout_of(args: &[&str]) -> TestResult<String> {
+    let output = xtask(args, |_| {})?;
+    assert_eq!(output.status.code(), Some(0), "{args:?}");
+    Ok(String::from_utf8(output.stdout)?)
+}
+
+// AC: TU-00.3
+#[test]
+fn the_install_spec_can_be_asked_for_the_tools_of_some_parts() -> TestResult {
+    let pins = xtask::tools::load_pins(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .ok_or("no root")?,
+    )?;
+    let version = |name: &str| -> TestResult<String> {
+        Ok(pins
+            .iter()
+            .find(|pin| pin.name == name)
+            .ok_or("no such pin")?
+            .version
+            .clone())
+    };
+    // A part that needs a cargo tool installs that one; gitleaks, Node and pnpm never go in.
+    let expected = format!("cargo-deny@{}", version("cargo-deny")?);
+    let spec = stdout_of(&["tools", "--print-install-spec", "--for", "deny,secrets,ui"])?;
+    assert_eq!(spec.trim(), expected);
+    let spec = stdout_of(&["tools", "--print-install-spec", "--for", "fmt,clippy"])?;
+    assert_eq!(spec.trim(), "");
+    let output = xtask(&["tools", "--print-install-spec", "--for", "tset"], |_| {})?;
+    assert_eq!(output.status.code(), Some(2));
+    Ok(())
+}
+
+// AC: TU-00.3
+#[test]
+fn one_pin_can_be_printed_for_the_workflows() -> TestResult {
+    let pin = stdout_of(&["tools", "--print-pin", "gitleaks"])?;
+    let pins = xtask::tools::load_pins(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .ok_or("no root")?,
+    )?;
+    let expected = pins
+        .iter()
+        .find(|pin| pin.name == "gitleaks")
+        .ok_or("no gitleaks pin")?;
+    assert_eq!(pin.trim(), expected.version);
+    let output = xtask(&["tools", "--print-pin", "nothing"], |_| {})?;
+    assert_eq!(output.status.code(), Some(2));
+    Ok(())
+}

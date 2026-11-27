@@ -1,17 +1,19 @@
-//! The shape of the GitHub Actions workflows and of the setup action under `.github/`.
+//! The shape of the GitHub Actions workflows and of the two actions under `.github/`.
 //!
-//! CI is thin over xtask (P00 spec D1): a job checks out, sets up and runs `cargo xtask <check>`,
-//! and the workflow files hold triggers, runners, caching and permissions and nothing else. These
-//! tests parse the real files, so a change that breaks a rule of `docs/gate.md` §1 or of the
-//! spec's §5.6 fails here, before it fails on GitHub.
+//! CI is thin over xtask (P00 spec D1): a job checks out, sets up and runs one `cargo xtask`
+//! command, and the workflow files hold triggers, runners, caching and permissions and nothing
+//! else. These tests parse the real files, so a change that breaks a rule of `docs/gate.md` §1
+//! or of the spec's §5.7 fails here, before it fails on GitHub.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
+use serde::Deserialize;
+use xtask::gate::{selected, selection};
 use xtask::github::settings::required_contexts_from_gate_md;
-use xtask::verdict::{GATE_ORDER, PR_ONLY};
+use xtask::verdict::{Check, GATE_ORDER};
 use yaml_rust2::{Yaml, YamlLoader};
 
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
@@ -20,21 +22,29 @@ type TestResult<T = ()> = Result<T, Box<dyn Error>>;
 const PR_WORKFLOWS: [&str; 3] = ["ci.yml", "pr.yml", "approval.yml"];
 
 /// Every workflow file.
-const ALL_WORKFLOWS: [&str; 5] = [
-    "ci.yml",
-    "pr.yml",
-    "approval.yml",
-    "platforms.yml",
-    "settings.yml",
-];
+const ALL_WORKFLOWS: [&str; 4] = ["ci.yml", "pr.yml", "approval.yml", "settings.yml"];
 
 const SETUP_ACTION: &str = ".github/actions/setup/action.yml";
+const XTASK_ACTION: &str = ".github/actions/xtask/action.yml";
 
 /// The step that runs the setup action, as a job names it.
 const SETUP_USES: &str = "./.github/actions/setup";
 
+/// The step that runs the cached xtask, as a job names it.
+const XTASK_USES: &str = "./.github/actions/xtask";
+
 /// The expression that is the workflow token.
 const TOKEN: &str = "${{ github.token }}";
+
+/// The expression that is true on `main` only: the jobs save their caches under it.
+const ON_MAIN: &str = "${{ github.ref == 'refs/heads/main' }}";
+
+/// The URL of the throwaway database of `test` and `coverage` (umbrella T4b).
+const DATABASE_URL: &str = "postgres://postgres@localhost:5432/loom_test";
+
+/// The minutes a job may run before GitHub cancels it. The default is six hours. Task 16
+/// measures the cold runs and sets one timeout per job.
+const TIMEOUT_MINUTES: i64 = 30;
 
 fn root() -> TestResult<PathBuf> {
     Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -90,6 +100,33 @@ impl Job {
     fn commands(&self) -> TestResult<Vec<String>> {
         Ok(run_values(self.steps()?))
     }
+
+    /// The first step that uses `action` (a local action, as written in `uses:`).
+    fn step_using(&self, action: &str) -> TestResult<Option<&Yaml>> {
+        Ok(self
+            .steps()?
+            .iter()
+            .find(|step| step["uses"].as_str() == Some(action)))
+    }
+
+    /// The command the job's last step runs, as `cargo xtask <args>`: the step's `run:`, or the
+    /// arguments of the cached xtask action after `cargo xtask `.
+    fn last_command(&self) -> TestResult<String> {
+        let last = self
+            .steps()?
+            .last()
+            .ok_or_else(|| format!("job {} has no steps", self.id))?;
+        if let Some(command) = last["run"].as_str() {
+            return Ok(command.trim().to_owned());
+        }
+        if last["uses"].as_str() == Some(XTASK_USES) {
+            let args = last["with"]["args"]
+                .as_str()
+                .ok_or_else(|| format!("job {}: the xtask step has no args", self.id))?;
+            return Ok(format!("cargo xtask {args}"));
+        }
+        Err(format!("job {}: the last step runs no command", self.id).into())
+    }
 }
 
 fn jobs(workflow: &Yaml) -> TestResult<Vec<Job>> {
@@ -113,10 +150,12 @@ fn jobs(workflow: &Yaml) -> TestResult<Vec<Job>> {
         .collect()
 }
 
-fn index_of(jobs: &[Job], name: &str) -> TestResult<usize> {
-    jobs.iter()
-        .position(|job| job.name == name)
-        .ok_or_else(|| format!("no job named {name}").into())
+/// The job of a workflow with this name.
+fn job_named(file: &str, name: &str) -> TestResult<Job> {
+    jobs(&workflow(file)?)?
+        .into_iter()
+        .find(|job| job.name == name)
+        .ok_or_else(|| format!("{file} has no job named {name}").into())
 }
 
 /// Every job of every workflow, with the file it is in.
@@ -186,48 +225,63 @@ fn map(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {
         .collect()
 }
 
-/// The suffixes GitHub adds to the name of a job that runs on one OS of a matrix.
-const OS_SUFFIXES: [&str; 3] = [" (windows)", " (macos)", " (macos intel)"];
-
-/// The check a job runs: its name without the OS suffix.
-fn check_of(name: &str) -> &str {
-    OS_SUFFIXES
-        .iter()
-        .find_map(|suffix| name.strip_suffix(suffix))
-        .unwrap_or(name)
-}
-
-/// The runner a job of this name needs: its OS suffix says which.
-fn runner_of(name: &str) -> &'static str {
-    if name.ends_with(" (windows)") {
-        "windows-latest"
-    } else if name.ends_with(" (macos)") {
-        "macos-latest"
-    } else if name.ends_with(" (macos intel)") {
-        "macos-15-intel"
+/// The `with:` of a step as a map; empty when the step has none.
+fn with_of(step: &Yaml) -> TestResult<BTreeMap<String, String>> {
+    if step["with"].is_badvalue() {
+        Ok(BTreeMap::new())
     } else {
-        "ubuntu-latest"
+        string_map(&step["with"])
     }
 }
 
-/// The command a job runs: `cargo xtask <check>`, and for `settings` the settings check.
-fn command_of(name: &str) -> String {
-    if name == "settings" {
-        "cargo xtask github check".to_owned()
-    } else {
-        format!("cargo xtask {}", check_of(name))
-    }
+/// The action a step uses, without its version.
+fn action_name(step: &Yaml) -> Option<&str> {
+    step["uses"]
+        .as_str()
+        .and_then(|uses| uses.split_once('@'))
+        .map(|(name, _)| name)
 }
 
-/// What a step is, for the shape of a job: the checkout, the setup action, the cache, or a command.
+/// One `[[check]]` of `.loom/checks.toml`.
+#[derive(Deserialize)]
+struct CheckEntry {
+    name: String,
+    command: String,
+    parts: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct ChecksFile {
+    check: Vec<CheckEntry>,
+}
+
+/// The check of `.loom/checks.toml` with this name.
+fn check_entry(name: &str) -> TestResult<CheckEntry> {
+    let file: ChecksFile = toml::from_str(&read(".loom/checks.toml")?)?;
+    file.check
+        .into_iter()
+        .find(|check| check.name == name)
+        .ok_or_else(|| format!(".loom/checks.toml has no check {name}").into())
+}
+
+/// The four jobs of `ci.yml`.
+const CI_JOBS: [&str; 4] = ["gate", "test", "coverage", "ui"];
+
+/// What a step is, for the shape of a job.
 fn step_kind(step: &Yaml) -> TestResult<&'static str> {
     if let Some(uses) = step["uses"].as_str() {
         return if uses.starts_with("actions/checkout@") {
             Ok("checkout")
         } else if uses == SETUP_USES {
             Ok("setup")
+        } else if uses == XTASK_USES {
+            Ok("xtask")
         } else if uses.starts_with("actions/cache@") {
             Ok("cache")
+        } else if uses.starts_with("pnpm/action-setup@") {
+            Ok("pnpm")
+        } else if uses.starts_with("actions/setup-node@") {
+            Ok("node")
         } else {
             Err(format!("a step uses {uses}, which no job needs").into())
         };
@@ -239,54 +293,96 @@ fn step_kind(step: &Yaml) -> TestResult<&'static str> {
     }
 }
 
-// AC: TU-00.1
+fn step_kinds(job: &Job) -> TestResult<Vec<&'static str>> {
+    job.steps()?.iter().map(step_kind).collect()
+}
+
+// AC: TU-00.1, TU-00.3
 #[test]
-fn ci_builds_and_tests_on_linux() -> TestResult {
-    let jobs = jobs(&workflow("ci.yml")?)?;
-    for check in ["clippy", "test", "slow-tests"] {
-        let job = &jobs[index_of(&jobs, check)?];
-        assert_eq!(job.runs_on()?, "ubuntu-latest", "{check}");
-        assert_eq!(job.commands()?, [format!("cargo xtask {check}")], "{check}");
+fn ci_runs_four_jobs_side_by_side_on_linux() -> TestResult {
+    let ci = workflow("ci.yml")?;
+    let jobs = jobs(&ci)?;
+    let ids: Vec<&str> = jobs.iter().map(|job| job.id.as_str()).collect();
+    let names: Vec<&str> = jobs.iter().map(|job| job.name.as_str()).collect();
+    assert_eq!(ids, CI_JOBS, "the job keys");
+    assert_eq!(names, CI_JOBS, "the job names");
+    for job in &jobs {
+        let name = &job.name;
+        assert_eq!(job.runs_on()?, "ubuntu-latest", "{name}");
+        assert_eq!(
+            job.node["needs"],
+            Yaml::BadValue,
+            "{name} waits for another job"
+        );
+        assert_eq!(job.node["if"], Yaml::BadValue, "{name} can be skipped");
+    }
+    assert_eq!(
+        keys(&ci["on"])?,
+        set(&["pull_request", "push", "workflow_dispatch"])
+    );
+    Ok(())
+}
+
+// AC: TU-00.3
+#[test]
+fn each_ci_job_runs_its_check_command() -> TestResult {
+    for name in CI_JOBS {
+        let job = job_named("ci.yml", name)?;
+        assert_eq!(
+            job.last_command()?,
+            check_entry(name)?.command,
+            "the last step of job {name} is not the command of its check in .loom/checks.toml"
+        );
     }
     Ok(())
 }
 
-// AC: TU-00.1
+/// The parts a `cargo xtask gate` command selects, `tools` left out.
+fn parts_of_gate_command(command: &str) -> TestResult<BTreeSet<&'static str>> {
+    let arguments = command
+        .strip_prefix("cargo xtask gate")
+        .ok_or_else(|| format!("{command} is no gate command"))?;
+    let words: Vec<&str> = arguments.split_whitespace().collect();
+    let list = |value: &str| -> Vec<String> { value.split(',').map(str::to_owned).collect() };
+    let (only, skip) = match words.as_slice() {
+        [] => (Vec::new(), Vec::new()),
+        ["--only", value] => (list(value), Vec::new()),
+        ["--skip", value] => (Vec::new(), list(value)),
+        other => return Err(format!("the arguments {other:?} are not --only or --skip").into()),
+    };
+    Ok(selected(&selection(&only, &skip)?)
+        .into_iter()
+        .filter(|check| *check != Check::Tools)
+        .map(Check::name)
+        .collect())
+}
+
+// AC: TU-00.3
 #[test]
-fn platforms_builds_and_tests_on_windows_and_macos() -> TestResult {
-    let jobs = jobs(&workflow("platforms.yml")?)?;
-    for (os, runner) in [("windows", "windows-latest"), ("macos", "macos-latest")] {
-        for check in ["clippy", "test", "slow-tests"] {
-            let name = format!("{check} ({os})");
-            let job = &jobs[index_of(&jobs, &name)?];
-            assert_eq!(job.runs_on()?, runner, "{name}");
-            assert_eq!(
-                job.commands()?,
-                [format!("cargo xtask {}", check_of(&name))],
-                "{name}"
-            );
+fn the_ci_jobs_cover_every_gate_part_once() -> TestResult {
+    let mut seen = BTreeSet::new();
+    for name in CI_JOBS {
+        let command = job_named("ci.yml", name)?.last_command()?;
+        for part in parts_of_gate_command(&command)? {
+            assert!(seen.insert(part), "{part} runs in two jobs (job {name})");
         }
     }
-    Ok(())
-}
-
-#[test]
-fn engine_free_runs_on_every_pr() -> TestResult {
-    let ci = workflow("ci.yml")?;
-    assert!(
-        keys(&ci["on"])?.contains("pull_request"),
-        "ci.yml does not run on pull requests"
+    let gate: BTreeSet<&str> = GATE_ORDER
+        .iter()
+        .copied()
+        .filter(|check| *check != Check::Tools)
+        .map(Check::name)
+        .collect();
+    assert_eq!(
+        seen, gate,
+        "cargo xtask gate and CI run different parts (`tools` is the gate's own version check)"
     );
-    let jobs = jobs(&ci)?;
-    let engine_free = &jobs[index_of(&jobs, "engine-free")?];
-    assert_eq!(engine_free.runs_on()?, "ubuntu-latest");
-    assert_eq!(engine_free.commands()?, ["cargo xtask engine-free"]);
     Ok(())
 }
 
 // AC: TU-00.2
 #[test]
-fn required_contexts_are_pr_jobs() -> TestResult {
+fn required_contexts_are_the_jobs() -> TestResult {
     let mut contexts = BTreeSet::new();
     for file in PR_WORKFLOWS {
         for job in jobs(&workflow(file)?)? {
@@ -297,6 +393,10 @@ fn required_contexts_are_pr_jobs() -> TestResult {
             );
         }
     }
+    assert!(
+        !contexts.contains("settings"),
+        "settings is not a required check"
+    );
 
     let required = required_contexts_from_gate_md(&read("docs/gate.md")?);
     assert_eq!(
@@ -331,33 +431,40 @@ fn required_contexts_are_pr_jobs() -> TestResult {
 
 // AC: TU-00.3
 #[test]
-fn every_job_only_runs_its_own_check() -> TestResult {
-    for (file, job) in all_jobs()? {
-        let name = &job.name;
-        assert_eq!(
-            job.commands()?,
-            [command_of(name)],
-            "{file}: job {name} runs more or other than its check"
-        );
-        assert_eq!(job.runs_on()?, runner_of(name), "{file}: job {name}");
+fn pr_runs_both_parts_in_one_job() -> TestResult {
+    let pr = workflow("pr.yml")?;
+    let jobs = jobs(&pr)?;
+    assert_eq!(jobs.len(), 1, "pr.yml has one job");
+    let job = &jobs[0];
+    assert_eq!((job.id.as_str(), job.name.as_str()), ("pr", "pr"));
+    assert_eq!(job.last_command()?, "cargo xtask pr");
+    let check = check_entry("pr")?;
+    assert!(
+        check.command.starts_with("cargo xtask pr"),
+        "{}",
+        check.command
+    );
+    assert_eq!(check.parts, ["pr-title", "pr-body"]);
+    assert_eq!(
+        strings(&pr["on"]["pull_request"]["types"])?,
+        ["opened", "edited", "synchronize", "reopened"]
+    );
+    Ok(())
+}
 
-        let kinds = job
-            .steps()?
-            .iter()
-            .map(step_kind)
-            .collect::<TestResult<Vec<_>>>()?;
-        let expected: &[&str] = match name.as_str() {
-            "approval" => &["checkout", "checkout", "setup", "run"],
-            "coverage" => &["checkout", "setup", "cache", "run"],
-            _ => &["checkout", "setup", "run"],
-        };
-        assert_eq!(kinds, expected, "{file}: the steps of job {name}");
-    }
-
+// AC: TU-00.3
+#[test]
+fn approval_runs_the_approval_command() -> TestResult {
+    let job = job_named("approval.yml", "approval")?;
+    assert_eq!(job.last_command()?, check_entry("approval")?.command);
+    assert_eq!(
+        step_kinds(&job)?,
+        ["checkout", "checkout", "xtask"],
+        "the steps of job approval"
+    );
     // The two checkouts of `approval` (D3): the base commit with its history, and, only while
     // the base has no xtask, the head of the pull request.
-    let approval = jobs(&workflow("approval.yml")?)?;
-    let steps = approval[index_of(&approval, "approval")?].steps()?;
+    let steps = job.steps()?;
     let base = &steps[0]["with"];
     assert_eq!(
         base["ref"].as_str(),
@@ -393,14 +500,15 @@ fn every_job_only_runs_its_own_check() -> TestResult {
 const WORKFLOW_KEYS: [&str; 5] = ["name", "on", "permissions", "concurrency", "jobs"];
 
 /// What a job may spell. Left out on purpose: `continue-on-error` (a failed check passes),
-/// `defaults` (another shell or folder), `strategy` and `needs` (a job that is skipped or
-/// tolerated), `container` and `services`.
-const JOB_KEYS: [&str; 6] = [
+/// `defaults` (another shell or folder), `strategy`, `needs` and `if` (a job that is skipped or
+/// tolerated) and `container`. `env` and `services` are pinned by the database test.
+const JOB_KEYS: [&str; 7] = [
     "name",
     "runs-on",
     "timeout-minutes",
     "permissions",
-    "if",
+    "env",
+    "services",
     "steps",
 ];
 
@@ -409,8 +517,9 @@ const JOB_KEYS: [&str; 6] = [
 /// `continue-on-error`, `working-directory`, `shell`, `timeout-minutes` and `id`.
 const STEP_KEYS: [&str; 5] = ["uses", "with", "run", "if", "env"];
 
-/// What a step of the setup action may spell on top of the keys of a job's step.
-const SETUP_STEP_KEYS: [&str; 6] = ["name", "id", "uses", "with", "run", "shell"];
+/// What a step of the two actions may spell. `if` and `env` pass a value to a step, and the
+/// shape tests below pin where they are used.
+const ACTION_STEP_KEYS: [&str; 8] = ["name", "id", "uses", "with", "run", "shell", "if", "env"];
 
 /// The expression of the one step of the workflows that has an `if:`: the checkout of the head of
 /// the pull request, which runs only while the base commit has no xtask.
@@ -442,14 +551,6 @@ fn no_key_lets_a_job_pass_while_xtask_fails() -> TestResult {
                 "{file}: job {name} has keys that can make it pass while xtask fails, or run \
                  somewhere else than the root of the repository"
             );
-            // The only job-level conditions are the label and event conditions of the
-            // `platforms` jobs, which are not required checks.
-            assert_eq!(
-                job.node["if"].is_badvalue(),
-                file != "platforms.yml",
-                "{file}: job {name}: only the platforms jobs have an `if:`"
-            );
-            // The token goes to two steps, never to a job: see the token test.
             for (position, step) in job.steps()?.iter().enumerate() {
                 assert_eq!(
                     unexpected_keys(step, &STEP_KEYS)?,
@@ -473,44 +574,33 @@ fn no_key_lets_a_job_pass_while_xtask_fails() -> TestResult {
 // AC: TU-00.2, TU-00.3
 #[test]
 fn no_key_lets_a_step_of_the_setup_action_fail_silently() -> TestResult {
-    let action = parse(SETUP_ACTION)?;
-    // `inputs` are pinned by `setup_action_passes_the_cache_inputs_to_rust_cache`.
-    assert_eq!(
-        unexpected_keys(&action, &["name", "description", "inputs", "runs"])?,
-        Vec::<String>::new(),
-        "the setup action has a key it does not need"
-    );
-    assert_eq!(
-        unexpected_keys(&action["runs"], &["using", "steps"])?,
-        Vec::<String>::new(),
-        "the runs of the setup action has a key it does not need"
-    );
-    for (position, step) in action["runs"]["steps"]
-        .as_vec()
-        .ok_or("the setup action has no steps")?
-        .iter()
-        .enumerate()
-    {
+    for path in [SETUP_ACTION, XTASK_ACTION] {
+        let action = parse(path)?;
         assert_eq!(
-            unexpected_keys(step, &SETUP_STEP_KEYS)?,
+            unexpected_keys(&action, &["name", "description", "inputs", "runs"])?,
             Vec::<String>::new(),
-            "setup action, step {position}: keys that can make the step pass when it fails (such \
-             as `continue-on-error`), skip it or run it elsewhere than the root of the repository"
+            "{path} has a key it does not need"
         );
+        assert_eq!(
+            unexpected_keys(&action["runs"], &["using", "steps"])?,
+            Vec::<String>::new(),
+            "the runs of {path} has a key it does not need"
+        );
+        for (position, step) in action["runs"]["steps"]
+            .as_vec()
+            .ok_or("the action has no steps")?
+            .iter()
+            .enumerate()
+        {
+            assert_eq!(
+                unexpected_keys(step, &ACTION_STEP_KEYS)?,
+                Vec::<String>::new(),
+                "{path}, step {position}: keys that can make the step pass when it fails (such \
+                 as `continue-on-error`) or run it elsewhere than the root of the repository"
+            );
+        }
     }
     Ok(())
-}
-
-/// The minutes a job may run before GitHub cancels it. The default is six hours. The builds and
-/// the tests of one platform and the coverage run take the longest, the slow tests longer still:
-/// map-scale generator runs of a minute each, on every OS.
-fn timeout_of(name: &str) -> i64 {
-    match name {
-        _ if check_of(name) == "slow-tests" => 120,
-        "test" | "coverage" => 60,
-        _ if OS_SUFFIXES.iter().any(|suffix| name.ends_with(suffix)) => 60,
-        _ => 30,
-    }
 }
 
 // AC: TU-00.2, TU-00.3
@@ -519,92 +609,9 @@ fn every_job_has_a_timeout() -> TestResult {
     for (file, job) in all_jobs()? {
         assert_eq!(
             job.node["timeout-minutes"].as_i64(),
-            Some(timeout_of(&job.name)),
-            "{file}: job {} has no `timeout-minutes` of {}, and a hung job runs for six hours",
-            job.name,
-            timeout_of(&job.name)
-        );
-    }
-    Ok(())
-}
-
-// AC: TU-00.3
-#[test]
-fn gate_list_equals_ci_jobs_minus_pr_only() -> TestResult {
-    let mut checks = BTreeSet::new();
-    for file in PR_WORKFLOWS {
-        for job in jobs(&workflow(file)?)? {
-            checks.insert(check_of(&job.name).to_owned());
-        }
-    }
-    for pr_only in PR_ONLY {
-        assert!(
-            checks.remove(pr_only.name()),
-            "{} is a PR-only check without a job",
-            pr_only.name()
-        );
-    }
-    let gate: BTreeSet<String> = GATE_ORDER
-        .iter()
-        .map(|check| check.name())
-        .filter(|name| *name != "tools")
-        .map(str::to_owned)
-        .collect();
-    assert_eq!(
-        checks, gate,
-        "cargo xtask gate and CI run different checks (`tools` is the gate's own version check)"
-    );
-    Ok(())
-}
-
-#[test]
-fn platforms_runs_weekly_on_demand_and_by_label() -> TestResult {
-    let platforms = workflow("platforms.yml")?;
-    let on = &platforms["on"];
-    assert_eq!(
-        keys(on)?,
-        set(&["schedule", "workflow_dispatch", "pull_request"])
-    );
-    let schedule = on["schedule"].as_vec().ok_or("schedule is not a list")?;
-    assert_eq!(schedule.len(), 1, "one schedule");
-    // Monday, 04:00 UTC.
-    assert_eq!(schedule[0]["cron"].as_str(), Some("0 4 * * 1"));
-    assert_eq!(strings(&on["pull_request"]["types"])?, ["labeled"]);
-
-    let jobs = jobs(&platforms)?;
-    let names: BTreeSet<String> = jobs.iter().map(|job| job.name.clone()).collect();
-    assert_eq!(
-        names,
-        set(&[
-            "clippy (windows)",
-            "test (windows)",
-            "slow-tests (windows)",
-            "lints (windows)",
-            "ac-trace (windows)",
-            "clippy (macos)",
-            "test (macos)",
-            "test (macos intel)",
-            "slow-tests (macos)",
-            "slow-tests (macos intel)",
-            "lints (macos)",
-            "ac-trace (macos)",
-        ])
-    );
-    for job in &jobs {
-        let os = if job.name.ends_with(" (windows)") {
-            "windows"
-        } else {
-            "macos"
-        };
-        assert_eq!(job.runs_on()?, runner_of(&job.name), "{}", job.name);
-        // On a pull request only the label of the job's own OS starts it; the schedule and a
-        // manual run always do.
-        let expected =
-            format!("github.event_name != 'pull_request' || github.event.label.name == '{os}'");
-        assert_eq!(
-            job.node["if"].as_str(),
-            Some(expected.as_str()),
-            "{}",
+            Some(TIMEOUT_MINUTES),
+            "{file}: job {} has no `timeout-minutes` of {TIMEOUT_MINUTES}, and a hung job runs \
+             for six hours",
             job.name
         );
     }
@@ -697,26 +704,27 @@ fn no_pull_request_target_and_least_privilege() -> TestResult {
     Ok(())
 }
 
-/// The step of each job that calls GitHub, the only one that gets the token.
-const TOKEN_STEPS: [(&str, &str); 2] = [
-    ("approval", "cargo xtask approval"),
-    ("settings", "cargo xtask github check"),
-];
+/// Whether a step is the one of its job that calls GitHub, the only one that gets the token:
+/// the cached xtask of `approval`, and the settings check.
+fn calls_github(job: &Job, step: &Yaml) -> bool {
+    (job.name == "approval" && step["uses"].as_str() == Some(XTASK_USES))
+        || (job.name == "settings" && step["run"].as_str() == Some("cargo xtask github check"))
+}
 
 #[test]
 fn token_reaches_only_the_steps_that_call_github() -> TestResult {
     for (file, job) in all_jobs()? {
-        assert_eq!(
-            job.node["env"],
-            Yaml::BadValue,
-            "{file}: job {} has an env, and the token is given to the steps that need it",
+        // A job's `env` is the database URL of `test` and `coverage`, which the database test
+        // pins; the token is given to the steps that need it.
+        assert!(
+            job.node["env"]
+                .as_hash()
+                .is_none_or(|env| !env.contains_key(&Yaml::String("GH_TOKEN".to_owned()))),
+            "{file}: job {} gives the token to every step",
             job.name
         );
         for (position, step) in job.steps()?.iter().enumerate() {
-            let calls_github = TOKEN_STEPS
-                .iter()
-                .any(|(name, run)| job.name == *name && step["run"].as_str() == Some(run));
-            if calls_github {
+            if calls_github(&job, step) {
                 assert_eq!(
                     string_map(&step["env"])?,
                     map(&[("GH_TOKEN", TOKEN)]),
@@ -768,15 +776,21 @@ fn only_the_approval_checkouts_keep_the_git_credentials() -> TestResult {
     Ok(())
 }
 
-/// Every `uses:` of the workflows and of the setup action, as the files spell it.
-fn uses_lines() -> TestResult<Vec<(String, String)>> {
+/// The files that hold a `uses:`: the workflows and the two actions.
+fn files_with_uses() -> Vec<String> {
     let mut files: Vec<String> = ALL_WORKFLOWS
         .iter()
         .map(|file| workflow_path(file))
         .collect();
     files.push(SETUP_ACTION.to_owned());
+    files.push(XTASK_ACTION.to_owned());
+    files
+}
+
+/// Every `uses:` of the workflows and of the actions, as the files spell it.
+fn uses_lines() -> TestResult<Vec<(String, String)>> {
     let mut found = Vec::new();
-    for file in files {
+    for file in files_with_uses() {
         for line in read(&file)?.lines() {
             let line = line.trim_start();
             let line = line.strip_prefix("- ").unwrap_or(line);
@@ -786,6 +800,14 @@ fn uses_lines() -> TestResult<Vec<(String, String)>> {
         }
     }
     Ok(found)
+}
+
+/// The steps of an action file.
+fn action_steps(path: &str) -> TestResult<Vec<Yaml>> {
+    Ok(parse(path)?["runs"]["steps"]
+        .as_vec()
+        .ok_or_else(|| format!("{path} has no steps"))?
+        .clone())
 }
 
 #[test]
@@ -801,11 +823,11 @@ fn actions_pinned_by_sha() -> TestResult {
             .filter(|step| step["uses"].as_str().is_some())
             .count();
     }
-    for step in parse(SETUP_ACTION)?["runs"]["steps"]
-        .as_vec()
-        .ok_or("the setup action has no steps")?
-    {
-        parsed += usize::from(step["uses"].as_str().is_some());
+    for path in [SETUP_ACTION, XTASK_ACTION] {
+        parsed += action_steps(path)?
+            .iter()
+            .filter(|step| step["uses"].as_str().is_some())
+            .count();
     }
     assert_eq!(
         found.len(),
@@ -850,41 +872,43 @@ fn no_expressions_in_run_steps() -> TestResult {
             );
         }
     }
-    let action = parse(SETUP_ACTION)?;
-    let steps = action["runs"]["steps"].as_vec().ok_or("no steps")?;
-    for command in run_values(steps) {
-        assert!(
-            !command.contains("${{"),
-            "the setup action has an expression in `run: {command}`"
-        );
+    for path in [SETUP_ACTION, XTASK_ACTION] {
+        for command in run_values(&action_steps(path)?) {
+            assert!(
+                !command.contains("${{"),
+                "{path} has an expression in `run: {command}`"
+            );
+        }
     }
     Ok(())
 }
 
-/// The checks that read history: the commits of a pull request, or the merge base with its base.
-/// `slow-tests` reads the changes since the merge base to decide whether its tests run.
-const READ_HISTORY: [&str; 3] = ["commit-msg", "coverage", "slow-tests"];
-
+// AC: TU-00.3
 #[test]
-fn history_is_fetched_where_commits_or_the_merge_base_are_read() -> TestResult {
-    for file in ["ci.yml", "platforms.yml"] {
-        for job in jobs(&workflow(file)?)? {
-            let depth = &job.steps()?[0]["with"]["fetch-depth"];
-            if READ_HISTORY.contains(&check_of(&job.name)) {
-                assert_eq!(
-                    depth.as_i64(),
-                    Some(0),
-                    "{file}: {} reads history",
-                    job.name
-                );
-            } else {
-                assert_eq!(
-                    *depth,
-                    Yaml::BadValue,
-                    "{file}: {} fetches more than the commit it checks",
-                    job.name
-                );
-            }
+fn history_is_fetched_where_changes_or_commits_are_read() -> TestResult {
+    let reads_history = [
+        ("ci.yml", "gate"),
+        ("ci.yml", "test"),
+        ("ci.yml", "coverage"),
+        ("ci.yml", "ui"),
+        ("approval.yml", "approval"),
+    ];
+    for (file, job) in all_jobs()? {
+        let depth = &job.steps()?[0]["with"]["fetch-depth"];
+        if reads_history.contains(&(file, job.name.as_str())) {
+            assert_eq!(
+                depth.as_i64(),
+                Some(0),
+                "{file}: {} reads history",
+                job.name
+            );
+        } else {
+            assert_eq!(
+                *depth,
+                Yaml::BadValue,
+                "{file}: {} fetches more than the commit it checks",
+                job.name
+            );
         }
     }
     Ok(())
@@ -892,16 +916,11 @@ fn history_is_fetched_where_commits_or_the_merge_base_are_read() -> TestResult {
 
 #[test]
 fn coverage_restores_and_saves_the_baseline_cache() -> TestResult {
-    let ci = jobs(&workflow("ci.yml")?)?;
-    let coverage = &ci[index_of(&ci, "coverage")?];
+    let coverage = job_named("ci.yml", "coverage")?;
     let cache = coverage
         .steps()?
         .iter()
-        .find(|step| {
-            step["uses"]
-                .as_str()
-                .is_some_and(|uses| uses.starts_with("actions/cache@"))
-        })
+        .find(|step| step_kind(step).is_ok_and(|kind| kind == "cache"))
         .ok_or("coverage has no cache step")?;
     assert_eq!(
         cache["with"]["path"].as_str(),
@@ -988,22 +1007,13 @@ fn triggers_and_concurrency_follow_the_spec() -> TestResult {
     Ok(())
 }
 
-/// The action a step uses, without its version.
-fn action_name(step: &Yaml) -> Option<&str> {
-    step["uses"]
-        .as_str()
-        .and_then(|uses| uses.split_once('@'))
-        .map(|(name, _)| name)
-}
-
+// AC: TU-00.3
 #[test]
 fn setup_action_installs_the_toolchain_the_cache_and_the_pinned_tools() -> TestResult {
     let action = parse(SETUP_ACTION)?;
     assert_eq!(action["runs"]["using"].as_str(), Some("composite"));
-    let steps = action["runs"]["steps"]
-        .as_vec()
-        .ok_or("the action has no steps")?;
-    assert_eq!(steps.len(), 4);
+    let steps = action_steps(SETUP_ACTION)?;
+    assert_eq!(steps.len(), 5);
 
     // Every command step names its shell: a composite action has no default.
     for step in steps.iter().filter(|step| step["run"].as_str().is_some()) {
@@ -1019,13 +1029,18 @@ fn setup_action_installs_the_toolchain_the_cache_and_the_pinned_tools() -> TestR
 
     assert_eq!(action_name(&steps[1]), Some("Swatinem/rust-cache"));
 
-    // The spec line of `gate/tools.toml` goes to the install action through a step output.
+    // The spec line of `gate/tools.toml` for the parts of the job goes to the install action
+    // through a step output; the parts come in through `env:`, not through the script text.
     assert_eq!(steps[2]["id"].as_str(), Some("tools"));
+    assert_eq!(
+        string_map(&steps[2]["env"])?,
+        map(&[("PARTS", "${{ inputs.parts }}")])
+    );
     let command = steps[2]["run"]
         .as_str()
         .ok_or("the tools step has no command")?;
     assert!(
-        command.contains("cargo xtask tools --print-install-spec"),
+        command.contains("cargo xtask tools --print-install-spec --for \"$PARTS\""),
         "{command}"
     );
     assert!(
@@ -1034,21 +1049,72 @@ fn setup_action_installs_the_toolchain_the_cache_and_the_pinned_tools() -> TestR
     );
     assert_eq!(action_name(&steps[3]), Some("taiki-e/install-action"));
     assert_eq!(
-        steps[3]["with"]["tool"].as_str(),
-        Some("${{ steps.tools.outputs.spec }}")
+        string_map(&steps[3]["with"])?,
+        map(&[("tool", "${{ steps.tools.outputs.spec }}")])
+    );
+    assert_eq!(
+        steps[3]["if"].as_str(),
+        Some("steps.tools.outputs.spec != ''"),
+        "a job whose parts need no cargo tool installs none"
     );
     Ok(())
 }
 
-/// The two inputs of the setup action reach rust-cache and nothing else: the key of jobs that
-/// build the same thing and share one cache, and whether the job saves the cache. Their defaults
-/// keep rust-cache's own behaviour, a cache per job that every run saves.
+/// taiki-e/install-action has no manifest for gitleaks (C-10), so the setup action downloads the
+/// release archive, checks it against the release's checksums file, and takes the version from
+/// `gate/tools.toml` through xtask: no workflow spells it.
 #[test]
-fn setup_action_passes_the_cache_inputs_to_rust_cache() -> TestResult {
+fn gitleaks_is_downloaded_and_verified_against_the_release_checksums() -> TestResult {
+    let steps = action_steps(SETUP_ACTION)?;
+    let step = &steps[4];
+    assert_eq!(
+        step["if"].as_str(),
+        Some("contains(inputs.parts, 'secrets')")
+    );
+    assert_eq!(step["shell"].as_str(), Some("bash"));
+    let command = step["run"].as_str().ok_or("no gitleaks command")?;
+    for needle in [
+        "cargo xtask tools --print-pin gitleaks",
+        "github.com/gitleaks/gitleaks/releases/download/v${version}",
+        "gitleaks_${version}_linux_x64.tar.gz",
+        "gitleaks_${version}_checksums.txt",
+        "sha256sum --check --strict",
+        "$GITHUB_PATH",
+    ] {
+        assert!(command.contains(needle), "the gitleaks step lacks {needle}");
+    }
+    // The check runs before the archive is unpacked.
+    let check = command.find("sha256sum").ok_or("no sha256sum")?;
+    let unpack = command.find("tar ").ok_or("no tar")?;
+    assert!(
+        check < unpack,
+        "the archive is unpacked before it is checked"
+    );
+
+    // The version is in `gate/tools.toml` only.
+    let version = xtask::tools::load_pins(&root()?)?
+        .into_iter()
+        .find(|pin| pin.name == "gitleaks")
+        .ok_or("gate/tools.toml pins no gitleaks")?
+        .version;
+    for file in files_with_uses() {
+        assert!(
+            !read(&file)?.contains(&version),
+            "{file} spells the gitleaks version, which belongs in gate/tools.toml only"
+        );
+    }
+    Ok(())
+}
+
+/// The inputs of the setup action reach rust-cache and the tools steps and nothing else: the key
+/// of the build cache (the job by default), whether the job saves it, and the parts whose tools
+/// are installed.
+#[test]
+fn setup_action_passes_its_inputs_on() -> TestResult {
     let action = parse(SETUP_ACTION)?;
     let inputs = &action["inputs"];
-    assert_eq!(keys(inputs)?, set(&["cache-key", "save-cache"]));
-    for (input, default) in [("cache-key", ""), ("save-cache", "true")] {
+    assert_eq!(keys(inputs)?, set(&["cache-key", "save-cache", "parts"]));
+    for (input, default) in [("cache-key", ""), ("save-cache", "true"), ("parts", "")] {
         assert_eq!(
             scalar(&inputs[input]["default"]).as_deref(),
             Some(default),
@@ -1059,7 +1125,7 @@ fn setup_action_passes_the_cache_inputs_to_rust_cache() -> TestResult {
     assert_eq!(
         string_map(&action["runs"]["steps"][1]["with"])?,
         map(&[
-            ("shared-key", "${{ inputs.cache-key }}"),
+            ("shared-key", "${{ inputs.cache-key || github.job }}"),
             ("save-if", "${{ inputs.save-cache }}"),
         ]),
         "the rust-cache step"
@@ -1067,47 +1133,285 @@ fn setup_action_passes_the_cache_inputs_to_rust_cache() -> TestResult {
     Ok(())
 }
 
-/// `approval` runs on pull requests only, so a cache of its own is never saved on `main`, the one
-/// place every pull request restores from, and each of its runs built xtask from scratch. It
-/// restores the cache of `fmt` instead, which builds the same xtask, and saves nothing. `fmt`
-/// saves that cache on `main` only: a pull request is searched first, so a cache a pull request
-/// saved would win over the one of `main`, in the one job that holds a token that can label.
+// AC: TU-00.3
 #[test]
-fn approval_restores_the_xtask_cache_that_main_saves() -> TestResult {
-    let shared = [
-        (
-            "ci.yml",
-            "fmt",
-            map(&[
-                ("cache-key", "xtask"),
-                ("save-cache", "${{ github.ref == 'refs/heads/main' }}"),
-            ]),
-        ),
-        (
-            "approval.yml",
-            "approval",
-            map(&[("cache-key", "xtask"), ("save-cache", "false")]),
-        ),
-    ];
-    for (file, job) in all_jobs()? {
-        let name = &job.name;
+fn each_job_installs_the_tools_of_its_parts() -> TestResult {
+    for name in ["gate", "test", "coverage"] {
+        let job = job_named("ci.yml", name)?;
         let setup = job
-            .steps()?
-            .iter()
-            .find(|step| step["uses"].as_str() == Some(SETUP_USES))
-            .ok_or_else(|| format!("{file}: job {name} has no setup step"))?;
-        let expected = shared
-            .iter()
-            .find(|(in_file, job_name, _)| *in_file == file && job_name == name)
-            .map(|(_, _, with)| with);
-        match expected {
-            Some(with) => assert_eq!(&string_map(&setup["with"])?, with, "{file}: job {name}"),
-            None => assert_eq!(
-                setup["with"],
-                Yaml::BadValue,
-                "{file}: job {name} passes inputs to the setup action"
+            .step_using(SETUP_USES)?
+            .ok_or_else(|| format!("job {name} has no setup step"))?;
+        assert_eq!(
+            with_of(setup)?.get("parts"),
+            Some(&check_entry(name)?.parts.join(",")),
+            "job {name}: the parts of the setup step are not those of .loom/checks.toml"
+        );
+    }
+    Ok(())
+}
+
+/// Only `gate`, `test` and `coverage` build Rust, so only they set up the toolchain and a build
+/// cache, and each saves that cache on `main` only: a pull request saves none, so open pull
+/// requests cannot evict the caches of `main`.
+#[test]
+fn build_caches_are_saved_only_on_main() -> TestResult {
+    for (file, job) in all_jobs()? {
+        let name = job.name.as_str();
+        let setup = job.step_using(SETUP_USES)?;
+        match (file, name) {
+            ("ci.yml", "gate" | "test" | "coverage") => {
+                let setup = setup.ok_or_else(|| format!("job {name} has no setup step"))?;
+                assert_eq!(
+                    with_of(setup)?.get("save-cache").map(String::as_str),
+                    Some(ON_MAIN),
+                    "job {name}"
+                );
+                assert_eq!(with_of(setup)?.get("cache-key"), None, "job {name}");
+            }
+            ("settings.yml", "settings") => {
+                let setup = setup.ok_or("settings has no setup step")?;
+                assert_eq!(
+                    with_of(setup)?.get("save-cache").map(String::as_str),
+                    Some(ON_MAIN)
+                );
+            }
+            _ => assert!(
+                setup.is_none(),
+                "{file}: job {name} uses the setup action, with its build cache"
             ),
         }
     }
+    // The cached xtask builds without a Rust build cache.
+    assert!(!read(XTASK_ACTION)?.contains("rust-cache"));
+    Ok(())
+}
+
+// AC: TU-00.3
+#[test]
+fn the_xtask_cache_is_saved_by_gate_on_main_and_restored_by_exact_key() -> TestResult {
+    let action = parse(XTASK_ACTION)?;
+    assert_eq!(keys(&action["inputs"])?, set(&["args", "save"]));
+    assert_eq!(
+        scalar(&action["inputs"]["save"]["default"]).as_deref(),
+        Some("false")
+    );
+    let steps = action_steps(XTASK_ACTION)?;
+    let uses = |name: &str| -> TestResult<&Yaml> {
+        steps
+            .iter()
+            .find(|step| action_name(step) == Some(name))
+            .ok_or_else(|| format!("the xtask action has no {name} step").into())
+    };
+    let restore = uses("actions/cache/restore")?;
+    let save = uses("actions/cache/save")?;
+    let key = restore["with"]["key"]
+        .as_str()
+        .ok_or("the restore step has no key")?;
+    for input in [
+        "runner.os",
+        "'xtask/**'",
+        "'Cargo.lock'",
+        "'rust-toolchain.toml'",
+        "'.cargo/**'",
+    ] {
+        assert!(key.contains(input), "the key {key} lacks {input}");
+    }
+    assert!(key.contains("hashFiles("), "{key}");
+    assert_eq!(
+        keys(&restore["with"])?,
+        set(&["path", "key"]),
+        "restore by the exact key: no restore-keys"
+    );
+    assert_eq!(
+        restore["with"]["path"].as_str(),
+        Some("target/xtask-bin/debug/xtask")
+    );
+    assert_eq!(string_map(&save["with"])?, string_map(&restore["with"])?);
+    assert_eq!(
+        save["if"].as_str(),
+        Some("inputs.save == 'true' && steps.restore.outputs.cache-hit != 'true'"),
+        "the cache is saved only when asked to and when it was not restored"
+    );
+    assert_eq!(restore["id"].as_str(), Some("restore"));
+
+    // Only `gate` asks for the save, and only on `main`; the other jobs never do.
+    for (file, job) in all_jobs()? {
+        let name = job.name.as_str();
+        let Some(step) = job.step_using(XTASK_USES)? else {
+            continue;
+        };
+        let with = with_of(step)?;
+        if (file, name) == ("ci.yml", "gate") {
+            assert_eq!(with, map(&[("save", ON_MAIN)]), "gate saves on main only");
+        } else {
+            assert_eq!(with.get("save"), None, "{file}: job {name} must not save");
+        }
+    }
+    let gate = job_named("ci.yml", "gate")?;
+    assert!(
+        gate.step_using(XTASK_USES)?.is_some(),
+        "gate does not save the xtask"
+    );
+    for (file, name) in [
+        ("ci.yml", "ui"),
+        ("pr.yml", "pr"),
+        ("approval.yml", "approval"),
+    ] {
+        let job = job_named(file, name)?;
+        let steps = job.steps()?;
+        let step = steps
+            .iter()
+            .find(|step| step["uses"].as_str() == Some(XTASK_USES))
+            .ok_or_else(|| format!("{name} does not use the cached xtask"))?;
+        assert!(with_of(step)?.contains_key("args"), "{name}");
+    }
+    Ok(())
+}
+
+// AC: TU-00.3
+#[test]
+fn the_cached_xtask_is_built_on_a_miss_and_run_with_its_arguments_through_env() -> TestResult {
+    let steps = action_steps(XTASK_ACTION)?;
+    let commands = run_values(&steps);
+    assert!(
+        commands
+            .iter()
+            .any(|command| command.trim() == "rustup toolchain install"),
+        "{commands:?}"
+    );
+    assert!(
+        commands.iter().any(|command| command.trim()
+            == "cargo build --locked -p xtask --target-dir target/xtask-bin"),
+        "{commands:?}"
+    );
+    let run = steps.last().ok_or("no steps")?;
+    assert_eq!(
+        run["run"].as_str().map(str::trim),
+        Some("target/xtask-bin/debug/xtask --root . $XTASK_ARGS")
+    );
+    assert_eq!(
+        string_map(&run["env"])?,
+        map(&[("XTASK_ARGS", "${{ inputs.args }}")])
+    );
+    // Both the toolchain and the build wait for a miss.
+    for step in &steps {
+        if step["run"].as_str().is_some_and(|run| {
+            run.contains("rustup toolchain install") || run.contains("cargo build")
+        }) {
+            assert!(
+                step["if"].as_str().is_some_and(
+                    |condition| condition.contains("steps.restore.outputs.cache-hit != 'true'")
+                ),
+                "a step builds although the xtask was restored"
+            );
+        }
+    }
+    Ok(())
+}
+
+// AC: TU-00.1
+#[test]
+fn test_and_coverage_get_a_throwaway_postgres() -> TestResult {
+    for (file, job) in all_jobs()? {
+        let name = job.name.as_str();
+        if file == "ci.yml" && (name == "test" || name == "coverage") {
+            assert_eq!(
+                string_map(&job.node["env"])?,
+                map(&[("LOOM_TEST_DATABASE_URL", DATABASE_URL)]),
+                "job {name}"
+            );
+            let postgres = &job.node["services"]["postgres"];
+            assert_eq!(keys(&job.node["services"])?, set(&["postgres"]), "{name}");
+            assert_eq!(postgres["image"].as_str(), Some("postgres:18"), "{name}");
+            assert_eq!(
+                string_map(&postgres["env"])?,
+                map(&[
+                    ("POSTGRES_HOST_AUTH_METHOD", "trust"),
+                    ("POSTGRES_DB", "loom_test"),
+                ]),
+                "{name}"
+            );
+            assert_eq!(strings(&postgres["ports"])?, ["5432:5432"], "{name}");
+            let options = postgres["options"]
+                .as_str()
+                .ok_or("the postgres service has no options")?;
+            for needle in ["--health-cmd", "pg_isready", "--health-retries"] {
+                assert!(options.contains(needle), "{name}: no {needle} in {options}");
+            }
+        } else {
+            assert_eq!(
+                job.node["services"],
+                Yaml::BadValue,
+                "{file}: job {name} has a service"
+            );
+            assert_eq!(
+                job.node["env"],
+                Yaml::BadValue,
+                "{file}: job {name} has a job-level env"
+            );
+        }
+    }
+    Ok(())
+}
+
+// AC: TU-00.1
+#[test]
+fn only_the_ui_job_sets_up_node() -> TestResult {
+    for (file, job) in all_jobs()? {
+        let kinds = step_kinds(&job)?;
+        if (file, job.name.as_str()) == ("ci.yml", "ui") {
+            assert_eq!(
+                kinds,
+                ["checkout", "pnpm", "node", "xtask"],
+                "the steps of job ui"
+            );
+            let steps = job.steps()?;
+            // pnpm first, from the `packageManager` of the app, so that `cache: pnpm` finds it.
+            assert_eq!(
+                string_map(&steps[1]["with"])?,
+                map(&[("package_json_file", "web/package.json")])
+            );
+            assert_eq!(
+                string_map(&steps[2]["with"])?,
+                map(&[
+                    ("node-version-file", "web/.nvmrc"),
+                    ("cache", "pnpm"),
+                    ("cache-dependency-path", "web/pnpm-lock.yaml"),
+                ])
+            );
+        } else {
+            assert!(
+                !kinds.contains(&"pnpm") && !kinds.contains(&"node"),
+                "{file}: job {} sets up Node or pnpm",
+                job.name
+            );
+        }
+    }
+    Ok(())
+}
+
+// AC: TU-00.3
+#[test]
+fn the_jobs_have_the_steps_their_checks_need() -> TestResult {
+    let shapes: [(&str, &str, &[&str]); 6] = [
+        ("ci.yml", "gate", &["checkout", "setup", "xtask", "run"]),
+        ("ci.yml", "test", &["checkout", "setup", "run"]),
+        ("ci.yml", "coverage", &["checkout", "setup", "cache", "run"]),
+        ("ci.yml", "ui", &["checkout", "pnpm", "node", "xtask"]),
+        ("pr.yml", "pr", &["checkout", "xtask"]),
+        ("settings.yml", "settings", &["checkout", "setup", "run"]),
+    ];
+    for (file, name, expected) in shapes {
+        let job = job_named(file, name)?;
+        assert_eq!(
+            step_kinds(&job)?,
+            expected,
+            "{file}: the steps of job {name}"
+        );
+        assert_eq!(job.runs_on()?, "ubuntu-latest", "{file}: job {name}");
+    }
+    // `settings` runs its own command, with the token.
+    let settings = job_named("settings.yml", "settings")?;
+    assert_eq!(settings.commands()?, ["cargo xtask github check"]);
     Ok(())
 }

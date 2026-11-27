@@ -44,20 +44,19 @@ enum Command {
     Tools {
         /// Check only the tools these gate parts need (comma-separated), as a gate run that
         /// runs them would. Without it, every pin is checked.
-        #[arg(
-            long = "for",
-            value_delimiter = ',',
-            conflicts_with = "print_install_spec"
-        )]
+        #[arg(long = "for", value_delimiter = ',', conflicts_with = "print_pin")]
         parts: Vec<String>,
         /// Install the pinned cargo tools that are missing or at another version (takes minutes
         /// and needs the network), and print how to install Node, pnpm and gitleaks; then check.
         #[arg(long, conflicts_with = "print_install_spec")]
         install: bool,
         /// Print the pins of the cargo tools as `name@version,…`, the form the setup action
-        /// takes, and nothing else.
-        #[arg(long)]
+        /// takes, and nothing else. With `--for`, only the tools those gate parts need.
+        #[arg(long, conflicts_with_all = ["install", "print_pin"])]
         print_install_spec: bool,
+        /// Print the pinned version of one tool, such as `gitleaks`, and nothing else.
+        #[arg(long, value_name = "TOOL", conflicts_with_all = ["install", "print_install_spec"])]
+        print_pin: Option<String>,
     },
     /// Check the formatting of every crate.
     Fmt,
@@ -249,13 +248,13 @@ fn run(cli: &Cli) -> anyhow::Result<bool> {
     let verdict: Verdict = match &cli.command {
         Command::Tools {
             print_install_spec: true,
+            parts,
             ..
-        } => {
-            // Only the spec line goes to stdout: the setup action captures it.
-            let pins = tools::load_pins(&root)?;
-            writeln!(out, "{}", tools::install_spec(&pins))?;
-            return Ok(true);
-        }
+        } => return print_install_spec(&root, parts, &mut out),
+        Command::Tools {
+            print_pin: Some(name),
+            ..
+        } => return print_pin(&root, name, &mut out),
         Command::Tools { install, parts, .. } => {
             tools_verdict(&root, ci.as_ref(), *install, parts, &mut out)?
         }
@@ -352,8 +351,33 @@ fn tools_verdict(
     if parts.is_empty() {
         return tools::run(root, ci, out);
     }
+    tools::run_for(root, &part_checks(parts)?, out)
+}
+
+/// Prints the spec line of the cargo tools to install, for the parts or (without any) for all.
+/// Only that line goes to stdout: the setup action captures it.
+fn print_install_spec(root: &Path, parts: &[String], out: &mut dyn Write) -> anyhow::Result<bool> {
+    let pins = tools::load_pins(root)?;
+    let spec = if parts.is_empty() {
+        tools::install_spec(&pins)
+    } else {
+        tools::install_spec_for(&pins, &part_checks(parts)?)
+    };
+    writeln!(out, "{spec}")?;
+    Ok(true)
+}
+
+/// Prints the pinned version of one tool and nothing else: the workflows capture it.
+fn print_pin(root: &Path, name: &str, out: &mut dyn Write) -> anyhow::Result<bool> {
+    let pins = tools::load_pins(root)?;
+    writeln!(out, "{}", tools::pin_version(&pins, name)?)?;
+    Ok(true)
+}
+
+/// The gate parts that `--for` names; a name that is not a part is a usage error.
+fn part_checks(parts: &[String]) -> Result<Vec<Check>, Error> {
     match gate::selection(parts, &[])? {
-        gate::Selection::Only(checks) => tools::run_for(root, &checks, out),
+        gate::Selection::Only(checks) => Ok(checks),
         gate::Selection::All | gate::Selection::Skip(_) => Err(Error::Usage {
             message: "`--for` needs the names of gate parts".to_owned(),
         }),

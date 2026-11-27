@@ -26,6 +26,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo xtask github check
         env:
           GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,58 @@
+name: Cached xtask
+description: >-
+  Runs xtask from a cache, so that a job that only needs xtask neither installs the toolchain nor
+  builds. The cache is restored by the exact key of every input of the xtask build, never by a
+  fallback key. On a miss the action installs the toolchain and builds xtask. Only a job that
+  passes `save: true` (the `gate` job, on `main`) saves the cache.
+
+inputs:
+  args:
+    description: >-
+      The arguments of xtask, such as `pr`, space-separated. Empty: build and save the cache, run
+      nothing.
+    required: false
+    default: ''
+  save:
+    description: >-
+      Whether to save the cache after a build: `true` or `false`. Only the `gate` job on `main`
+      passes `true`.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Restore xtask
+      id: restore
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: target/xtask-bin/debug/xtask
+        key: xtask-${{ runner.os }}-${{ hashFiles('xtask/**', 'Cargo.lock', 'rust-toolchain.toml', '.cargo/**') }}
+
+    - name: Install the Rust toolchain
+      if: steps.restore.outputs.cache-hit != 'true' && (inputs.args != '' || inputs.save == 'true')
+      shell: bash
+      run: rustup toolchain install
+
+    # `cargo xtask` builds into the same folder (.cargo/config.toml), so in the `gate` job this
+    # build finds the binary already there.
+    - name: Build xtask
+      if: steps.restore.outputs.cache-hit != 'true' && (inputs.args != '' || inputs.save == 'true')
+      shell: bash
+      run: cargo build --locked -p xtask --target-dir target/xtask-bin
+
+    - name: Save xtask
+      if: inputs.save == 'true' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: target/xtask-bin/debug/xtask
+        key: xtask-${{ runner.os }}-${{ hashFiles('xtask/**', 'Cargo.lock', 'rust-toolchain.toml', '.cargo/**') }}
+
+    # The arguments come in through `env:`, never as text of the script. The token of the calling
+    # step, if it has one, is in the environment of this step too.
+    - name: Run xtask
+      if: inputs.args != ''
+      shell: bash
+      env:
+        XTASK_ARGS: ${{ inputs.args }}
+      run: target/xtask-bin/debug/xtask --root . $XTASK_ARGS
