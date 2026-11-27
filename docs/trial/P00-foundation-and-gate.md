@@ -42,14 +42,36 @@ the PR touches protected paths and has no `approved` label yet). Timeouts were s
 
 | Round | Critical | Important | Minor | Notes |
 |---|---|---|---|---|
-| 1 | | | | |
+| 1 | 0 | 3 | 3 | Two need Jann: protect every config that can switch off `ui` (0006), no inline suppressions in `secrets` and `ui` (0007). |
+| 2 | 0 | 0 | 5 | Jann allowed the fix to edit `.github/workflows/ci.yml` and `deny.toml` (caches saved on PRs, against §5.7). |
+| 3 | 0 | 2 | 3 | `pnpm install` ran lifecycle scripts; a docs-only PR could add an `eslint.config.*` that breaks `lints`. Jann allowed the edits to `gate/` and `docs/gate.md`. |
+| 4 | 0 | 0 | 5 | Missing Rulings for round 3's changes, a wrong TU-00.2 tag, docs gaps, gitleaks outside `process.rs`. |
+| 5 | 0 | 0 | 1 | Cap reached without a clean reviewer: tests outside `web/src` ran but weren't type-checked. Jann allowed one more fix wave with a targeted review, and kept the PR ready instead of draft. |
+| 6 (targeted) | 0 | 1 | 0 | Widening `tsc` left `.mts`/`.cts` tests and tests in dot-folders unchecked. Same class twice (directive 3): Jann chose to narrow Vitest to what `tsc` checks. |
+| 7 (targeted) | 0 | 0 | 1 | Tests named with a leading dot still ran unchecked. Fixed as the reviewer proposed (`**/.*` in Vitest's exclude) and verified with a probe and the full gate; no further reviewer ran. |
+
+Five whole-branch rounds, then two targeted rounds beyond the cap with Jann's approval. Fix
+subagents ran on Sonnet 5.5, reviewers on Opus 5.5; the round-7 fix was a one-line change made in
+the review session itself.
+
+Questions to the decider (Jann) in this step:
+
+| # | Question | Answer | Decision record |
+|---|---|---|---|
+| 8 | Protect nested ESLint configs and Vitest configs, and have `lints` refuse a nested `eslint.config.*`? | Yes, both. | 0006 |
+| 9 | Run gitleaks with `--ignore-gitleaks-allow` and set ESLint's `noInlineConfig`? | Yes. | 0007 |
+| 10 | May round 2's fixes edit `.github/workflows/ci.yml` and `deny.toml`? | Yes. | – |
+| 11 | May round 3's fixes edit `gate/code-paths.toml`, `docs/gate.md` and `xtask/`? | Yes. | – |
+| 12 | May round 4's fixes edit `docs/gate.md` and `xtask/` again? | Yes. | – |
+| 13 | The loop hit its cap with 1 Minor open: draft the PR (the rule), or one more round? | One more fix wave and a targeted review; the PR stays ready, not draft. | – |
+| 14 | Widening `tsc` leaked again: narrow Vitest (A), widen further (B), or stop and list it (C)? | A. | – |
 
 | | |
 |---|---|
 | Tokens (in / out) | |
 | Cost (API-equivalent) | |
 | Wall time | |
-| CI green on first push | yes / no |
+| CI green on first push | yes: the first push of review fixes (`34ff557`) was green except `approval`, which waits for Jann |
 
 ## Verdict
 
