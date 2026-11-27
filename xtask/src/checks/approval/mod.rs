@@ -22,6 +22,7 @@
 use std::io::Write;
 use std::path::Path;
 
+use crate::changes;
 use crate::ci::{CiEvent, PullRequestEvent};
 use crate::git::Git;
 use crate::github::gh_cli::GhCli;
@@ -78,9 +79,10 @@ pub fn check(
     gh: &dyn PullRequests,
 ) -> Result<Verdict> {
     // The head comes first: a merge base needs both commits.
-    let head = resolve_head(git, pr)?;
+    let head = changes::resolve_head(git, pr)?;
     let merge_base = git.merge_base(&pr.base_sha, &head)?;
-    let touched = protected::touched(git, rules, &merge_base, &head)?;
+    let paths = changes::of_pull_request(git, pr)?;
+    let touched = protected::touched_in(git, rules, &paths, &merge_base, &head)?;
     // Nothing protected: pass before anything else is read, so that a pull request that needs no
     // approval does not depend on GitHub being up.
     if touched.is_empty() {
@@ -111,20 +113,6 @@ pub fn check(
         apply(gh, pr.number, action, labels)?;
     }
     Ok(verdict)
-}
-
-/// The full id of the head commit of `pr`, fetching `refs/pull/<n>/head` when the repository
-/// lacks it. Resolved to the commit id, it is also hex all through, which the comment relies on.
-fn resolve_head(git: &Git, pr: &PullRequestEvent) -> Result<String> {
-    // `^{commit}` makes git look the object up: a bare id is accepted whether or not it exists.
-    let commit = format!("{}^{{commit}}", pr.head_sha);
-    match git.rev_parse(&commit) {
-        Err(Error::Command { .. }) => {
-            git.fetch_pull_head(pr.number)?;
-            git.rev_parse(&commit)
-        }
-        found => found,
-    }
 }
 
 fn apply(gh: &dyn PullRequests, pr: u64, action: &Action, labels: &[LabelSpec]) -> Result<()> {

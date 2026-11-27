@@ -14,6 +14,8 @@
 //! - [`github`]: the labels and comments of a pull request, and the rulesets, settings and labels
 //!   of the repository, through the `gh` command line; [`github::settings`] keeps the latter as
 //!   files in `gate/` and compares them with the live repository.
+//! - [`changes`], [`code_paths`] and [`need`]: the paths a run or a pull request changes, the
+//!   lists of `gate/code-paths.toml`, and from both which parts of the gate are needed.
 //! - [`error`]: the one error type of the library.
 //!
 //! And the checks built on it:
@@ -33,8 +35,10 @@
 //!   order, and writes one verdict table.
 
 pub mod branch;
+pub mod changes;
 pub mod checks;
 pub mod ci;
+pub mod code_paths;
 pub mod conventional;
 pub mod error;
 pub mod files;
@@ -42,6 +46,7 @@ pub mod gate;
 pub mod git;
 pub mod github;
 pub mod markdown;
+pub mod need;
 pub mod process;
 pub mod repo_path;
 pub mod report;

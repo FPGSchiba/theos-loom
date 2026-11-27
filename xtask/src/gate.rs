@@ -2,7 +2,9 @@
 //!
 //! The gate calls the same per-check runners as the subcommands do, with no override flags, so a
 //! check gives the same verdict here as in its CI job (TU-00.3); only where the inputs come from
-//! differs (the repository instead of the event payload). It leaves out the checks that need a
+//! differs (the repository instead of the event payload). Before any part runs, the runner asks
+//! [`need::decide`], from the changed paths, which of the selected parts are needed; the others
+//! report *not needed*, a passing verdict with its reason (`gate/code-paths.toml`). It leaves out the checks that need a
 //! pull request (`pr-title`, `pr-body`, `approval`) and the settings check, which needs GitHub.
 //! A [`Selection`] runs a part of it (`--only`, `--skip`): a filter over [`GATE_ORDER`] that
 //! never removes `tools`. `cargo xtask pr` runs the two checks of a pull request through the
@@ -15,11 +17,14 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use crate::changes::{self, ChangedPaths};
 use crate::checks::{
     ac_trace, cargo_cmds, commit_msg, coverage, lints, pr_body, pr_title, secrets, ui,
 };
 use crate::ci::CiEvent;
+use crate::code_paths::CodePaths;
 use crate::git::Git;
+use crate::need::{self, Need};
 use crate::verdict::{Check, Finding, GATE_ORDER, Verdict};
 use crate::view::Shared;
 use crate::{Error, Result, report, tools};
@@ -101,7 +106,8 @@ pub fn selected(selection: &Selection) -> Vec<Check> {
 ///
 /// # Errors
 ///
-/// Fails only when `out` cannot be written.
+/// Fails when `out` cannot be written, or `gate/code-paths.toml` is missing or broken: a broken
+/// gate is never a smaller run.
 pub fn run(
     root: &Path,
     ci: Option<&CiEvent>,
@@ -110,12 +116,13 @@ pub fn run(
 ) -> Result<Vec<Verdict>> {
     // The checks that read code share one view, built when the first of them asks for it.
     let shared = Shared::new();
-    let order = selected(selection);
+    let lists = CodePaths::load(root)?;
+    let plan = plan(&selected(selection), &changes::of_run(root, ci), &lists);
     run_checks(
-        &order,
+        &plan,
         "gate",
         ci.is_some(),
-        |check, out| run_check(check, root, ci, &order, &shared, out),
+        |check, out| run_check(check, root, ci, &plan.to_run, &shared, out),
         out,
     )
 }
@@ -145,7 +152,7 @@ pub fn run_pr(
     out: &mut dyn Write,
 ) -> Result<Vec<Verdict>> {
     run_checks(
-        &[Check::PrTitle, Check::PrBody],
+        &Plan::everything(&[Check::PrTitle, Check::PrBody]),
         "pr",
         ci.is_some(),
         |check, out| match check {
@@ -205,20 +212,64 @@ fn run_check(
     }
 }
 
-/// Runs the checks of `order` with `run_one`, then writes the table under `heading`. See [`run`].
+/// What the runner will do: the parts that run, and the verdicts of those that are not needed.
+struct Plan {
+    /// The parts to run in [`GATE_ORDER`], `tools` first when it is selected.
+    to_run: Vec<Check>,
+    /// One passing verdict for each selected part that is not needed.
+    not_needed: Vec<Verdict>,
+    /// A note for the `tools` verdict, when the run could not tell what it changes.
+    tools_note: Option<String>,
+}
+
+impl Plan {
+    /// Every one of `order` runs.
+    fn everything(order: &[Check]) -> Self {
+        Self {
+            to_run: order.to_vec(),
+            not_needed: Vec::new(),
+            tools_note: None,
+        }
+    }
+}
+
+/// Decides every part of `order` first ([`need::decide`]; `tools` always runs, and checks only
+/// the tools of the parts that run).
+fn plan(order: &[Check], changes: &ChangedPaths, lists: &CodePaths) -> Plan {
+    let mut plan = Plan::everything(&[]);
+    for &check in order {
+        match need::decide(check, changes, lists) {
+            Need::Run => plan.to_run.push(check),
+            Need::NotNeeded(reason) => plan.not_needed.push(Verdict::not_needed(check, reason)),
+        }
+    }
+    if let ChangedPaths::Unreadable { why } = changes {
+        plan.tools_note = Some(format!(
+            "the changed paths could not be listed ({why}); every part runs"
+        ));
+    }
+    plan
+}
+
+/// Runs the checks of `plan` with `run_one`, then writes the table under `heading`, with the
+/// parts that are not needed in their place. See [`run`].
 fn run_checks(
-    order: &[Check],
+    plan: &Plan,
     heading: &str,
     ci: bool,
     mut run_one: impl FnMut(Check, &mut dyn Write) -> Result<Verdict>,
     out: &mut dyn Write,
 ) -> Result<Vec<Verdict>> {
+    let order = &plan.to_run;
     let mut verdicts = Vec::new();
     for (position, &check) in order.iter().enumerate() {
         // Cargo writes to the terminal on its own, so the heading goes out before it starts.
         writeln!(out, "==> {}", check.name()).map_err(report::output_error)?;
         out.flush().map_err(report::output_error)?;
         let mut verdict = run_one(check, out).unwrap_or_else(|error| could_not_run(check, &error));
+        if let (Check::Tools, Some(note)) = (check, &plan.tools_note) {
+            verdict.notes.push(note.clone());
+        }
         let stop = check == Check::Tools && !verdict.passed();
         if stop && position + 1 < order.len() {
             let skipped: Vec<&str> = order[position + 1..]
@@ -235,6 +286,8 @@ fn run_checks(
             break;
         }
     }
+    verdicts.extend(plan.not_needed.iter().cloned());
+    verdicts.sort_by_key(|verdict| GATE_ORDER.iter().position(|check| *check == verdict.check));
     writeln!(out, "==> {heading}").map_err(report::output_error)?;
     report::emit_all(&verdicts, ci, out)?;
     out.flush().map_err(report::output_error)?;
@@ -358,7 +411,7 @@ mod tests {
         let mut ran = Vec::new();
         let mut out = Vec::new();
         let verdicts = run_checks(
-            order,
+            &Plan::everything(order),
             "gate",
             false,
             |check, out| {
@@ -386,6 +439,96 @@ mod tests {
                 Verdict::pass(check)
             })
         }
+    }
+
+    fn lists() -> Result<CodePaths> {
+        CodePaths::parse(include_str!("../../gate/code-paths.toml"))
+    }
+
+    // AC: TU-00.3
+    #[test]
+    fn a_docs_only_run_reports_every_other_part_as_not_needed() -> TestResult {
+        let order = selected(&Selection::All);
+        let changes = ChangedPaths::Known {
+            branch: "docs/x".to_owned(),
+            paths: vec!["docs/notes.md".to_owned()],
+        };
+        let plan = plan(&order, &changes, &lists()?);
+        assert_eq!(
+            plan.to_run,
+            [Check::Tools, Check::CommitMsg, Check::Secrets]
+        );
+        // `tools` asks only for the tools of the parts that run: here gitleaks.
+        let tools: Vec<_> = plan
+            .to_run
+            .iter()
+            .flat_map(|check| tools::needed_by(*check))
+            .collect();
+        assert_eq!(tools, [&tools::Tool::Gitleaks]);
+
+        let run = |check, _out: &mut dyn Write| Ok(Verdict::pass(check));
+        let mut out = Vec::new();
+        let verdicts = run_checks(&plan, "gate", false, run, &mut out)?;
+        assert_eq!(checks_of(&verdicts), order);
+        assert!(verdicts.iter().all(Verdict::passed));
+        for verdict in &verdicts {
+            let ran = plan.to_run.contains(&verdict.check);
+            assert_eq!(verdict.is_not_needed(), !ran, "{}", verdict.check.name());
+        }
+        Ok(())
+    }
+
+    // AC: TU-00.3
+    #[test]
+    fn an_unreadable_change_list_runs_everything_with_a_note_on_tools() -> TestResult {
+        let order = selected(&Selection::All);
+        let changes = ChangedPaths::Unreadable {
+            why: "no such commit".to_owned(),
+        };
+        let plan = plan(&order, &changes, &lists()?);
+        assert_eq!(plan.to_run, order);
+        assert_eq!(plan.not_needed.len(), 0);
+
+        let mut out = Vec::new();
+        let run = |check, _out: &mut dyn Write| Ok(Verdict::pass(check));
+        let verdicts = run_checks(&plan, "gate", false, run, &mut out)?;
+        let tools = &verdicts[0];
+        assert_eq!(tools.check, Check::Tools);
+        assert!(
+            tools
+                .notes
+                .iter()
+                .any(|note| note.contains("no such commit")),
+            "{:?}",
+            tools.notes
+        );
+        assert!(verdicts[1..].iter().all(|verdict| verdict.notes.is_empty()));
+        Ok(())
+    }
+
+    // AC: TU-00.3
+    #[test]
+    fn a_broken_code_paths_file_stops_the_gate() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let mut out = Vec::new();
+        let missing = run(dir.path(), None, &Selection::All, &mut out);
+        assert!(
+            matches!(&missing, Err(Error::Config { file, .. }) if file == "gate/code-paths.toml"),
+            "{missing:?}"
+        );
+        std::fs::create_dir(dir.path().join("gate"))?;
+        std::fs::write(
+            dir.path().join("gate").join("code-paths.toml"),
+            "non_code = 3
+",
+        )?;
+        let broken = run(dir.path(), None, &Selection::All, &mut out);
+        assert!(
+            matches!(&broken, Err(Error::Config { file, .. }) if file == "gate/code-paths.toml"),
+            "{broken:?}"
+        );
+        assert!(out.is_empty(), "no part ran");
+        Ok(())
     }
 
     #[test]
@@ -614,7 +757,7 @@ mod tests {
     #[test]
     fn an_output_that_cannot_be_written_is_an_error() {
         let result = run_checks(
-            &GATE_ORDER,
+            &Plan::everything(&GATE_ORDER),
             "gate",
             false,
             |check, _| Ok(Verdict::pass(check)),

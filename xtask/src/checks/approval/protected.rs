@@ -97,8 +97,8 @@ impl ProtectedPaths {
             ));
         }
         Ok(Self {
-            protected: glob_set("protected", &rules.protected, true)?,
-            except: glob_set("except", &rules.except, false)?,
+            protected: glob_set(CONFIG, "protected", &rules.protected, true)?,
+            except: glob_set(CONFIG, "except", &rules.except, false)?,
             tables: rules.tables,
         })
     }
@@ -130,10 +130,26 @@ pub fn touched(
     merge_base: &str,
     head: &str,
 ) -> Result<Vec<String>> {
-    let mut touched: Vec<String> = git
-        .diff_name_only_no_renames(merge_base, head)?
-        .into_iter()
+    let paths = git.diff_name_only_no_renames(merge_base, head)?;
+    touched_in(git, rules, &paths, merge_base, head)
+}
+
+/// [`touched`] for changed paths that are already listed (by `changes::of_pull_request`).
+///
+/// # Errors
+///
+/// Fails when either revision is unknown or git cannot be run.
+pub fn touched_in(
+    git: &Git,
+    rules: &ProtectedPaths,
+    paths: &[String],
+    merge_base: &str,
+    head: &str,
+) -> Result<Vec<String>> {
+    let mut touched: Vec<String> = paths
+        .iter()
         .filter(|path| rules.matches(path))
+        .cloned()
         .collect();
     for rule in &rules.tables {
         if table_changed(git, rule, merge_base, head)? {
@@ -189,8 +205,18 @@ fn lookup(text: Option<&str>, rule: &TableRule) -> Lookup {
         .map_or(Lookup::Absent, |table| Lookup::Found(table.clone()))
 }
 
-/// The globs of one list. A bad pattern is named by its place in the list, not quoted.
-fn glob_set(list: &str, patterns: &[String], ignore_case: bool) -> Result<GlobSet> {
+/// The globs of one list in the file `file`. A bad pattern is named by its place in the list, not
+/// quoted. `gate/code-paths.toml` builds its lists the same way.
+pub(crate) fn glob_set(
+    file: &str,
+    list: &str,
+    patterns: &[String],
+    ignore_case: bool,
+) -> Result<GlobSet> {
+    let error = |message: String| Error::Config {
+        file: file.to_owned(),
+        message,
+    };
     let mut set = GlobSetBuilder::new();
     for (index, pattern) in patterns.iter().enumerate() {
         let glob = GlobBuilder::new(pattern)
@@ -199,7 +225,7 @@ fn glob_set(list: &str, patterns: &[String], ignore_case: bool) -> Result<GlobSe
             .case_insensitive(ignore_case)
             .build()
             .map_err(|_| {
-                config_error(format!(
+                error(format!(
                     "`{list}` pattern {} is not a valid glob",
                     index + 1
                 ))
@@ -207,7 +233,7 @@ fn glob_set(list: &str, patterns: &[String], ignore_case: bool) -> Result<GlobSe
         set.add(glob);
     }
     set.build()
-        .map_err(|_| config_error(format!("`{list}` cannot be read as globs")))
+        .map_err(|_| error(format!("`{list}` cannot be read as globs")))
 }
 
 fn config_error(message: impl Into<String>) -> Error {

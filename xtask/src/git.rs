@@ -97,6 +97,30 @@ impl Git {
             .collect())
     }
 
+    /// The files whose work tree content differs from `base`, staged or not, with renames shown as
+    /// a delete and an add (`git diff --name-only --no-renames <base>`). Untracked files are not
+    /// in it; see [`Git::untracked`]. Paths are repo-relative with `/`.
+    ///
+    /// # Errors
+    ///
+    /// Fails when `base` is unknown.
+    pub fn diff_name_only_worktree(&self, base: &str) -> Result<Vec<String>> {
+        refuse_option(base)?;
+        let names = self.run(&["diff", "--name-only", "--no-renames", "-z", base])?;
+        Ok(nul_separated(&names))
+    }
+
+    /// The files git does not track and does not ignore (`git ls-files --others
+    /// --exclude-standard`). Paths are repo-relative with `/`.
+    ///
+    /// # Errors
+    ///
+    /// Fails when git cannot run or the root is not a repository.
+    pub fn untracked(&self) -> Result<Vec<String>> {
+        let names = self.run(&["ls-files", "--others", "--exclude-standard", "-z"])?;
+        Ok(nul_separated(&names))
+    }
+
     /// The raw diff between two revisions: one line per changed file with modes, full object
     /// ids and status (`git diff --raw --no-renames --no-abbrev`).
     ///
@@ -273,6 +297,13 @@ impl Git {
 fn arg_strings<S: AsRef<OsStr>>(args: &[S]) -> Vec<String> {
     args.iter()
         .map(|arg| arg.as_ref().to_string_lossy().into_owned())
+        .collect()
+}
+
+fn nul_separated(text: &str) -> Vec<String> {
+    text.split(' ')
+        .filter(|name| !name.is_empty())
+        .map(str::to_owned)
         .collect()
 }
 
