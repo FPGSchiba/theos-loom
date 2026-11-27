@@ -1,0 +1,23 @@
+# The cfg names code may test (P00 spec §5.10, rule 2). `unexpected_cfgs` at `forbid` already
+# refuses every name rustc and cargo do not know; this list refuses the known names that differ
+# between the builds the checks make (`clippy`, `debug_assertions`, `miri`, …) and any name a
+# build script declares. `names` may stand alone, `keys` take a value, which rustc checks.
+# `keys` are the target keys the pinned toolchain (rustc 1.99.1) sets itself on stable for the
+# G2 targets: the union of `rustc --print cfg --target <t>` for x86_64-pc-windows-msvc,
+# x86_64-unknown-linux-gnu, aarch64-apple-darwin and x86_64-apple-darwin, without
+# `debug_assertions` and `panic`. Re-run the four commands at every toolchain pin change.
+names = ["test", "doc", "unix", "windows"]
+keys = [
+    "feature",
+    "target_abi",
+    "target_arch",
+    "target_endian",
+    "target_env",
+    "target_family",
+    "target_feature",
+    "target_has_atomic",
+    "target_has_atomic_primitive_alignment",
+    "target_os",
+    "target_pointer_width",
+    "target_vendor",
+]

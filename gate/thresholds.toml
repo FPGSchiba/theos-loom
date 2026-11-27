@@ -1,0 +1,23 @@
+# The coverage thresholds `cargo xtask coverage` enforces (`docs/gate.md` §3). Raising a floor is
+# welcome and still a protected change; lowering one is never done to make a PR pass.
+
+# The largest drop, in percentage points, of a crate's line coverage below `main`.
+max_drop = 1.0
+
+# The least line coverage, in percent, of a crate of each class.
+[floors]
+library = 80.0
+binary = 60.0
+
+# The class of every workspace member. A member that is not listed here fails the check, so a
+# new crate cannot escape the floors.
+[crates]
+theos-content = "library"
+theos-vcs = "library"
+theos-studio = "library"
+theos-map-format = "library"
+theos-maps = "library"
+xtask = "library"
+theos = "binary"
+theos-mcp = "binary"
+theos-editor = "binary"

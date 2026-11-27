@@ -1,0 +1,31 @@
+# Drift check: the rulesets, the repository settings and the labels on GitHub against gate/.
+# Settings the workflow token cannot read are reported as not checked; `cargo xtask github check`
+# on Jann's machine is the authoritative run.
+name: settings
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  settings:
+    name: settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Listing the labels needs `issues: read` in a private repository. A job-level `permissions:`
+    # replaces the top-level one, so `contents` is named again. Nothing here writes.
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: cargo xtask github check
+        env:
+          GH_TOKEN: ${{ github.token }}

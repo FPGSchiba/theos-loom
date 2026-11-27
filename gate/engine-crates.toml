@@ -1,0 +1,30 @@
+# What `cargo xtask engine-free` takes for an engine crate (docs/specs/phases/P00, §5.4).
+#
+# A crate is an engine crate when it comes from a source in `sources`, when it is a path package
+# outside the workspace root, or when its name is in `names` and it is not a member of this
+# workspace. The engine has its own crate called `theos-editor`, and so has this workspace; the
+# member is ours, a `theos-editor` from anywhere else is the engine's.
+
+# Matched case-insensitively as a substring of the source URL.
+sources = ["github.com/fpgschiba/theos-engine"]
+
+# The workspace members of Theos-Engine, and `theos-editor-api`.
+names = [
+  "theos-shared",
+  "theos-math",
+  "theos-core",
+  "theos-ecs",
+  "theos-assets",
+  "theos-render",
+  "theos-physics",
+  "theos-ai",
+  "theos-magic",
+  "theos-scripting",
+  "theos-window",
+  "theos-plugin-api",
+  "theos-plugin-loader",
+  "theos-launcher",
+  "theos-editor",
+  "theos-game",
+  "theos-editor-api",
+]

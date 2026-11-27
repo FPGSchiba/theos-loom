@@ -1,0 +1,12 @@
+[package]
+name = "a"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+theos-core = { path = "../../../engine/theos-core", optional = true }
+
+[features]
+default = ["full"]
+full = ["engine"]
+engine = ["dep:theos-core"]

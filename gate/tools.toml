@@ -1,0 +1,6 @@
+# The exact versions of the tools the gate runs with. CI installs these, and
+# `cargo xtask tools` fails when a local tool differs. Moving a pin is a protected change.
+[tools]
+cargo-nextest = "0.9.150"
+cargo-deny = "0.20.2"
+cargo-llvm-cov = "0.9.1"

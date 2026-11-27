@@ -1,0 +1,12 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+# Mirror of `gate/lints.toml`.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
