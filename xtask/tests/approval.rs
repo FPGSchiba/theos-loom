@@ -108,7 +108,9 @@ impl Repo {
 
     /// The protected things `head` touches since `base`, sorted.
     fn touched(&self, base: &str, head: &str) -> TestResult<Vec<String>> {
-        let mut touched = protected::touched(&self.repository(), &rules()?, base, head)?;
+        let git = self.repository();
+        let paths = git.diff_name_only_no_renames(base, head)?;
+        let mut touched = protected::touched_in(&git, &rules()?, &paths, base, head)?;
         touched.sort();
         Ok(touched)
     }

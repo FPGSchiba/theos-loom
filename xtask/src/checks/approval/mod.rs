@@ -1,16 +1,16 @@
 //! The `approval` check: a pull request that touches a protected path fails until Jann adds the
 //! label `approved`, and an approval stays tied to the content it was given for (`docs/gate.md`
-//! §5; spec §5.7, decisions D2 and D3).
+//! §5).
 //!
 //! The check runs from the base commit of the pull request, with that commit's
-//! `.loom/protected.toml` and `gate/repo-settings.toml` (D3), so a pull request cannot change
+//! `.loom/protected.toml` and `gate/repo-settings.toml`, so a pull request cannot change
 //! the rules it is judged by. It reads the pull request's side only as git objects. The steps are:
 //!
-//! 1. [`protected::touched`]: the protected paths and tables the pull request changes. None: pass,
+//! 1. [`protected::touched_in`]: the protected paths and tables the pull request changes. None: pass,
 //!    and nothing is read from or written to GitHub.
 //!    Then the head of the pull request as GitHub has it: an event for an earlier commit fails and
 //!    changes nothing.
-//! 2. [`fingerprint::compute`]: the fingerprint of its changes (D2).
+//! 2. [`fingerprint::compute`]: the fingerprint of its changes.
 //! 3. The comments and the labels as they are now, read from GitHub (the event may be stale).
 //! 4. [`decide::decide`]: a verdict, and the actions to make on GitHub, which are made in order.
 //!    The verdict is returned only when they all worked, so an approval that could not be recorded

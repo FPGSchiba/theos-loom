@@ -117,24 +117,10 @@ impl ProtectedPaths {
     }
 }
 
-/// The protected things the changes from `merge_base` to `head` touch: the protected paths, then
-/// one entry `<file> [<table>]` for each table that is not the same on both sides. Empty when the
-/// pull request is not protected.
-///
-/// # Errors
-///
-/// Fails when either revision is unknown or git cannot be run.
-pub fn touched(
-    git: &Git,
-    rules: &ProtectedPaths,
-    merge_base: &str,
-    head: &str,
-) -> Result<Vec<String>> {
-    let paths = git.diff_name_only_no_renames(merge_base, head)?;
-    touched_in(git, rules, &paths, merge_base, head)
-}
-
-/// [`touched`] for changed paths that are already listed (by `changes::of_pull_request`).
+/// The protected things the changes from `merge_base` to `head` touch, for changed paths that
+/// are already listed (by `changes::of_pull_request`): the protected paths, then one entry
+/// `<file> [<table>]` for each table that is not the same on both sides. Empty when the pull
+/// request is not protected.
 ///
 /// # Errors
 ///
