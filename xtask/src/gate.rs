@@ -16,7 +16,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::checks::{
-    ac_trace, cargo_cmds, commit_msg, coverage, lints, pr_body, pr_title, secrets,
+    ac_trace, cargo_cmds, commit_msg, coverage, lints, pr_body, pr_title, secrets, ui,
 };
 use crate::ci::CiEvent;
 use crate::git::Git;
@@ -195,6 +195,7 @@ fn run_check(
         Check::CommitMsg => commit_msg::run(root, ci, out),
         Check::Secrets => secrets::run(root, ci, out),
         Check::Coverage => coverage::run(root, ci, out),
+        Check::Ui => ui::run(root, ci, out),
         Check::PrTitle | Check::PrBody | Check::Approval | Check::Github => Err(Error::Missing {
             what: format!(
                 "a way to run the `{}` check in the gate: it needs a pull request or GitHub",
@@ -287,6 +288,7 @@ mod tests {
         Deny => Gate,
         Coverage => Gate,
         Lints => Gate,
+        Ui => Gate,
         AcTrace => Gate,
         CommitMsg => Gate,
         Secrets => Gate,

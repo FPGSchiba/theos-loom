@@ -22,6 +22,8 @@ pub enum Check {
     Coverage,
     /// The lint list, the tool configuration and the attribute scan.
     Lints,
+    /// The web app's type check, lint and tests, run with pnpm in `web/`.
+    Ui,
     /// Every acceptance criterion of the phase has a tagged test and every tag names one.
     AcTrace,
     /// Every commit of the PR is a Conventional Commit.
@@ -41,7 +43,7 @@ pub enum Check {
 
 impl Check {
     /// Every check, in the order of the enum.
-    pub const ALL: [Check; 15] = [
+    pub const ALL: [Check; 16] = [
         Check::Tools,
         Check::Fmt,
         Check::Clippy,
@@ -50,6 +52,7 @@ impl Check {
         Check::Deny,
         Check::Coverage,
         Check::Lints,
+        Check::Ui,
         Check::AcTrace,
         Check::CommitMsg,
         Check::Secrets,
@@ -77,6 +80,7 @@ impl Check {
             Self::Deny => "deny",
             Self::Coverage => "coverage",
             Self::Lints => "lints",
+            Self::Ui => "ui",
             Self::AcTrace => "ac-trace",
             Self::CommitMsg => "commit-msg",
             Self::Secrets => "secrets",
@@ -90,7 +94,7 @@ impl Check {
 
 /// The checks `cargo xtask gate` runs, in order: cheap and local ones first. `ac-trace` is last,
 /// because it reads the reports of `test`.
-pub const GATE_ORDER: [Check; 11] = [
+pub const GATE_ORDER: [Check; 12] = [
     Check::Tools,
     Check::Fmt,
     Check::Lints,
@@ -101,6 +105,7 @@ pub const GATE_ORDER: [Check; 11] = [
     Check::Deny,
     Check::Test,
     Check::Coverage,
+    Check::Ui,
     Check::AcTrace,
 ];
 
@@ -203,7 +208,7 @@ impl Verdict {
 mod tests {
     use super::*;
 
-    const ALL: [Check; 15] = Check::ALL;
+    const ALL: [Check; 16] = Check::ALL;
 
     fn names(checks: &[Check]) -> Vec<&'static str> {
         checks.iter().map(|check| check.name()).collect()
@@ -250,6 +255,7 @@ mod tests {
                 "deny",
                 "coverage",
                 "lints",
+                "ui",
                 "ac-trace",
                 "commit-msg",
                 "secrets",
@@ -276,6 +282,7 @@ mod tests {
                 "deny",
                 "test",
                 "coverage",
+                "ui",
                 "ac-trace",
             ]
         );

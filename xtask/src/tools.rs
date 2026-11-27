@@ -82,9 +82,8 @@ impl Tool {
 /// The tools a part runs. There is no wildcard arm, so a new [`Check`] does not compile until
 /// it is decided here.
 ///
-/// `Test` runs nextest, `Coverage` runs llvm-cov (which runs the tests through nextest) and
-/// `Deny` runs cargo-deny. No part uses gitleaks, Node or pnpm yet: the parts that do (`secrets`
-/// and `ui`) are added with their tools.
+/// `Test` runs nextest, `Coverage` runs llvm-cov (which runs the tests through nextest), `Deny`
+/// runs cargo-deny, `Secrets` runs gitleaks and `Ui` runs pnpm, which runs on Node.
 #[must_use]
 pub fn needed_by(check: Check) -> &'static [Tool] {
     match check {
@@ -92,6 +91,7 @@ pub fn needed_by(check: Check) -> &'static [Tool] {
         Check::Coverage => &[Tool::CargoLlvmCov, Tool::CargoNextest],
         Check::Deny => &[Tool::CargoDeny],
         Check::Secrets => &[Tool::Gitleaks],
+        Check::Ui => &[Tool::Node, Tool::Pnpm],
         Check::Tools
         | Check::Fmt
         | Check::Clippy
@@ -357,6 +357,103 @@ fn judge(pin: &ToolPin, installed: &Installed) -> Option<Finding> {
     Some(Finding::new(message))
 }
 
+/// Where the web app keeps its copies of the Node and pnpm pins, relative to the root.
+const WEB_NVMRC: &str = "web/.nvmrc";
+const WEB_PACKAGE: &str = "web/package.json";
+
+/// The parts of `web/package.json` that copy a pin.
+#[derive(Deserialize)]
+struct WebPackage {
+    engines: Option<WebEngines>,
+    #[serde(rename = "packageManager")]
+    package_manager: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct WebEngines {
+    node: Option<String>,
+}
+
+fn web_finding(file: &str, message: String) -> Finding {
+    Finding {
+        file: Some(file.to_owned()),
+        line: None,
+        message,
+    }
+}
+
+/// Findings for the copies of the pins in `web/`: `web/.nvmrc` is the Node pin, `engines.node`
+/// of `web/package.json` is `^<node pin>` and its `packageManager` is `pnpm@<pnpm pin>`. A copy
+/// that differs, or a missing or unreadable file, is a finding naming the file.
+///
+/// # Errors
+///
+/// Fails when `pins` lacks Node or pnpm.
+fn web_copy_findings(root: &Path, pins: &[ToolPin]) -> Result<Vec<Finding>> {
+    let pin_of = |tool: Tool| {
+        pins.iter()
+            .find(|pin| pin.name == tool.name())
+            .map(|pin| pin.version.clone())
+            .ok_or_else(|| config_error(format!("no version for `{}`", tool.name())))
+    };
+    let (node, pnpm) = (pin_of(Tool::Node)?, pin_of(Tool::Pnpm)?);
+    let mut findings = Vec::new();
+
+    match std::fs::read_to_string(root.join(WEB_NVMRC)) {
+        Ok(text) if text.trim() == node => {}
+        Ok(text) => findings.push(web_finding(
+            WEB_NVMRC,
+            format!(
+                "{WEB_NVMRC} says {:?} but {TOOLS_FILE} pins node {node}",
+                text.trim()
+            ),
+        )),
+        Err(error) => findings.push(web_finding(
+            WEB_NVMRC,
+            format!("cannot read {WEB_NVMRC} ({error}); it must say {node}"),
+        )),
+    }
+
+    let package = std::fs::read_to_string(root.join(WEB_PACKAGE))
+        .map_err(|error| error.to_string())
+        .and_then(|text| {
+            serde_json::from_str::<WebPackage>(&text)
+                .map_err(|_| "not the expected JSON".to_owned())
+        });
+    match package {
+        Err(error) => findings.push(web_finding(
+            WEB_PACKAGE,
+            format!("cannot read {WEB_PACKAGE} ({error})"),
+        )),
+        Ok(package) => {
+            let copies = [
+                (
+                    "engines.node",
+                    package.engines.and_then(|engines| engines.node),
+                    format!("^{node}"),
+                ),
+                (
+                    "packageManager",
+                    package.package_manager,
+                    format!("pnpm@{pnpm}"),
+                ),
+            ];
+            for (field, found, wanted) in copies {
+                if found.as_deref() != Some(wanted.as_str()) {
+                    findings.push(web_finding(
+                        WEB_PACKAGE,
+                        format!(
+                            "{WEB_PACKAGE} {field} is {found:?} but {TOOLS_FILE} says it must be \
+                             {wanted:?}"
+                        ),
+                    ));
+                }
+            }
+        }
+    }
+    Ok(findings)
+}
+
 /// Asks the pinned `tools` for their versions and reports each one that is missing or differs.
 fn check_tools(root: &Path, tools: &[Tool]) -> Result<Verdict> {
     let mut findings = Vec::new();
@@ -364,6 +461,9 @@ fn check_tools(root: &Path, tools: &[Tool]) -> Result<Verdict> {
         if Tool::from_name(&pin.name).is_some_and(|tool| tools.contains(&tool)) {
             findings.extend(judge(&pin, &probe(root, &pin)?));
         }
+    }
+    if tools.contains(&Tool::Node) || tools.contains(&Tool::Pnpm) {
+        findings.extend(web_copy_findings(root, &load_pins(root)?)?);
     }
     Ok(Verdict::with(Check::Tools, findings))
 }
@@ -443,6 +543,7 @@ pub fn run(root: &Path, _ci: Option<&CiEvent>, _out: &mut dyn Write) -> Result<V
 mod tests {
     use super::*;
     use std::path::PathBuf;
+    use tempfile::TempDir;
 
     fn pin(name: &str, version: &str) -> ToolPin {
         ToolPin {
@@ -610,6 +711,101 @@ mod tests {
         Ok(())
     }
 
+    fn web_files(
+        nvmrc: Option<&str>,
+        package_json: Option<&str>,
+    ) -> crate::Result<tempfile::TempDir> {
+        let root = tempfile::tempdir().map_err(io_error(PathBuf::from("<temp>")))?;
+        let web = root.path().join("web");
+        std::fs::create_dir(&web).map_err(io_error(web.clone()))?;
+        for (name, text) in [(".nvmrc", nvmrc), ("package.json", package_json)] {
+            if let Some(text) = text {
+                let file = web.join(name);
+                std::fs::write(&file, text).map_err(io_error(file))?;
+            }
+        }
+        Ok(root)
+    }
+
+    fn web_findings(root: &TempDir) -> crate::Result<Vec<Finding>> {
+        web_copy_findings(root.path(), &pins())
+    }
+
+    const GOOD_PACKAGE: &str = r#"{"engines": {"node": "^24"}, "packageManager": "pnpm@12.23.0"}"#;
+
+    // AC: TU-00.3
+    #[test]
+    fn the_web_copies_equal_the_pins() -> crate::Result<()> {
+        assert_eq!(
+            web_findings(&web_files(
+                Some(
+                    "24
+"
+                ),
+                Some(GOOD_PACKAGE)
+            )?)?,
+            []
+        );
+        // The real copies in this repository equal the real pins.
+        assert_eq!(
+            web_copy_findings(&repo_root(), &load_pins(&repo_root())?)?,
+            []
+        );
+
+        let cases = [
+            (
+                Some(
+                    "22
+",
+                ),
+                Some(GOOD_PACKAGE),
+                "web/.nvmrc",
+            ),
+            (
+                Some("24"),
+                Some(r#"{"engines": {"node": "^22"}, "packageManager": "pnpm@12.23.0"}"#),
+                "web/package.json",
+            ),
+            (
+                Some("24"),
+                Some(r#"{"engines": {"node": "^24"}, "packageManager": "pnpm@12.0.0"}"#),
+                "web/package.json",
+            ),
+            (
+                Some("24"),
+                Some(r#"{"engines": {"node": "^24"}}"#),
+                "web/package.json",
+            ),
+            (Some("24"), Some("not json"), "web/package.json"),
+            (None, Some(GOOD_PACKAGE), "web/.nvmrc"),
+            (Some("24"), None, "web/package.json"),
+        ];
+        for (nvmrc, package, file) in cases {
+            let findings = web_findings(&web_files(nvmrc, package)?)?;
+            assert_eq!(findings.len(), 1, "{nvmrc:?} {package:?}: {findings:?}");
+            assert_eq!(findings[0].file.as_deref(), Some(file), "{findings:?}");
+        }
+
+        // Only a run that checks Node or pnpm looks at the copies.
+        let bad = web_files(Some("22"), Some("{}"))?;
+        std::fs::create_dir(bad.path().join("gate")).map_err(io_error(bad.path().join("gate")))?;
+        std::fs::copy(
+            repo_root().join("gate/tools.toml"),
+            bad.path().join("gate/tools.toml"),
+        )
+        .map_err(io_error(bad.path().join("gate")))?;
+        let mut out = Vec::new();
+        assert!(run_for(bad.path(), &[Check::Fmt], &mut out)?.passed());
+        let ui = run_for(bad.path(), &[Check::Ui], &mut out)?;
+        assert!(
+            ui.findings
+                .iter()
+                .any(|finding| finding.file.as_deref() == Some("web/.nvmrc")),
+            "{ui:?}"
+        );
+        Ok(())
+    }
+
     #[test]
     fn every_part_names_the_tools_it_needs() {
         assert_eq!(needed_by(Check::Test), [Tool::CargoNextest]);
@@ -618,6 +814,7 @@ mod tests {
             [Tool::CargoLlvmCov, Tool::CargoNextest]
         );
         assert_eq!(needed_by(Check::Deny), [Tool::CargoDeny]);
+        assert_eq!(needed_by(Check::Ui), [Tool::Node, Tool::Pnpm]);
         assert_eq!(needed_by(Check::Fmt), []);
     }
 
@@ -784,7 +981,14 @@ mod tests {
         let root = repo_with_impossible_pins()?;
         let verdict = check_installed(root.path())?;
         assert_eq!(verdict.check, Check::Tools);
-        assert_eq!(verdict.findings.len(), 6);
+        // One finding per tool, then the two copies in `web/`, which this repository lacks.
+        assert_eq!(verdict.findings.len(), 8);
+        let files: Vec<_> = verdict
+            .findings
+            .iter()
+            .filter_map(|finding| finding.file.as_deref())
+            .collect();
+        assert_eq!(files, ["web/.nvmrc", "web/package.json"]);
         for (finding, expected) in verdict.findings.iter().zip([
             "cargo install --locked cargo-nextest --version 0.0.1",
             "cargo install --locked cargo-deny --version 0.0.1",

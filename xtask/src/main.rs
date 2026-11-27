@@ -18,7 +18,7 @@ use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
 use xtask::branch::Phase;
 use xtask::checks::{
-    ac_trace, approval, cargo_cmds, commit_msg, coverage, lints, pr_body, pr_title, secrets,
+    ac_trace, approval, cargo_cmds, commit_msg, coverage, lints, pr_body, pr_title, secrets, ui,
 };
 use xtask::gate;
 use xtask::git::Git;
@@ -99,6 +99,11 @@ enum Command {
     /// `origin/main`; a detached `HEAD` and other events scan the whole history. Findings never
     /// show the secret.
     Secrets,
+    /// Type-check, lint and test the web app in `web/` with pnpm.
+    ///
+    /// Runs `pnpm install --frozen-lockfile`, then `pnpm exec tsc -b`, `eslint` and `vitest run` in
+    /// `web/`, with fixed arguments; it never runs a `package.json` script.
+    Ui,
     /// Check that every commit of the branch is a Conventional Commit.
     ///
     /// Under GitHub Actions the commits and the branch come from the event. Any flag here
@@ -148,8 +153,8 @@ enum Command {
     Approval,
     /// Run every check that needs no pull request, in order, and print one verdict table.
     ///
-    /// Runs `tools`, `fmt`, `lints`, `commit-msg`, `secrets`, `clippy`, `docs`, `deny`, `test`, `coverage`
-    /// and `ac-trace` with the same code as their CI jobs, and goes on after a check fails. It
+    /// Runs `tools`, `fmt`, `lints`, `commit-msg`, `secrets`, `clippy`, `docs`, `deny`, `test`, `coverage`,
+    /// `ui` and `ac-trace` with the same code as their CI jobs, and goes on after a check fails. It
     /// leaves out `pr-title`, `pr-body` and `approval`. When a tool is not the pinned version,
     /// nothing but `tools` runs, because versions decide verdicts. `--only` and `--skip` run a
     /// part of it; `tools` always runs first. Exit code 1 when any check failed.
@@ -280,6 +285,7 @@ fn run(cli: &Cli) -> anyhow::Result<bool> {
             commit_msg::check(&git, &range, &branch, &known_acs)?
         }
         Command::Secrets => secrets::run(&root, ci.as_ref(), &mut out)?,
+        Command::Ui => ui::run(&root, ci.as_ref(), &mut out)?,
         Command::PrTitle { title: None, .. } => pr_title::run(&root, ci.as_ref(), &mut out)?,
         Command::PrTitle {
             title: Some(title),

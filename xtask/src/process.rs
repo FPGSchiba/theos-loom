@@ -216,7 +216,7 @@ pub(crate) fn capture_program(
         .then(|| String::from_utf8_lossy(&output.stdout).into_owned()))
 }
 
-fn run_program(program: &OsStr, root: &Path, cmd: &CargoCommand) -> Result<bool> {
+pub(crate) fn run_program(program: &OsStr, root: &Path, cmd: &CargoCommand) -> Result<bool> {
     tracing::debug!(
         program = %program.to_string_lossy(),
         args = ?cmd.args,

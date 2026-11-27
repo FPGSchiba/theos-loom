@@ -12,3 +12,4 @@ pub mod lints;
 pub mod pr_body;
 pub mod pr_title;
 pub mod secrets;
+pub mod ui;
