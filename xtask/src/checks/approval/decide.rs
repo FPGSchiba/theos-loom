@@ -34,7 +34,7 @@ use crate::github::Comment;
 use crate::verdict::{Check, Finding, Verdict};
 
 /// The start of the line that records a fingerprint in a comment.
-pub const MARKER: &str = "<!-- theos-gate:approval";
+pub const MARKER: &str = "<!-- loom-gate:approval";
 
 /// The login of the account whose comments `recorded` trusts: the Actions workflow token.
 pub const BOT: &str = "github-actions[bot]";
@@ -501,7 +501,7 @@ mod tests {
         assert_eq!(
             text,
             format!(
-                "<!-- theos-gate:approval fingerprint={} head={HEAD} -->\n\nApproval recorded for \
+                "<!-- loom-gate:approval fingerprint={} head={HEAD} -->\n\nApproval recorded for \
                  this content of the PR.",
                 "a".repeat(64)
             )
