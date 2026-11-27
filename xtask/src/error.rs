@@ -53,6 +53,13 @@ pub enum Error {
         /// What GitHub or `gh` said.
         message: String,
     },
+    /// The command line asked for something that does not exist, such as a part of the gate that
+    /// is not one.
+    #[error("{message}")]
+    Usage {
+        /// What is wrong with the request.
+        message: String,
+    },
     /// Something the run needs is not there: an input, a variable, a tool or a feature.
     #[error("missing {what}")]
     Missing {

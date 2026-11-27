@@ -129,6 +129,7 @@ pub fn verdict(
         check: Check::Coverage,
         findings,
         notes,
+        not_needed: None,
     }
 }
 

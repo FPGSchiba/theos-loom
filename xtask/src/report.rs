@@ -11,8 +11,9 @@ use std::path::{Path, PathBuf};
 use crate::verdict::{Check, Finding, Verdict};
 use crate::{Error, Result};
 
-/// Writes one line per check, `pass` or `FAIL` and the check's name, and under each failing
-/// check its findings as `  - path:line: message`. Notes follow as `  note: …`.
+/// Writes one line per check, `pass`, `skip` (not needed) or `FAIL` and the check's name, and
+/// under each failing check its findings as `  - path:line: message`. Notes follow as
+/// `  note: …`, and the reason a check was not needed as `  note: not needed: …`.
 ///
 /// A finding or note that spans several lines continues on lines that start with `    | `.
 ///
@@ -27,7 +28,13 @@ use crate::{Error, Result};
 /// Fails when `out` cannot be written.
 pub fn write_table(verdicts: &[Verdict], out: &mut dyn Write) -> io::Result<()> {
     for verdict in verdicts {
-        let status = if verdict.passed() { "pass" } else { "FAIL" };
+        let status = if !verdict.passed() {
+            "FAIL"
+        } else if verdict.is_not_needed() {
+            "skip"
+        } else {
+            "pass"
+        };
         writeln!(out, "{status}  {}", verdict.check.name())?;
         for finding in &verdict.findings {
             let text = match location(finding) {
@@ -35,6 +42,9 @@ pub fn write_table(verdicts: &[Verdict], out: &mut dyn Write) -> io::Result<()> 
                 None => finding.message.clone(),
             };
             write_marked(out, "- ", &text)?;
+        }
+        if let Some(reason) = &verdict.not_needed {
+            write_marked(out, "note: ", &format!("not needed: {reason}"))?;
         }
         for note in &verdict.notes {
             write_marked(out, "note: ", note)?;
@@ -122,16 +132,26 @@ pub fn annotation(check: Check, finding: &Finding) -> String {
 pub fn summary_markdown(verdicts: &[Verdict]) -> String {
     let mut text = String::from("### xtask\n\n| Check | Result |\n|---|---|\n");
     for verdict in verdicts {
-        let status = if verdict.passed() { "pass" } else { "**FAIL**" };
+        let status = if !verdict.passed() {
+            "**FAIL**"
+        } else if verdict.is_not_needed() {
+            "not needed"
+        } else {
+            "pass"
+        };
         // Writing to a `String` cannot fail.
         let _ = writeln!(text, "| `{}` | {status} |", verdict.check.name());
     }
     text.push('\n');
     for verdict in verdicts {
-        if verdict.findings.is_empty() && verdict.notes.is_empty() {
+        if verdict.findings.is_empty() && verdict.notes.is_empty() && !verdict.is_not_needed() {
             continue;
         }
         let _ = write!(text, "#### `{}`\n\n", verdict.check.name());
+        if let Some(reason) = &verdict.not_needed {
+            let reason = reason.lines().collect::<Vec<_>>().join(" ");
+            let _ = write!(text, "Not needed: {reason}\n\n");
+        }
         for finding in &verdict.findings {
             let message = finding.message.lines().collect::<Vec<_>>().join(" ");
             match location(finding) {
@@ -171,17 +191,41 @@ pub fn emit(verdict: &Verdict, ci: bool, out: &mut dyn Write) -> Result<()> {
     emit_with(verdict, ci, summary.as_deref(), out)
 }
 
+/// Writes the verdicts of several checks as [`emit`] writes one: the table with a row for each,
+/// and under GitHub Actions (`ci`) the annotations of every finding and one summary with a row
+/// per verdict.
+///
+/// # Errors
+///
+/// Fails when `out` or the summary file cannot be written.
+pub fn emit_all(verdicts: &[Verdict], ci: bool, out: &mut dyn Write) -> Result<()> {
+    let summary = std::env::var_os("GITHUB_STEP_SUMMARY")
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from);
+    emit_all_with(verdicts, ci, summary.as_deref(), out)
+}
+
 fn emit_with(
     verdict: &Verdict,
     ci: bool,
     summary: Option<&Path>,
     out: &mut dyn Write,
 ) -> Result<()> {
-    let verdicts = std::slice::from_ref(verdict);
+    emit_all_with(std::slice::from_ref(verdict), ci, summary, out)
+}
+
+fn emit_all_with(
+    verdicts: &[Verdict],
+    ci: bool,
+    summary: Option<&Path>,
+    out: &mut dyn Write,
+) -> Result<()> {
     write_table(verdicts, out).map_err(output_error)?;
     if ci {
-        for finding in &verdict.findings {
-            writeln!(out, "{}", annotation(verdict.check, finding)).map_err(output_error)?;
+        for verdict in verdicts {
+            for finding in &verdict.findings {
+                writeln!(out, "{}", annotation(verdict.check, finding)).map_err(output_error)?;
+            }
         }
         if let Some(path) = summary {
             append(path, &summary_markdown(verdicts))?;
@@ -344,6 +388,7 @@ mod tests {
 
     fn hostile() -> Verdict {
         Verdict {
+            not_needed: None,
             check: Check::CommitMsg,
             findings: vec![
                 Finding::new("x\n::error::forged"),
@@ -534,6 +579,63 @@ mod tests {
         let mut out = Vec::new();
         emit_with(&failing(), true, None, &mut out)?;
         assert!(String::from_utf8(out)?.contains("::error "));
+        Ok(())
+    }
+
+    // AC: TU-00.3
+    #[test]
+    fn a_not_needed_part_passes_and_shows_its_reason() -> TestResult {
+        let verdict = Verdict::not_needed(Check::Fmt, "only docs changed (gate/code-paths.toml)");
+        assert!(verdict.passed() && verdict.is_not_needed());
+        let table = table(std::slice::from_ref(&verdict))?;
+        assert_eq!(
+            table,
+            "skip  fmt
+  note: not needed: only docs changed (gate/code-paths.toml)
+"
+        );
+        let summary = summary_markdown(&[verdict]);
+        assert!(summary.contains("| `fmt` | not needed |"), "{summary}");
+        assert!(summary.contains("only docs changed"), "{summary}");
+        Ok(())
+    }
+
+    // AC: TU-00.3
+    #[test]
+    fn the_gate_writes_one_summary_with_every_part() -> TestResult {
+        let summary = tempfile::NamedTempFile::new()?;
+        let verdicts = [
+            Verdict::pass(Check::Tools),
+            failing(),
+            Verdict::not_needed(Check::Fmt, "docs only"),
+        ];
+        let mut out = Vec::new();
+        emit_all_with(&verdicts, true, Some(summary.path()), &mut out)?;
+        let text = String::from_utf8(out)?;
+        assert!(
+            text.starts_with(
+                "pass  tools
+FAIL  lints
+"
+            ),
+            "{text}"
+        );
+        assert!(
+            text.contains(
+                "::error title=lints::no clippy.toml
+"
+            ),
+            "{text}"
+        );
+        let written = std::fs::read_to_string(summary.path())?;
+        assert_eq!(written.matches("### xtask").count(), 1, "{written}");
+        for row in [
+            "| `tools` | pass |",
+            "| `lints` | **FAIL** |",
+            "| `fmt` | not needed |",
+        ] {
+            assert!(written.contains(row), "{row} missing from {written}");
+        }
         Ok(())
     }
 

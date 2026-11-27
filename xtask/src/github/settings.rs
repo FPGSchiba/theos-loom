@@ -493,6 +493,7 @@ pub fn check(gh: &dyn RepoAdmin, root: &Path) -> Result<Verdict> {
         check: Check::Github,
         findings: found.differences.into_iter().map(Finding::new).collect(),
         notes: found.notes,
+        not_needed: None,
     })
 }
 
@@ -542,6 +543,7 @@ fn applied(actions: Vec<String>) -> Verdict {
         check: Check::Github,
         findings: Vec::new(),
         notes: actions,
+        not_needed: None,
     }
 }
 

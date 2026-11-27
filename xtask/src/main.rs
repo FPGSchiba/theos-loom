@@ -6,7 +6,8 @@
 //! Adding a check is one arm in `run`: call the check's `run(root, ci, out)`, which gathers its
 //! own inputs and returns a verdict, and let `report::emit` write it. Also add it to
 //! `gate::run_check`, which the compiler asks for. `gate` is the one subcommand with many
-//! verdicts: `gate::run` writes its own table, so its arm does not go through `report::emit`.
+//! verdicts: `gate::run` and `gate::run_pr` write their own table (through `report::emit_all`),
+//! so their arms do not go through `report::emit`.
 
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -134,10 +135,39 @@ enum Command {
     /// Run every check that needs no pull request, in order, and print one verdict table.
     ///
     /// Runs `tools`, `fmt`, `lints`, `commit-msg`, `clippy`, `docs`, `deny`, `test`, `coverage`
-    /// and `ac-trace` with the same code as their CI jobs, and goes on after a check fails. It leaves out `pr-title`, `pr-body` and `approval`. When a tool is not the
-    /// pinned version, nothing but `tools` runs, because versions decide verdicts. Exit code 1
-    /// when any check failed.
-    Gate,
+    /// and `ac-trace` with the same code as their CI jobs, and goes on after a check fails. It
+    /// leaves out `pr-title`, `pr-body` and `approval`. When a tool is not the pinned version,
+    /// nothing but `tools` runs, because versions decide verdicts. `--only` and `--skip` run a
+    /// part of it; `tools` always runs first. Exit code 1 when any check failed.
+    Gate {
+        /// Run only these checks (comma-separated), after `tools`.
+        #[arg(
+            long,
+            value_delimiter = ',',
+            value_name = "CHECKS",
+            conflicts_with = "skip"
+        )]
+        only: Vec<String>,
+        /// Run every check but these (comma-separated).
+        #[arg(long, value_delimiter = ',', value_name = "CHECKS")]
+        skip: Vec<String>,
+    },
+    /// Run `pr-title` and then `pr-body`, and print one verdict table. Both always run.
+    ///
+    /// Under GitHub Actions the title, the description and the branch come from the pull request
+    /// event. Elsewhere, or to try other text, pass `--title` and `--body-file`; each replaces
+    /// the event for its check.
+    Pr {
+        /// The title to check.
+        #[arg(long, value_name = "TEXT")]
+        title: Option<String>,
+        /// A file with the description to check.
+        #[arg(long, value_name = "PATH")]
+        body_file: Option<PathBuf>,
+        /// The branch the pull request is from. Default: the branch that is checked out.
+        #[arg(long, value_name = "NAME", requires = "title")]
+        branch: Option<String>,
+    },
     /// Check or apply the repository settings: the rulesets, the merge settings and the labels
     /// kept in `gate/` (`docs/gate.md` §6).
     Github {
@@ -258,8 +288,22 @@ fn run(cli: &Cli) -> anyhow::Result<bool> {
             pr_body::check_body(&template, Some(&body))
         }
         Command::Approval => approval::run(&root, ci.as_ref(), &mut out)?,
-        Command::Gate => {
-            let verdicts = gate::run(&root, ci.as_ref(), &mut out)?;
+        Command::Gate { only, skip } => {
+            let selection = gate::selection(only, skip)?;
+            let verdicts = gate::run(&root, ci.as_ref(), &selection, &mut out)?;
+            return Ok(verdicts.iter().all(Verdict::passed));
+        }
+        Command::Pr {
+            title,
+            body_file,
+            branch,
+        } => {
+            let inputs = gate::PrInputs {
+                title: title.clone(),
+                body_file: body_file.clone(),
+                branch: branch.clone(),
+            };
+            let verdicts = gate::run_pr(&root, ci.as_ref(), &inputs, &mut out)?;
             return Ok(verdicts.iter().all(Verdict::passed));
         }
         Command::Github {

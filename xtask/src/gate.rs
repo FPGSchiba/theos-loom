@@ -4,21 +4,93 @@
 //! check gives the same verdict here as in its CI job (TU-00.3); only where the inputs come from
 //! differs (the repository instead of the event payload). It leaves out the checks that need a
 //! pull request (`pr-title`, `pr-body`, `approval`) and the settings check, which needs GitHub.
+//! A [`Selection`] runs a part of it (`--only`, `--skip`): a filter over [`GATE_ORDER`] that
+//! never removes `tools`. `cargo xtask pr` runs the two checks of a pull request through the
+//! same runner ([`run_pr`]).
 //!
 //! Versions decide verdicts, so a gate whose tools are not the pinned ones would give verdicts
 //! that CI does not. When the `tools` check fails, nothing else runs.
 
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use crate::checks::{ac_trace, cargo_cmds, commit_msg, coverage, lints};
+use crate::checks::{ac_trace, cargo_cmds, commit_msg, coverage, lints, pr_body, pr_title};
 use crate::ci::CiEvent;
+use crate::git::Git;
 use crate::verdict::{Check, Finding, GATE_ORDER, Verdict};
 use crate::view::Shared;
 use crate::{Error, Result, report, tools};
 
-/// Runs every check of [`GATE_ORDER`] in `root`, and writes the verdict table to `out` after the
-/// output of the checks themselves. Returns the verdicts; the gate passes when all of them do.
+/// Which checks of [`GATE_ORDER`] to run.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum Selection {
+    /// Every check.
+    All,
+    /// Only these checks (and `tools`).
+    Only(Vec<Check>),
+    /// Every check but these.
+    Skip(Vec<Check>),
+}
+
+/// Reads the names of `--only` and `--skip` into a [`Selection`].
+///
+/// # Errors
+///
+/// Fails when both lists are given, or a name is not a part of the gate (`tools` included:
+/// it always runs first). The error names it, so a typo is never a smaller gate.
+pub fn selection(only: &[String], skip: &[String]) -> Result<Selection> {
+    if !only.is_empty() && !skip.is_empty() {
+        return Err(Error::Usage {
+            message: "`--only` and `--skip` cannot be used together".to_owned(),
+        });
+    }
+    let parts =
+        |names: &[String]| -> Result<Vec<Check>> { names.iter().map(|n| part(n)).collect() };
+    if !only.is_empty() {
+        Ok(Selection::Only(parts(only)?))
+    } else if !skip.is_empty() {
+        Ok(Selection::Skip(parts(skip)?))
+    } else {
+        Ok(Selection::All)
+    }
+}
+
+/// The part of the gate called `name`: a check of [`GATE_ORDER`] other than `tools`.
+fn part(name: &str) -> Result<Check> {
+    match Check::from_name(name) {
+        Some(check) if check != Check::Tools && GATE_ORDER.contains(&check) => Ok(check),
+        _ => {
+            let parts: Vec<&str> = GATE_ORDER[1..].iter().map(|check| check.name()).collect();
+            Err(Error::Usage {
+                message: format!(
+                    "`{name}` is not a part of the gate; the parts are {}",
+                    parts.join(", ")
+                ),
+            })
+        }
+    }
+}
+
+/// The checks to run: `tools` first, then the chosen ones in [`GATE_ORDER`].
+#[must_use]
+pub fn selected(selection: &Selection) -> Vec<Check> {
+    GATE_ORDER
+        .iter()
+        .copied()
+        .filter(|check| {
+            *check == Check::Tools
+                || match selection {
+                    Selection::All => true,
+                    Selection::Only(only) => only.contains(check),
+                    Selection::Skip(skip) => !skip.contains(check),
+                }
+        })
+        .collect()
+}
+
+/// Runs the selected checks of [`GATE_ORDER`] in `root`, and writes the verdict table to `out`
+/// after the output of the checks themselves (and, under GitHub Actions, the annotations and the
+/// summary). Returns the verdicts; the gate passes when all of them do.
 ///
 /// A check that fails does not stop the others, and a check that cannot run is a failing verdict
 /// that carries the error. Only a failing `tools` check stops the gate, as the module
@@ -27,12 +99,72 @@ use crate::{Error, Result, report, tools};
 /// # Errors
 ///
 /// Fails only when `out` cannot be written.
-pub fn run(root: &Path, ci: Option<&CiEvent>, out: &mut dyn Write) -> Result<Vec<Verdict>> {
+pub fn run(
+    root: &Path,
+    ci: Option<&CiEvent>,
+    selection: &Selection,
+    out: &mut dyn Write,
+) -> Result<Vec<Verdict>> {
     // The checks that read code share one view, built when the first of them asks for it.
     let shared = Shared::new();
     run_checks(
-        &GATE_ORDER,
+        &selected(selection),
+        "gate",
+        ci.is_some(),
         |check, out| run_check(check, root, ci, &shared, out),
+        out,
+    )
+}
+
+/// What `cargo xtask pr` was given instead of the pull request event. `None` takes it from the
+/// event, as the `pr-title` and `pr-body` subcommands do.
+#[derive(Clone, Default, Debug)]
+pub struct PrInputs {
+    /// The title to check.
+    pub title: Option<String>,
+    /// A file with the description to check.
+    pub body_file: Option<PathBuf>,
+    /// The branch the title must match.
+    pub branch: Option<String>,
+}
+
+/// Runs `pr-title` and then `pr-body` through the gate's runner, with no `tools`, and writes one
+/// table. Both always run, whatever the first one finds.
+///
+/// # Errors
+///
+/// Fails only when `out` cannot be written.
+pub fn run_pr(
+    root: &Path,
+    ci: Option<&CiEvent>,
+    inputs: &PrInputs,
+    out: &mut dyn Write,
+) -> Result<Vec<Verdict>> {
+    run_checks(
+        &[Check::PrTitle, Check::PrBody],
+        "pr",
+        ci.is_some(),
+        |check, out| match check {
+            Check::PrTitle => match &inputs.title {
+                None => pr_title::run(root, ci, out),
+                Some(title) => {
+                    let branch =
+                        commit_msg::branch_kind(&Git::new(root), inputs.branch.as_deref())?;
+                    Ok(pr_title::check_title(title, &branch, None))
+                }
+            },
+            _ => match &inputs.body_file {
+                None => pr_body::run(root, ci, out),
+                Some(path) => {
+                    let template = pr_body::read_template(root)?;
+                    let body = std::fs::read_to_string(path).map_err(|source| Error::Io {
+                        path: path.clone(),
+                        source,
+                    })?;
+                    Ok(pr_body::check_body(&template, Some(&body)))
+                }
+            },
+        },
         out,
     )
 }
@@ -65,9 +197,11 @@ fn run_check(
     }
 }
 
-/// Runs the checks of `order` with `run_one`, then writes the table. See [`run`].
+/// Runs the checks of `order` with `run_one`, then writes the table under `heading`. See [`run`].
 fn run_checks(
     order: &[Check],
+    heading: &str,
+    ci: bool,
     mut run_one: impl FnMut(Check, &mut dyn Write) -> Result<Verdict>,
     out: &mut dyn Write,
 ) -> Result<Vec<Verdict>> {
@@ -93,8 +227,8 @@ fn run_checks(
             break;
         }
     }
-    writeln!(out, "==> gate").map_err(report::output_error)?;
-    report::write_table(&verdicts, out).map_err(report::output_error)?;
+    writeln!(out, "==> {heading}").map_err(report::output_error)?;
+    report::emit_all(&verdicts, ci, out)?;
     out.flush().map_err(report::output_error)?;
     Ok(verdicts)
 }
@@ -215,6 +349,8 @@ mod tests {
         let mut out = Vec::new();
         let verdicts = run_checks(
             order,
+            "gate",
+            false,
             |check, out| {
                 ran.push(check);
                 writeln!(out, "output of {}", check.name()).map_err(|source| Error::Io {
@@ -375,6 +511,83 @@ mod tests {
         );
     }
 
+    fn strings(names: &[&str]) -> Vec<String> {
+        names.iter().map(|name| (*name).to_owned()).collect()
+    }
+
+    fn selected_names(only: &[&str], skip: &[&str]) -> TestResult<Vec<&'static str>> {
+        let selection = selection(&strings(only), &strings(skip))?;
+        Ok(names(&selected(&selection)))
+    }
+
+    // AC: TU-00.3
+    #[test]
+    fn only_runs_tools_and_the_named_parts_in_gate_order() -> TestResult {
+        assert_eq!(
+            selected_names(&["test", "fmt"], &[])?,
+            ["tools", "fmt", "test"]
+        );
+        Ok(())
+    }
+
+    // AC: TU-00.3
+    #[test]
+    fn skip_runs_every_other_part() -> TestResult {
+        let expected: Vec<Check> = GATE_ORDER
+            .iter()
+            .copied()
+            .filter(|check| !matches!(check, Check::Test | Check::Coverage))
+            .collect();
+        assert_eq!(
+            selected_names(&[], &["test", "coverage"])?,
+            names(&expected)
+        );
+        assert_eq!(names(&selected(&selection(&[], &[])?)), names(&GATE_ORDER));
+        Ok(())
+    }
+
+    // AC: TU-00.3
+    #[test]
+    fn only_and_skip_refuse_a_name_that_is_not_a_gate_part() {
+        for name in ["tset", "pr-title", "tools", "github", "approval"] {
+            for (only, skip) in [(vec![name], vec![]), (vec![], vec![name])] {
+                let result = selection(&strings(&only), &strings(&skip));
+                let Err(error) = result else {
+                    panic!("`{name}` was accepted");
+                };
+                assert!(matches!(error, Error::Usage { .. }), "{error:?}");
+                assert!(error.to_string().contains(name), "{error}");
+            }
+        }
+        assert!(selection(&strings(&["fmt"]), &strings(&["test"])).is_err());
+    }
+
+    // AC: TU-00.3
+    #[test]
+    fn pr_runs_title_and_body_and_reports_both() -> TestResult {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let dir = tempfile::tempdir()?;
+        let body = dir.path().join("body.md");
+        std::fs::write(&body, "nothing of the template")?;
+        let inputs = PrInputs {
+            title: Some("not a conventional title".to_owned()),
+            body_file: Some(body),
+            branch: Some("fix/x".to_owned()),
+        };
+        let mut out = Vec::new();
+        let verdicts = run_pr(&root, None, &inputs, &mut out)?;
+        assert_eq!(checks_of(&verdicts), [Check::PrTitle, Check::PrBody]);
+        assert!(!verdicts[0].passed(), "a bad title fails");
+        assert!(
+            !verdicts[1].passed(),
+            "the body ran after the failing title"
+        );
+        let out = String::from_utf8(out)?;
+        assert!(out.contains("FAIL  pr-title"), "{out}");
+        assert!(out.contains("FAIL  pr-body"), "{out}");
+        Ok(())
+    }
+
     /// A writer that refuses everything.
     struct Closed;
 
@@ -392,6 +605,8 @@ mod tests {
     fn an_output_that_cannot_be_written_is_an_error() {
         let result = run_checks(
             &GATE_ORDER,
+            "gate",
+            false,
             |check, _| Ok(Verdict::pass(check)),
             &mut Closed,
         );

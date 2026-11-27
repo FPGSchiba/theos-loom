@@ -38,6 +38,30 @@ pub enum Check {
 }
 
 impl Check {
+    /// Every check, in the order of the enum.
+    pub const ALL: [Check; 14] = [
+        Check::Tools,
+        Check::Fmt,
+        Check::Clippy,
+        Check::Test,
+        Check::Docs,
+        Check::Deny,
+        Check::Coverage,
+        Check::Lints,
+        Check::AcTrace,
+        Check::CommitMsg,
+        Check::PrTitle,
+        Check::PrBody,
+        Check::Approval,
+        Check::Github,
+    ];
+
+    /// The check with this name (see [`Check::name`]), or `None` when there is none.
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Check> {
+        Self::ALL.into_iter().find(|check| check.name() == name)
+    }
+
     /// The name of the check: its subcommand, its CI job and its status check on GitHub.
     #[must_use]
     pub const fn name(self) -> &'static str {
@@ -120,6 +144,8 @@ pub struct Verdict {
     pub findings: Vec<Finding>,
     /// Remarks that do not fail the check, such as a crate with no instrumented lines.
     pub notes: Vec<String>,
+    /// Why the check was not run, when it was not needed. Such a verdict passes.
+    pub not_needed: Option<String>,
 }
 
 impl Verdict {
@@ -130,6 +156,17 @@ impl Verdict {
             check,
             findings: Vec::new(),
             notes: Vec::new(),
+            not_needed: None,
+        }
+    }
+
+    /// A passing verdict for a check that was not run because its result cannot differ, with the
+    /// reason. It shows as `skip` in the table and as *not needed* in the summary.
+    #[must_use]
+    pub fn not_needed(check: Check, reason: impl Into<String>) -> Self {
+        Self {
+            not_needed: Some(reason.into()),
+            ..Self::pass(check)
         }
     }
 
@@ -140,6 +177,7 @@ impl Verdict {
             check,
             findings,
             notes: Vec::new(),
+            not_needed: None,
         }
     }
 
@@ -148,28 +186,19 @@ impl Verdict {
     pub fn passed(&self) -> bool {
         self.findings.is_empty()
     }
+
+    /// True when the check was not run because it was not needed.
+    #[must_use]
+    pub const fn is_not_needed(&self) -> bool {
+        self.not_needed.is_some()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const ALL: [Check; 14] = [
-        Check::Tools,
-        Check::Fmt,
-        Check::Clippy,
-        Check::Test,
-        Check::Docs,
-        Check::Deny,
-        Check::Coverage,
-        Check::Lints,
-        Check::AcTrace,
-        Check::CommitMsg,
-        Check::PrTitle,
-        Check::PrBody,
-        Check::Approval,
-        Check::Github,
-    ];
+    const ALL: [Check; 14] = Check::ALL;
 
     fn names(checks: &[Check]) -> Vec<&'static str> {
         checks.iter().map(|check| check.name()).collect()

@@ -73,3 +73,22 @@ fn no_line_of_an_error_can_start_a_workflow_command() -> TestResult {
     }
     Ok(())
 }
+
+// AC: TU-00.3
+#[test]
+fn only_with_skip_is_refused_by_the_command_line() -> TestResult {
+    let output = xtask(&["gate", "--only", "fmt", "--skip", "test"], |_| {})?;
+    assert_eq!(output.status.code(), Some(2));
+    Ok(())
+}
+
+// AC: TU-00.3
+#[test]
+fn a_name_that_is_not_a_gate_part_exits_with_2_and_names_it() -> TestResult {
+    let output = xtask(&["gate", "--only", "tset"], |_| {})?;
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8(output.stdout.clone())? + &String::from_utf8(output.stderr)?;
+    assert!(stderr.contains("tset"), "{stderr}");
+    assert!(!stderr.contains("==> "), "no part ran: {stderr}");
+    Ok(())
+}
