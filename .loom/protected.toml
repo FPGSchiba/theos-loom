@@ -12,18 +12,20 @@ protected = [
     ".github/**",
     "gate/**",
     "xtask/**",
+    ".loom/**",
     "deny.toml",
     "rust-toolchain.toml",
     ".cargo/**",
-    "CHANGELOG.md",
-    "release-plz.toml",
-    "cliff.toml",
-    "design/**",
+    "web/eslint.config.*",
+    "web/tsconfig*.json",
+    "web/vite.config.*",
+    ".gitleaksignore",
+    ".gitleaks.toml",
 ]
 
 # Paths that are not protected after all. These match exactly as written, including case, so a
 # path that only differs in case from an exception stays protected.
-except = ["docs/plans/**", "docs/status.md"]
+except = ["docs/plans/**", "docs/trial/**"]
 
 # A table inside a file that is protected on its own: the pull request counts as touching it
 # when the parsed table differs between the merge base and the head.

@@ -115,11 +115,13 @@ only in `docs/specs/00-umbrella.md`.
 ## 5. Protected paths — Jann approves
 
 - `CLAUDE.md`, `.claude/**`, `CONTRIBUTING.md`
-- `docs/**`, except `docs/plans/**` and `docs/status.md`
-- `.github/**`, `gate/**`, `xtask/**`, `deny.toml`, `rust-toolchain.toml`, `.cargo/**`
-- `CHANGELOG.md`, `release-plz.toml`, `cliff.toml` (so every release PR waits for Jann)
-- `design/**`
+- `docs/**`, except `docs/plans/**` and `docs/trial/**`
+- `.github/**`, `gate/**`, `xtask/**`, `.loom/**`, `deny.toml`, `rust-toolchain.toml`, `.cargo/**`
+- `web/eslint.config.*`, `web/tsconfig*.json`, `web/vite.config.*`
+- `.gitleaksignore`, `.gitleaks.toml`
 - the `[workspace.lints]` table of the root `Cargo.toml` (checked by `lints`)
+
+The list is `.loom/protected.toml`.
 
 Flow: CI adds the label `needs-jann` to such a PR and `approval` fails. Jann reviews and adds the
 label `approved`; the check re-runs and auto-merge completes. Only Jann adds `approved`.

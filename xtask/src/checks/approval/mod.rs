@@ -3,7 +3,7 @@
 //! §5; spec §5.7, decisions D2 and D3).
 //!
 //! The check runs from the base commit of the pull request, with that commit's
-//! `gate/protected-paths.toml` and `gate/repo-settings.toml` (D3), so a pull request cannot change
+//! `.loom/protected.toml` and `gate/repo-settings.toml` (D3), so a pull request cannot change
 //! the rules it is judged by. It reads the pull request's side only as git objects. The steps are:
 //!
 //! 1. [`protected::touched`]: the protected paths and tables the pull request changes. None: pass,

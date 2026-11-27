@@ -1,4 +1,4 @@
-//! Which changes of a pull request are protected: `gate/protected-paths.toml` (`docs/gate.md` §5).
+//! Which changes of a pull request are protected: `.loom/protected.toml` (`docs/gate.md` §5).
 //!
 //! A pull request is protected when it changes a path that matches `protected` and not `except`,
 //! or when a table listed under `tables` (the `[workspace.lints]` of the root `Cargo.toml`) is not
@@ -31,7 +31,7 @@ use crate::git::Git;
 use crate::{Error, Result};
 
 /// The rules file, relative to the root of the checkout the check runs from.
-pub const CONFIG: &str = "gate/protected-paths.toml";
+pub const CONFIG: &str = ".loom/protected.toml";
 
 /// A table inside a file: the file, and the dotted path of the table in it.
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize)]
@@ -62,7 +62,7 @@ struct Rules {
 }
 
 impl ProtectedPaths {
-    /// Reads `gate/protected-paths.toml` of the checkout at `root`.
+    /// Reads `.loom/protected.toml` of the checkout at `root`.
     ///
     /// # Errors
     ///
@@ -74,7 +74,7 @@ impl ProtectedPaths {
         Self::parse(&text)
     }
 
-    /// Reads the rules from the text of `gate/protected-paths.toml`.
+    /// Reads the rules from the text of `.loom/protected.toml`.
     ///
     /// # Errors
     ///
@@ -232,15 +232,16 @@ mod tests {
 
     // AC: TU-00.4
     #[test]
-    fn docs_protected_plans_and_status_not() -> Result<()> {
+    fn docs_protected_plans_and_trial_not() -> Result<()> {
         let rules = real()?;
         assert!(rules.matches("docs/gate.md"));
         assert!(rules.matches("docs/specs/00-umbrella.md"));
         assert!(!rules.matches("docs/plans/P00-x.md"));
         assert!(!rules.matches("docs/plans/deeper/P00-x.md"));
-        assert!(!rules.matches("docs/status.md"));
-        // Only `docs/status.md` is excepted, not a file of that name somewhere else in `docs`.
-        assert!(rules.matches("docs/specs/status.md"));
+        assert!(!rules.matches("docs/trial/P00-x.md"));
+        assert!(!rules.matches("docs/trial/deeper/P00-x.md"));
+        // Only `docs/trial/**` is excepted, not a file of that name somewhere else in `docs`.
+        assert!(rules.matches("docs/specs/trial/P00-x.md"));
         Ok(())
     }
 
@@ -255,18 +256,18 @@ mod tests {
             "claude.MD",
             "XTASK/src/main.rs",
             ".GitHub/workflows/ci.yml",
-            "Gate/protected-paths.toml",
+            ".Loom/protected.toml",
             "Deny.toml",
             ".Cargo/config.toml",
-            "Design/theos-ui/x.html",
+            ".GitLeaksIgnore",
         ] {
             assert!(rules.matches(path), "{path}");
         }
         // The exceptions are case-sensitive, so a case variant of one is not excepted.
         assert!(rules.matches("DOCS/plans/P00-x.md"));
         assert!(rules.matches("docs/Plans/P00-x.md"));
-        assert!(rules.matches("docs/Status.md"));
-        assert!(rules.matches("docs/STATUS.md"));
+        assert!(rules.matches("docs/Trial/P00-x.md"));
+        assert!(rules.matches("docs/TRIAL/P00-x.md"));
         Ok(())
     }
 
@@ -284,15 +285,19 @@ mod tests {
         Ok(())
     }
 
+    // AC: TU-00.4
     #[test]
     fn the_real_rules_leave_ordinary_code_alone() -> Result<()> {
         let rules = real()?;
         for path in [
-            "crates/theos-content/src/lib.rs",
+            "crates/loom-core/src/lib.rs",
+            "web/src/App.tsx",
+            "web/package.json",
             "Cargo.toml",
             "Cargo.lock",
             "README.md",
-            "editor-ui/src/main.ts",
+            "docs/plans/P01-x.md",
+            "docs/trial/P01-x.md",
             "docs",
             "xtask-notes.md",
             "CLAUDE.mdx",
@@ -300,20 +305,35 @@ mod tests {
         ] {
             assert!(!rules.matches(path), "{path}");
         }
+        Ok(())
+    }
+
+    // AC: TU-00.4
+    #[test]
+    fn the_real_rules_protect_the_gate() -> Result<()> {
+        let rules = real()?;
         for path in [
             "CLAUDE.md",
-            ".claude/skills/theos-phase/SKILL.md",
+            ".claude/skills/x/SKILL.md",
             "CONTRIBUTING.md",
+            "docs/gate.md",
+            "docs/specs/00-umbrella.md",
+            "docs/specs/phases/P01-x.md",
+            "docs/decisions/0005-x.md",
             ".github/workflows/ci.yml",
-            "gate/protected-paths.toml",
-            "xtask/src/main.rs",
+            "gate/tools.toml",
+            "xtask/src/lib.rs",
             "deny.toml",
             "rust-toolchain.toml",
             ".cargo/config.toml",
-            "CHANGELOG.md",
-            "release-plz.toml",
-            "cliff.toml",
-            "design/theos-ui/tokens.css",
+            ".loom/checks.toml",
+            ".loom/protected.toml",
+            "web/eslint.config.js",
+            "web/tsconfig.app.json",
+            "web/vite.config.ts",
+            ".gitleaksignore",
+            ".gitleaks.toml",
+            "Docs/Gate.md",
         ] {
             assert!(rules.matches(path), "{path}");
         }
@@ -374,7 +394,7 @@ mod tests {
             path: dir.path().to_path_buf(),
             source,
         };
-        fs::create_dir(dir.path().join("gate")).map_err(io)?;
+        fs::create_dir(dir.path().join(".loom")).map_err(io)?;
         fs::write(dir.path().join(CONFIG), "protected = [\"only/**\"]\n").map_err(io)?;
         let rules = ProtectedPaths::load(dir.path())?;
         assert!(rules.matches("only/x"));

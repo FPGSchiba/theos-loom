@@ -1,6 +1,6 @@
 //! What `approval` reads from git, over temporary repositories made with the `git` command line:
 //! the protected paths and tables a pull request touches, and the fingerprint of its changes.
-//! The last test keeps `gate/protected-paths.toml` and `docs/gate.md` §5 saying the same.
+//! The last test keeps `.loom/protected.toml` and `docs/gate.md` §5 saying the same.
 
 use std::collections::BTreeSet;
 use std::error::Error;
@@ -121,7 +121,7 @@ impl Repo {
     }
 }
 
-/// The root of this repository, whose `gate/protected-paths.toml` is the real rule list.
+/// The root of this repository, whose `.loom/protected.toml` is the real rule list.
 fn repo_root() -> TestResult<&'static Path> {
     Ok(Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -213,7 +213,7 @@ fn changes_outside_the_protected_paths_are_not_protected() -> TestResult {
     repo.git(&["mv", "notes/keep.md", "notes/kept.md"])?;
     repo.write("src/lib.rs", "// two\n")?;
     repo.write("docs/plans/P00-x.md", "a plan\n")?;
-    repo.write("docs/status.md", "the status\n")?;
+    repo.write("docs/trial/P00-y.md", "the status\n")?;
     repo.write("crates/a/src/lib.rs", "// new\n")?;
     let head = repo.commit("feat: change code")?;
     assert_eq!(repo.touched(&base, &head)?, Vec::<String>::new());
@@ -573,6 +573,7 @@ fn strings(table: &toml::Table, key: &str) -> TestResult<Vec<String>> {
         .collect()
 }
 
+// AC: TU-00.4
 #[test]
 fn protected_paths_toml_matches_gate_md_section_5() -> TestResult {
     let root = repo_root()?;
@@ -585,7 +586,7 @@ fn protected_paths_toml_matches_gate_md_section_5() -> TestResult {
     );
 
     let config: toml::Table =
-        fs::read_to_string(root.join("gate").join("protected-paths.toml"))?.parse()?;
+        fs::read_to_string(root.join(".loom").join("protected.toml"))?.parse()?;
     let protected = strings(&config, "protected")?;
     let except = strings(&config, "except")?;
     assert!(
@@ -595,7 +596,7 @@ fn protected_paths_toml_matches_gate_md_section_5() -> TestResult {
     for pattern in protected.iter().chain(&except) {
         assert!(
             in_gate_md.contains(pattern),
-            "`{pattern}` is in gate/protected-paths.toml but not backticked in docs/gate.md §5"
+            "`{pattern}` is in .loom/protected.toml but not backticked in docs/gate.md §5"
         );
     }
 

@@ -138,7 +138,7 @@ enum Command {
     ///
     /// Only runs under GitHub Actions for a pull request, with `GH_TOKEN` and
     /// `GITHUB_REPOSITORY` set: it reads and changes the labels and comments of the pull request.
-    /// Run from the base commit, it reads `gate/protected-paths.toml` there.
+    /// Run from the base commit, it reads `.loom/protected.toml` there.
     Approval,
     /// Run every check that needs no pull request, in order, and print one verdict table.
     ///
