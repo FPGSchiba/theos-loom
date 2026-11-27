@@ -23,3 +23,7 @@ its own, and every phase is measured (`docs/trial/`).
 
 Open Claude Code in this repo and say `next phase` (or `refine P00`). The skill tells you when to
 start a fresh session for the next step.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
