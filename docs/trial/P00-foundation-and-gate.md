@@ -27,11 +27,16 @@ Questions to the decider (Jann):
 
 | | |
 |---|---|
-| Tokens (in / out) | |
-| Cost (API-equivalent) | |
-| Wall time | |
-| Plan gaps raised | |
-| Plan changes allowed | |
+| Tokens (in / out) | From `/cost`: Opus 5.5 524 in + 70.4M cache read + 470.3k cache write / 189.9k out; Sonnet 5.5 898 in + 40.0M cache read + 2.4M cache write / 416.1k out; Haiku 5.5 220.5k in + 1.0M cache read + 308.3k cache write / 34.7k out |
+| Cost (API-equivalent) | $35.90 (Opus $21.65, Sonnet $14.17, Haiku $0.09) |
+| Wall time | 1 h 59 min 2 s (API 1 h 23 min 34 s); commits from 12:29 to 14:11 |
+| Plan gaps raised | At least 4: the four below. Gaps raised and refused would not show in git, and the session's own record of them wasn't written. |
+| Plan changes allowed | 4, in `5cd072c` and `ae43a7c`: removing `BranchKind::Release` moves from Task 3 to Task 5, so xtask compiles after every task; a list a document mirrors changes in the same task; the xtask cache key also hashes the root `Cargo.toml` (P50 missed it); the commit subjects the plan gave Tasks 6 and 14 started upper-case, which `commit-msg` refuses. |
+
+Cold CI run on P00's pull request (`7547d98`, 27 Nov, from the start of each job to its end):
+`gate` 2:12, `test` 3:16, `coverage` 3:21, `ui` 1:47, `pr` 1:25, `approval` 1:32 (red, as designed:
+the PR touches protected paths and has no `approved` label yet). Timeouts were set from these in
+`7d66703`. The warm-cache budgets are measured on P01's PR (R-l).
 
 ## Step 3: Review
 
