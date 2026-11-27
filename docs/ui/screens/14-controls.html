@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>14 · Controls — Loom cockpit reference</title>
+<!--
+  Reference screen 14 of the Loom cockpit, exported from the design canvas on 2026-11-27.
+  Built only from web/design/theos-ui (tokens.css, components/bundle.css) plus the page styles below.
+  Theme: change data-theme on the first element to "grid-light" to see Grid Light.
+  Sample content is illustrative; docs/specs/00-umbrella.md wins where they disagree.
+-->
+<link rel="stylesheet" href="../../../web/design/theos-ui/tokens.css">
+<link rel="stylesheet" href="../../../web/design/theos-ui/components/bundle.css">
+<style>
+body{margin:0}
+a{color:inherit}
+.lm-rail a{text-decoration:none}
+.lm-h{margin:0;font:700 10px/14px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;color:var(--textDim)}
+.lm-model{padding:0 5px;border:1px solid var(--border);color:var(--textDim);font:500 9.5px/14px var(--font-mono)}
+.lm-table{width:100%;border-collapse:collapse;font-size:12px;line-height:17px}
+.lm-table th{position:sticky;top:0;z-index:1;text-align:left;padding:8px 10px;background:var(--panel2);border-bottom:1px solid var(--border);font:700 9.5px/12px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;color:var(--textDim);white-space:nowrap}
+.lm-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.lm-num{font-family:var(--font-mono);font-size:11px;text-align:right;white-space:nowrap}
+.lm-row{cursor:default}
+.lm-row:hover td{background:color-mix(in srgb,var(--panel2) 60%,transparent)}
+.lm-row.is-sel td{background:color-mix(in srgb,var(--sig-attention) 8%,transparent)}
+.lm-row.is-sel td:first-child{box-shadow:inset 2px 0 0 var(--sig-attention)}
+.lm-rowbtn{padding:0;border:0;background:none;color:var(--text);font:600 12px/17px var(--font-ui);text-align:left;cursor:default}
+.lm-rowbtn:focus-visible{outline:1px solid var(--sig-attention);outline-offset:2px}
+.lm-tag{display:inline-flex;gap:5px;align-items:center;padding:1px 6px;border:1px solid var(--border);background:var(--panel2);color:var(--textDim);font:500 9.5px/13px var(--font-mono);white-space:nowrap}
+.lm-kind{display:inline-block;min-width:44px;padding:0 4px;border:1px solid var(--border);font:700 9px/14px var(--font-mono);letter-spacing:.6px;text-align:center;color:var(--textDim)}
+.lm-kind.is-run{color:var(--sig-info);border-color:color-mix(in srgb,var(--sig-info) 45%,transparent)}
+.lm-kind.is-ai{color:var(--sig-ai);border-color:color-mix(in srgb,var(--sig-ai) 45%,transparent)}
+.lm-kind.is-edit{color:var(--text);border-color:var(--borderHi)}
+.lm-bar{height:8px;background:var(--bg);border:1px solid var(--border);position:relative}
+.lm-bar>span{position:absolute;inset:0 auto 0 0;background:var(--textDim)}
+.lm-tile{flex:1 1 0;padding:12px 14px;background:var(--panel2);border:1px solid var(--border);display:flex;flex-direction:column;gap:4px;min-width:0}
+.lm-tile b{font:400 22px/28px var(--font-mono);color:var(--text)}
+.lm-card{display:flex;flex-direction:column;gap:6px;padding:8px 9px;background:var(--panel);border:1px solid var(--border);text-decoration:none;color:var(--text)}
+.lm-card:hover{border-color:var(--borderHi)}
+textarea.lm-ta{width:100%;box-sizing:border-box;min-height:64px;resize:vertical;padding:8px 10px;background:var(--bg);color:var(--text);border:1px solid var(--border);font:400 12px/18px var(--font-ui)}
+textarea.lm-ta:focus{outline:1px solid var(--sig-attention);outline-offset:-1px}
+.lm-rowc{display:grid;grid-template-columns:minmax(0,1fr) 200px 150px;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border)}
+.lm-q{display:grid;grid-template-columns:22px 26px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 14px;border-bottom:1px solid var(--border)}
+.lm-handle{color:var(--textMute);font:400 12px/1 var(--font-mono);cursor:default}
+.lm-iconbtn{width:24px;height:22px;padding:0;border:1px solid var(--border);background:transparent;color:var(--textDim);font:400 11px/1 var(--font-mono);cursor:default}
+.lm-thr{display:grid;grid-template-columns:70px minmax(0,1fr) 150px;gap:12px;align-items:center;padding:7px 14px;border-bottom:1px solid var(--border);font-size:11.5px}
+.lm-thr.is-cur{background:color-mix(in srgb,var(--sig-attention) 8%,transparent);box-shadow:inset 2px 0 0 var(--sig-attention)}
+.lm-split{display:flex;height:10px;border:1px solid var(--border)}
+.lm-split>span:first-child{background:var(--textDim)}
+.lm-split>span:last-child{background:transparent}
+input[type=range].lm-range{width:100%;accent-color:var(--sig-attention)}
+.lm-not{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border)}
+.lm-switch{display:inline-flex;align-items:center;gap:7px;padding:0;border:0;background:none;color:var(--text);font:400 11px/14px var(--font-ui);cursor:default}
+.lm-switch .tu-toggle__track{pointer-events:none}
+</style>
+</head>
+<body>
+<div data-theme="grid-noir" style="width: 1920px; height: 1080px; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 12px; line-height: 16px">
+<header class="tu-titlebar">
+<span class="tu-titlebar__brand"><span class="tu-mark"></span>LOOM</span>
+<span class="tu-titlebar__sep">▸</span><span>Theos</span><span class="tu-titlebar__sep">▸</span><span class="tu-titlebar__preset">Controls</span>
+<span class="tu-spacer"></span>
+<span class="tu-statuspip"><span class="tu-pip tu-pip--glow is-info"></span>3 runs</span>
+<span class="tu-statuspip"><span class="tu-pip is-approve"></span>night window · until 07:00</span>
+<span class="tu-statuspip"><span class="tu-pip is-approve"></span>main green · 4 repos</span>
+</header>
+<div style="flex: 1; display: flex; min-height: 0">
+<nav class="tu-rail lm-rail" aria-label="Sections">
+<a href="Main.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">▦</span><span class="tu-rail__label">Board</span></a>
+<a href="Activity.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">≋</span><span class="tu-rail__label">Activity</span></a>
+<a href="Inbox.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">◴</span><span class="tu-rail__label">Inbox</span><span class="tu-rail__badge">2</span></a>
+<a href="Review.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">✓</span><span class="tu-rail__label">Review</span><span class="tu-rail__badge is-neutral">5</span></a>
+<a href="Spend.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">¤</span><span class="tu-rail__label">Spend</span></a>
+<span class="tu-rail__spacer"></span>
+<a href="Controls.dc.html" class="tu-rail__item is-active"><span class="tu-rail__glyph">⚙</span><span class="tu-rail__label">Controls</span></a>
+</nav>
+<main style="flex: 1; min-width: 0; min-height: 0; padding: 4px; display: flex; flex-direction: column; gap: 4px">
+
+<div style="flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px; align-content: start">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<section class="tu-window">
+<div class="tu-tabbar"><div class="tu-tabbar__title">Running and paused</div><div class="tu-tabbar__ctrls"><span>⋯</span></div></div>
+<div class="lm-rowc" style="background: var(--panel2)"><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 700">Everything</span><span class="tu-mono tu-dim" style="font-size: 10px">Pausing lets running steps finish; nothing new starts.</span></span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running</span><button type="button" class="tu-btn tu-btn--secondary">Pause all</button></div>
+
+<div class="lm-rowc"><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">Loom</span><span class="tu-mono tu-dim" style="font-size: 10px">theos-loom · 2 running · 7 stories</span></span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running</span><button type="button" class="tu-btn tu-btn--secondary tu-btn--sm">Pause</button></div>
+
+<div class="lm-rowc"><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">Editor</span><span class="tu-mono tu-dim" style="font-size: 10px">theos-editor · 1 running · 8 stories</span></span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running</span><button type="button" class="tu-btn tu-btn--secondary tu-btn--sm">Pause</button></div>
+
+<div class="lm-rowc"><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">Engine</span><span class="tu-mono tu-dim" style="font-size: 10px">theos-engine · until 18:00 · set by you</span></span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-warn"></span>paused</span><button type="button" class="tu-btn tu-btn--secondary tu-btn--sm">Resume</button></div>
+
+<div class="lm-rowc"><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">Game</span><span class="tu-mono tu-dim" style="font-size: 10px">tower-of-theos · logic only · no stories</span></span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-neutral"></span>idle</span><button type="button" class="tu-btn tu-btn--secondary tu-btn--sm">Pause</button></div>
+
+</section>
+<section class="tu-window">
+<div class="tu-tabbar"><div class="tu-tabbar__title">Ready queue order</div><div class="tu-tabbar__ctrls"><span>⋯</span></div></div>
+<div class="tu-window__bar"><span class="tu-label tu-label--xs">Component</span><span class="tu-seg"><button type="button" class="tu-seg__opt" aria-pressed="false">Loom</button><button type="button" class="tu-seg__opt is-active" aria-pressed="true">Editor</button><button type="button" class="tu-seg__opt" aria-pressed="false">Engine</button></span><span class="tu-spacer"></span><span class="tu-mono tu-dim" style="font-size: 10px">top starts first · same as dragging on the board</span></div>
+
+<div class="lm-q"><span class="lm-handle" aria-hidden="true">⋮⋮</span><span class="tu-mono tu-dim" style="font-size: 10.5px">01</span><span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span style="font-weight: 600">Band blending at floor edges</span><span class="tu-mono tu-dim" style="font-size: 10px">Map kinds · ready</span></span><span style="display: flex; gap: 4px"><button type="button" class="lm-iconbtn" aria-label="Move up">▲</button><button type="button" class="lm-iconbtn" aria-label="Move down">▼</button></span></div>
+
+<div class="lm-q"><span class="lm-handle" aria-hidden="true">⋮⋮</span><span class="tu-mono tu-dim" style="font-size: 10.5px">02</span><span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span style="font-weight: 600">Cavern and tree maps</span><span class="tu-mono tu-dim" style="font-size: 10px">Map kinds · slicing</span></span><span style="display: flex; gap: 4px"><button type="button" class="lm-iconbtn" aria-label="Move up">▲</button><button type="button" class="lm-iconbtn" aria-label="Move down">▼</button></span></div>
+
+<div class="lm-q"><span class="lm-handle" aria-hidden="true">⋮⋮</span><span class="tu-mono tu-dim" style="font-size: 10.5px">03</span><span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span style="font-weight: 600">Guardian arenas</span><span class="tu-mono tu-dim" style="font-size: 10px">Map places · draft</span></span><span style="display: flex; gap: 4px"><button type="button" class="lm-iconbtn" aria-label="Move up">▲</button><button type="button" class="lm-iconbtn" aria-label="Move down">▼</button></span></div>
+
+<div class="lm-q"><span class="lm-handle" aria-hidden="true">⋮⋮</span><span class="tu-mono tu-dim" style="font-size: 10.5px">04</span><span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span style="font-weight: 600">Codex search</span><span class="tu-mono tu-dim" style="font-size: 10px">Codex · draft</span></span><span style="display: flex; gap: 4px"><button type="button" class="lm-iconbtn" aria-label="Move up">▲</button><button type="button" class="lm-iconbtn" aria-label="Move down">▼</button></span></div>
+
+</section>
+<section class="tu-window">
+<div class="tu-tabbar"><div class="tu-tabbar__title">Notifications</div><div class="tu-tabbar__ctrls"><span>⋯</span></div></div>
+<div class="lm-not"><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">ntfy topic</span><span class="tu-mono tu-dim" style="font-size: 10px">self-hosted · ntfy.home.lan/loom-jann</span></span><button type="button" class="tu-btn tu-btn--secondary tu-btn--sm">Send a test</button></div>
+
+<div class="lm-not"><span>A new question waits for me</span><button type="button" class="lm-switch tu-toggle is-on" role="switch" aria-checked="true"><span class="tu-toggle__track"></span>On</button></div>
+
+<div class="lm-not"><span>A main branch turned red</span><button type="button" class="lm-switch tu-toggle is-on" role="switch" aria-checked="true"><span class="tu-toggle__track"></span>On</button></div>
+
+<div class="lm-not"><span>A component paused itself</span><button type="button" class="lm-switch tu-toggle is-on" role="switch" aria-checked="true"><span class="tu-toggle__track"></span>On</button></div>
+
+<div class="lm-not"><span>The week budget passes 80 %</span><button type="button" class="lm-switch tu-toggle is-on" role="switch" aria-checked="true"><span class="tu-toggle__track"></span>On</button></div>
+
+<div class="lm-not"><span>Every merge</span><button type="button" class="lm-switch tu-toggle" role="switch" aria-checked="false"><span class="tu-toggle__track"></span>Off</button></div>
+
+</section>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<section class="tu-window">
+<div class="tu-tabbar"><div class="tu-tabbar__title">Budget windows</div><div class="tu-tabbar__ctrls"><span>⋯</span></div></div>
+<table class="lm-table">
+<thead><tr><th scope="col">Window</th><th scope="col">When</th><th scope="col" style="text-align: right">Parallel runs</th><th scope="col" style="text-align: right">Share</th><th scope="col"></th></tr></thead>
+<tbody>
+<tr><td style="font-weight: 600">Night</td><td class="tu-mono" style="font-size: 11px">every day 22:00 – 07:00</td><td class="lm-num">4</td><td class="lm-num">no cap</td><td style="text-align: right"><button type="button" class="tu-btn tu-btn--ghost tu-btn--sm">Edit</button></td></tr>
+<tr><td style="font-weight: 600">Day</td><td class="tu-mono" style="font-size: 11px">every day 07:00 – 22:00</td><td class="lm-num">1</td><td class="lm-num">30 %</td><td style="text-align: right"><button type="button" class="tu-btn tu-btn--ghost tu-btn--sm">Edit</button></td></tr>
+<tr><td style="font-weight: 600">Week cap</td><td class="tu-mono" style="font-size: 11px">Mon 00:00 – Sun 24:00</td><td class="lm-num">—</td><td class="lm-num">50M tokens</td><td style="text-align: right"><button type="button" class="tu-btn tu-btn--ghost tu-btn--sm">Edit</button></td></tr>
+</tbody>
+</table>
+<div style="padding: 10px 14px; display: flex; gap: 8px; align-items: center"><button type="button" class="tu-btn tu-btn--secondary tu-btn--sm">+ Add window</button><span class="tu-dim" style="font-size: 11px">The share leaves room for your own Claude use during the day. Loom also backs off when the plan’s rate limit hits.</span></div>
+</section>
+<section class="tu-window">
+<div class="tu-tabbar"><div class="tu-tabbar__title">Decider threshold <span class="tu-mono tu-dim" style="font-size: 10px; font-weight: 400; letter-spacing: 0">Theos</span></div><div class="tu-tabbar__ctrls"><span>⋯</span></div></div>
+<div style="padding: 14px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border)">
+<span style="display: flex; gap: 12px; align-items: baseline"><label for="thr" class="lm-h">Decide alone at or above</label><span style="font: 400 22px/28px var(--font-mono)">0.85</span></span>
+<input id="thr" type="range" class="lm-range" min="70" max="95" step="5" value="85">
+<span class="tu-dim" style="font-size: 11.5px">Below the threshold, or when no directive, vision line or precedent supports a choice, the decider asks you. Loom never changes this number itself.</span>
+</div>
+<div style="padding: 10px 14px 6px" class="lm-h">What the last 30 days would have looked like · 214 questions</div>
+
+<div class="lm-thr"><span class="tu-mono" style="font-weight: 600">0.70</span><span class="lm-split" aria-hidden="true"><span style="width: 89.3%"></span><span style="flex: 1"></span></span><span class="tu-mono tu-dim" style="font-size: 10.5px">191 alone · 23 to you</span></div>
+
+<div class="lm-thr"><span class="tu-mono" style="font-weight: 600">0.75</span><span class="lm-split" aria-hidden="true"><span style="width: 85.0%"></span><span style="flex: 1"></span></span><span class="tu-mono tu-dim" style="font-size: 10.5px">182 alone · 32 to you</span></div>
+
+<div class="lm-thr"><span class="tu-mono" style="font-weight: 600">0.80</span><span class="lm-split" aria-hidden="true"><span style="width: 78.5%"></span><span style="flex: 1"></span></span><span class="tu-mono tu-dim" style="font-size: 10.5px">168 alone · 46 to you</span></div>
+
+<div class="lm-thr is-cur"><span class="tu-mono" style="font-weight: 600">0.85</span><span class="lm-split" aria-hidden="true"><span style="width: 70.6%"></span><span style="flex: 1"></span></span><span class="tu-mono tu-dim" style="font-size: 10.5px">151 alone · 63 to you</span></div>
+
+<div class="lm-thr"><span class="tu-mono" style="font-weight: 600">0.90</span><span class="lm-split" aria-hidden="true"><span style="width: 54.7%"></span><span style="flex: 1"></span></span><span class="tu-mono tu-dim" style="font-size: 10.5px">117 alone · 97 to you</span></div>
+
+<div class="lm-thr"><span class="tu-mono" style="font-weight: 600">0.95</span><span class="lm-split" aria-hidden="true"><span style="width: 29.9%"></span><span style="flex: 1"></span></span><span class="tu-mono tu-dim" style="font-size: 10.5px">64 alone · 150 to you</span></div>
+
+<div style="padding: 10px 14px; display: flex; gap: 8px; align-items: center"><button type="button" class="tu-btn tu-btn--primary" disabled>Save threshold</button><span class="tu-dim" style="font-size: 11px">Saved as a commit to the planning repo, like every direction change.</span></div>
+</section>
+</div>
+</div>
+
+</main>
+</div>
+<footer class="tu-statusbar">
+<span class="tu-statusbar__brand">LOOM</span>
+<span>decider · strict 0.85</span>
+<span style="display: inline-flex; gap: 6px; align-items: center">week budget <span class="tu-meter is-info" style="width: 60px"><span class="tu-meter__fill" style="width: 61%"></span></span> 61%</span>
+<span>rate limit ok</span>
+<span class="tu-spacer"></span>
+<span>planning repo synced 2 min ago</span>
+</footer>
+</div>
+</body>
+</html>

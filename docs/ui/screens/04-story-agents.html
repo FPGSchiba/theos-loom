@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>04 · Story page — in review, agent actions open — Loom cockpit reference</title>
+<!--
+  Reference screen 04 of the Loom cockpit, exported from the design canvas on 2026-11-27.
+  Built only from web/design/theos-ui (tokens.css, components/bundle.css) plus the page styles below.
+  Theme: change data-theme on the first element to "grid-light" to see Grid Light.
+  Sample content is illustrative; docs/specs/00-umbrella.md wins where they disagree.
+-->
+<link rel="stylesheet" href="../../../web/design/theos-ui/tokens.css">
+<link rel="stylesheet" href="../../../web/design/theos-ui/components/bundle.css">
+<style>
+body{margin:0}
+body{margin:0}
+a{color:inherit}
+.lm-rail a{text-decoration:none}
+.lm-step{display:grid;grid-template-columns:64px 18px minmax(0,1fr);column-gap:10px}
+.lm-dot{width:9px;height:9px;margin:4px auto 0;border:1px solid var(--borderHi);background:var(--panel)}
+.lm-dot.is-done{background:var(--sig-approve);border-color:var(--sig-approve)}
+.lm-dot.is-run{background:var(--sig-info);border-color:var(--sig-info)}
+.lm-qa{display:flex;flex-direction:column;gap:6px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border)}
+.lm-qa.is-hot{border-color:var(--sig-attention);box-shadow:var(--shadow-hot)}
+.lm-ac{display:grid;grid-template-columns:18px minmax(0,1fr);gap:8px;padding:9px 12px;border-bottom:1px dashed var(--border)}
+.lm-ac:last-child{border-bottom:0}
+.lm-tree{border:1px solid var(--border);background:var(--panel)}
+.lm-tree__toggle{display:flex;gap:8px;align-items:center;width:100%;padding:6px 10px;background:var(--panel2);border:0;border-bottom:1px solid var(--border);color:var(--textDim);font:700 10px/14px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;cursor:default;text-align:left}
+.lm-node{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:7px 10px;border-bottom:1px solid var(--border)}
+.lm-node:last-child{border-bottom:0}
+.lm-node.is-sub{padding-left:30px;position:relative}
+.lm-node.is-sub::before{content:"";position:absolute;left:14px;top:0;bottom:0;border-left:1px dotted var(--borderHi)}
+.lm-node.is-sub::after{content:"";position:absolute;left:14px;top:15px;width:10px;border-top:1px dotted var(--borderHi)}
+.lm-node.is-live{background:color-mix(in srgb,var(--sig-info) 6%,transparent)}
+.lm-model{padding:0 5px;border:1px solid var(--border);color:var(--textDim);font:500 9.5px/14px var(--font-mono)}
+.lm-table{width:100%;border-collapse:collapse;font-size:12px;line-height:17px}
+.lm-table th{text-align:left;padding:8px 10px;background:var(--panel2);border-bottom:1px solid var(--border);font:700 9.5px/12px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;color:var(--textDim);white-space:nowrap}
+.lm-table td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.lm-num{font-family:var(--font-mono);font-size:11px;text-align:right;white-space:nowrap}
+.lm-check{display:grid;grid-template-columns:20px 120px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border)}
+.lm-bar{height:8px;background:var(--bg);border:1px solid var(--border);position:relative}
+.lm-bar>span{position:absolute;inset:0 auto 0 0;background:var(--sig-info)}
+.lm-doc h3{margin:18px 0 6px;font:600 15px/22px var(--font-ui);color:var(--text)}
+.lm-doc p{margin:0 0 8px}
+.lm-act{display:grid;grid-template-columns:64px 58px minmax(0,1fr);gap:8px;padding:6px 14px;border-bottom:1px solid var(--border);align-items:baseline}
+.lm-kind{display:inline-block;min-width:44px;padding:0 4px;border:1px solid var(--border);font:700 9px/14px var(--font-mono);letter-spacing:.6px;text-align:center;color:var(--textDim)}
+.lm-kind.is-run{color:var(--sig-info);border-color:color-mix(in srgb,var(--sig-info) 45%,transparent)}
+.lm-kind.is-ai{color:var(--sig-ai);border-color:color-mix(in srgb,var(--sig-ai) 45%,transparent)}
+.lm-kind.is-edit{color:var(--text);border-color:var(--borderHi)}
+.lm-kind.is-agent{color:var(--text);background:var(--panel2)}
+.lm-log td{padding:5px 10px}
+.lm-linkbtn{padding:0;border:0;background:none;color:var(--text);font:600 11.5px/16px var(--font-ui);text-decoration:underline;text-decoration-color:var(--borderHi);text-underline-offset:3px;cursor:default}
+.lm-x{width:22px;border:0;background:none;color:var(--textDim);font:400 12px/1 var(--font-mono);cursor:default}
+</style>
+</head>
+<body>
+<div style="width: 1920px; height: 1080px; overflow: hidden; background: var(--bg)">
+
+
+<div data-theme="grid-noir" style="width: 1920px; height: 1080px; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 12px; line-height: 16px">
+
+<header class="tu-titlebar">
+<span class="tu-titlebar__brand"><span class="tu-mark"></span>LOOM</span>
+<span class="tu-titlebar__sep">▸</span><span>Theos</span>
+<span class="tu-titlebar__sep">▸</span><span>Loom</span>
+<span class="tu-titlebar__sep">▸</span><span>Foundation</span>
+<span class="tu-titlebar__sep">▸</span><span class="tu-titlebar__preset">Store and state machines</span>
+<span class="tu-spacer"></span>
+<span class="tu-statuspip"><span class="tu-pip tu-pip--glow is-info"></span>3 runs</span>
+<span class="tu-statuspip"><span class="tu-pip is-approve"></span>night window · until 07:00</span>
+</header>
+
+<div style="flex: 1; display: flex; min-height: 0">
+<nav class="tu-rail lm-rail" aria-label="Sections">
+<a href="Main.dc.html" class="tu-rail__item is-active"><span class="tu-rail__glyph">▦</span><span class="tu-rail__label">Board</span></a>
+<a href="Activity.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">≋</span><span class="tu-rail__label">Activity</span></a>
+<a href="Inbox.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">◴</span><span class="tu-rail__label">Inbox</span><span class="tu-rail__badge">2</span></a>
+<a href="Review.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">✓</span><span class="tu-rail__label">Review</span><span class="tu-rail__badge is-neutral">5</span></a>
+<a href="Spend.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">¤</span><span class="tu-rail__label">Spend</span></a>
+<span class="tu-rail__spacer"></span>
+<a href="Controls.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">⚙</span><span class="tu-rail__label">Controls</span></a>
+</nav>
+
+<main style="flex: 1; min-width: 0; min-height: 0; padding: 4px; display: flex; flex-direction: column; gap: 4px">
+
+<section class="tu-window">
+<div style="padding: 18px 24px 16px; display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end">
+<div style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+<a href="Main.dc.html" class="tu-mono tu-dim" style="font-size: 10px; text-decoration: none">◂ Board</a>
+<span class="tu-mono tu-mute" style="font-size: 10px">·</span>
+<a href="Epic.dc.html" class="tu-mono tu-dim" style="font-size: 10px">story in Foundation · Loom</a>
+</div>
+<h1 style="margin: 0; font: 600 26px/32px var(--font-ui); letter-spacing: -0.3px">Store and state machines</h1>
+<div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap">
+<span class="tu-chip is-info">In review</span>
+
+<span class="tu-statuspip" style="color: var(--sig-info)"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>review round 2 · 1 agent reading the branch</span>
+</div>
+</div>
+<div style="display: flex; gap: 6px; flex-wrap: wrap">
+<button type="button" class="tu-btn tu-btn--secondary">Pause story</button>
+<button type="button" class="tu-btn tu-btn--secondary">Re-run step</button>
+
+<button type="button" class="tu-btn tu-btn--accent">Pull request</button>
+</div>
+</div>
+</section>
+
+<div style="flex: 1; display: flex; gap: 4px; min-height: 0">
+
+<section class="tu-window" style="flex: 1 1 0; min-width: 0">
+<div class="tu-tabbar"><div class="tu-tabbar__tabs" role="tablist">
+<button type="button" role="tab" aria-selected="true" class="tu-tab is-active">Activity</button><button type="button" role="tab" aria-selected="false" class="tu-tab">Decisions<span class="tu-badge is-neutral">5</span></button><button type="button" role="tab" aria-selected="false" class="tu-tab">PR and checks</button><button type="button" role="tab" aria-selected="false" class="tu-tab">Spend</button><button type="button" role="tab" aria-selected="false" class="tu-tab">Source</button>
+</div><div class="tu-tabbar__ctrls"><span>⋯</span></div></div>
+
+
+<div class="tu-window__bar">
+<span class="tu-seg"><button type="button" class="tu-seg__opt is-active" aria-pressed="true">By step</button><button type="button" class="tu-seg__opt" aria-pressed="false">Full log</button></span>
+<span class="tu-mono tu-dim" style="font-size: 10px">Each run is a fresh session; its agents sit one level below it. Every agent that writes has its own worktree.</span>
+<span class="tu-spacer"></span>
+<span class="tu-mono tu-dim" style="font-size: 10px">kit 0.3.1 · live</span>
+</div>
+
+<div class="tu-window__body" style="padding: 18px 20px 24px; gap: 18px">
+
+<div class="lm-step">
+<span class="tu-mono tu-dim" style="font-size: 10px">Mon 09:10</span>
+<span class="lm-dot is-done"></span>
+<div style="display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap"><span style="font-weight: 700">Slicing</span><span class="tu-chip tu-chip--ghost is-approve">Done</span><span class="tu-mono tu-dim" style="font-size: 10px">9 min · 120k tokens</span></div>
+<span class="tu-dim">Kept as one story: the state machines, the event log and the mirror ship together.</span>
+
+
+<div class="lm-tree">
+<button type="button" class="lm-tree__toggle" aria-expanded="false"><span class="tu-mono">▸</span>1 run</button>
+
+</div>
+
+
+
+</div>
+</div>
+
+<div class="lm-step">
+<span class="tu-mono tu-dim" style="font-size: 10px">Mon 09:22</span>
+<span class="lm-dot is-done"></span>
+<div style="display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap"><span style="font-weight: 700">Refinement</span><span class="tu-chip tu-chip--ghost is-approve">Done</span><span class="tu-mono tu-dim" style="font-size: 10px">41 min · 2 questions · 410k tokens</span></div>
+<span class="tu-dim">Design and plan approved by the decider; both questions had a directive behind them.</span>
+
+
+<div class="lm-tree">
+<button type="button" class="lm-tree__toggle" aria-expanded="false"><span class="tu-mono">▸</span>1 run · 1 agent</button>
+
+</div>
+
+
+
+<div class="lm-qa">
+<div style="display: flex; gap: 8px; align-items: center"><span class="tu-label tu-label--xs">Builder check asked</span><span class="tu-mono tu-mute" style="font-size: 10px">09:44</span></div>
+<span style="font-weight: 600">One events table for epics and stories, or one per kind?</span>
+<div style="display: flex; gap: 8px; align-items: center; margin-top: 4px; flex-wrap: wrap"><span class="tu-ai">AI</span><span style="font-weight: 700; color: var(--sig-ai)">Decider ruled</span><span class="tu-mono tu-dim" style="font-size: 10px">confidence 0.93</span></div>
+
+<span>One table with a kind column; rebuilding state reads one ordered stream.</span>
+<span class="tu-mono tu-dim" style="font-size: 10px">sources · engineering directive: “one source for every fact”</span>
+
+</div>
+
+<div class="lm-qa">
+<div style="display: flex; gap: 8px; align-items: center"><span class="tu-label tu-label--xs">Builder check asked</span><span class="tu-mono tu-mute" style="font-size: 10px">09:47</span></div>
+<span style="font-weight: 600">Commit the mirror on every transition or batch it?</span>
+<div style="display: flex; gap: 8px; align-items: center; margin-top: 4px; flex-wrap: wrap"><span class="tu-ai">AI</span><span style="font-weight: 700; color: var(--sig-ai)">Decider ruled</span><span class="tu-mono tu-dim" style="font-size: 10px">confidence 0.97</span></div>
+
+<span>Batch at most once a minute, as the acceptance criteria say.</span>
+<span class="tu-mono tu-dim" style="font-size: 10px">sources · acceptance criteria</span>
+
+</div>
+
+</div>
+</div>
+
+<div class="lm-step">
+<span class="tu-mono tu-dim" style="font-size: 10px">Mon 10:05</span>
+<span class="lm-dot is-done"></span>
+<div style="display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap"><span style="font-weight: 700">Implementation</span><span class="tu-chip tu-chip--ghost is-approve">Done</span><span class="tu-mono tu-dim" style="font-size: 10px">3 h 35 min · 4 tasks · 1.05M tokens</span></div>
+<span class="tu-dim">A fresh session ran the plan task by task. Implementers worked one after another in the story’s worktree; each task was checked by a task reviewer before the next began.</span>
+
+
+<div class="lm-tree">
+<button type="button" class="lm-tree__toggle" aria-expanded="false"><span class="tu-mono">▸</span>1 run · 8 agents</button>
+
+</div>
+
+
+
+</div>
+</div>
+
+<div class="lm-step">
+<span class="tu-mono tu-dim" style="font-size: 10px">Mon 13:41</span>
+<span class="lm-dot is-run"></span>
+<div style="display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap"><span style="font-weight: 700">Review loop</span><span class="tu-chip is-info">Round 2</span><span class="tu-mono tu-dim" style="font-size: 10px">58 min so far · 336k tokens</span></div>
+<span class="tu-dim">Fresh whole-branch reviewers. Each round gets every earlier finding and how it was resolved; a round with no findings ends the loop.</span>
+
+
+<div class="lm-tree">
+<button type="button" class="lm-tree__toggle" aria-expanded="true"><span class="tu-mono">▾</span>1 run · 3 agents</button>
+
+
+<div class="lm-node is-live">
+<span style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0"><span style="font-weight: 600">Review session</span><span class="lm-model">opus</span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running · waits for round 2</span></span>
+<span style="display: flex; gap: 10px; align-items: center; justify-content: flex-end"><span class="tu-mono tu-dim" style="font-size: 10px; white-space: nowrap">58m · 41k</span><button type="button" class="tu-btn tu-btn--sm tu-btn--secondary" aria-pressed="false">Actions 7 ▸</button></span>
+<span class="tu-mono tu-dim" style="font-size: 10px; grid-column: 1 / -1">worktree .worktrees/phase-store</span>
+
+<span class="tu-mono" style="grid-column: 1 / -1; font-size: 10px; color: var(--textDim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">last · 14:29:05 · agent Round 2 · reviewer started · fresh</span>
+</div>
+
+<div class="lm-node is-sub">
+<span style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0"><span style="font-weight: 600">Round 1 · reviewer</span><span class="lm-model">opus</span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-warn"></span>3 findings</span></span>
+<span style="display: flex; gap: 10px; align-items: center; justify-content: flex-end"><span class="tu-mono tu-dim" style="font-size: 10px; white-space: nowrap">24m · 138k</span><button type="button" class="tu-btn tu-btn--sm tu-btn--secondary" aria-pressed="false">Actions 9 ▸</button></span>
+<span class="tu-mono tu-dim" style="font-size: 10px; grid-column: 1 / -1">read only · fresh</span>
+<span style="grid-column: 1 / -1; font-size: 11.5px; color: var(--textDim)">1 important: the mirror could commit over a file you edited. 2 minor: naming and a missing doc comment.</span>
+<span class="tu-mono" style="grid-column: 1 / -1; font-size: 10px; color: var(--textDim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">last · 14:05:58 · done 3 findings</span>
+</div>
+
+<div class="lm-node is-sub">
+<span style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0"><span style="font-weight: 600">Round 1 · fix agent</span><span class="lm-model">sonnet</span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-approve"></span>fixed 3 of 3</span></span>
+<span style="display: flex; gap: 10px; align-items: center; justify-content: flex-end"><span class="tu-mono tu-dim" style="font-size: 10px; white-space: nowrap">19m · 97k</span><button type="button" class="tu-btn tu-btn--sm tu-btn--secondary" aria-pressed="false">Actions 9 ▸</button></span>
+<span class="tu-mono tu-dim" style="font-size: 10px; grid-column: 1 / -1">same worktree</span>
+<span style="grid-column: 1 / -1; font-size: 11.5px; color: var(--textDim)">The mirror now rebases and only ever writes Loom’s own files.</span>
+<span class="tu-mono" style="grid-column: 1 / -1; font-size: 10px; color: var(--textDim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">last · 14:27:10 · done fixed 3 of 3</span>
+</div>
+
+<div class="lm-node is-sub is-live">
+<span style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0"><span style="font-weight: 600">Round 2 · reviewer</span><span class="lm-model">opus</span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running · reading the diff against the design</span></span>
+<span style="display: flex; gap: 10px; align-items: center; justify-content: flex-end"><span class="tu-mono tu-dim" style="font-size: 10px; white-space: nowrap">12m · 60k</span><button type="button" class="tu-btn tu-btn--sm tu-btn--accent" aria-pressed="true">Actions 8 ▸</button></span>
+<span class="tu-mono tu-dim" style="font-size: 10px; grid-column: 1 / -1">read only · fresh</span>
+
+<span class="tu-mono" style="grid-column: 1 / -1; font-size: 10px; color: var(--textDim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">last · 14:41:02 · read docs/specs/phases/P02-store-and-state-machines.md §Rulings</span>
+</div>
+
+
+</div>
+
+
+
+</div>
+</div>
+
+<div class="lm-step">
+<span class="tu-mono tu-dim" style="font-size: 10px">next</span>
+<span class="lm-dot"></span>
+<div style="display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap"><span style="font-weight: 700">Merge</span><span class="tu-chip tu-chip--ghost is-neutral">Waiting</span><span class="tu-mono tu-dim" style="font-size: 10px"></span></div>
+<span class="tu-dim">Merges on green once round 2 is clean. You see it afterwards in the review queue.</span>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+</section>
+
+<aside style="flex: 0 0 560px; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 4px; overflow: auto">
+
+<section class="tu-window is-hot" style="flex: 1 1 0; min-height: 0">
+<div class="tu-tabbar"><div class="tu-tabbar__title">Agent actions</div><div class="tu-tabbar__ctrls"><button type="button" class="lm-x" aria-label="Close agent actions">✕</button></div></div>
+<div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--border); background: var(--panel2)">
+<span style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap"><span style="font: 700 14px/18px var(--font-ui)">Round 2 · reviewer</span><span class="lm-model">opus</span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running · reading the diff against the design</span></span>
+<span class="tu-mono tu-dim" style="font-size: 10px">read only · fresh · 12m · 60k tokens · 8 actions</span>
+
+</div>
+<div class="tu-window__body">
+
+<div class="lm-act">
+<span class="tu-mono tu-dim" style="font-size: 10.5px">14:29:08</span>
+<span><span class="lm-kind">READ</span></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="tu-mono" style="font-size: 10.5px; word-break: break-word">review package and round 1 findings with fixes</span></span>
+</div>
+
+<div class="lm-act">
+<span class="tu-mono tu-dim" style="font-size: 10.5px">14:30:02</span>
+<span><span class="lm-kind">READ</span></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="tu-mono" style="font-size: 10.5px; word-break: break-word">git diff main...phase/store</span><span class="tu-mono" style="font-size: 10px; color: var(--textDim)">→ +2,184 −96</span></span>
+</div>
+
+<div class="lm-act">
+<span class="tu-mono tu-dim" style="font-size: 10.5px">14:31:40</span>
+<span><span class="lm-kind">READ</span></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="tu-mono" style="font-size: 10.5px; word-break: break-word">crates/loom-store/src/mirror.rs</span></span>
+</div>
+
+<div class="lm-act">
+<span class="tu-mono tu-dim" style="font-size: 10.5px">14:33:15</span>
+<span><span class="lm-kind">READ</span></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="tu-mono" style="font-size: 10.5px; word-break: break-word">crates/loom-store/tests/mirror_conflict.rs</span></span>
+</div>
+
+<div class="lm-act">
+<span class="tu-mono tu-dim" style="font-size: 10.5px">14:35:02</span>
+<span><span class="lm-kind is-run">RUN</span></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="tu-mono" style="font-size: 10.5px; word-break: break-word">cargo nextest run -p loom-store mirror</span><span class="tu-mono" style="font-size: 10px; color: var(--sig-approve)">→ 16 passed</span></span>
+</div>
+
+<div class="lm-act">
+<span class="tu-mono tu-dim" style="font-size: 10.5px">14:37:20</span>
+<span><span class="lm-kind">READ</span></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="tu-mono" style="font-size: 10.5px; word-break: break-word">crates/loom-store/src/state.rs</span></span>
+</div>
+
+<div class="lm-act">
+<span class="tu-mono tu-dim" style="font-size: 10.5px">14:39:44</span>
+<span><span class="lm-kind">GREP</span></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="tu-mono" style="font-size: 10.5px; word-break: break-word">"unwrap(" in crates/loom-store/src</span><span class="tu-mono" style="font-size: 10px; color: var(--sig-approve)">→ 0 hits</span></span>
+</div>
+
+<div class="lm-act">
+<span class="tu-mono tu-dim" style="font-size: 10.5px">14:41:02</span>
+<span><span class="lm-kind">READ</span></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="tu-mono" style="font-size: 10.5px; word-break: break-word">docs/specs/phases/P02-store-and-state-machines.md §Rulings</span></span>
+</div>
+
+<div class="lm-act"><span></span><span class="tu-statuspip" style="color: var(--sig-info)"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>live</span><span class="tu-dim" style="font-size: 11px">New actions appear here as they happen.</span></div>
+</div>
+<div class="tu-window__bar" style="border-top: 1px solid var(--border); border-bottom: 0"><button type="button" class="tu-btn tu-btn--secondary tu-btn--sm">Full transcript ⤓</button><span class="tu-spacer"></span><button type="button" class="tu-btn tu-btn--ghost tu-btn--sm">Show in full log</button></div>
+</section>
+
+
+</aside>
+
+</div>
+</main>
+</div>
+
+<footer class="tu-statusbar">
+<span class="tu-statusbar__brand">LOOM</span>
+<span>decider · strict 0.85</span>
+<span>rate limit ok</span>
+<span class="tu-spacer"></span>
+<span>planning repo synced 2 min ago</span>
+</footer>
+</div>
+
+</div>
+</body>
+</html>
