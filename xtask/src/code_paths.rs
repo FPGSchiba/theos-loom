@@ -145,6 +145,8 @@ mod tests {
             ".loom/checks.toml",
             "gate/tools.toml",
             "web/src/App.tsx",
+            "web/.nvmrc",
+            "web/package.json",
             "notes/x.ts",
             "docs/plans/eslint.config.js",
             "Cargo.toml",
