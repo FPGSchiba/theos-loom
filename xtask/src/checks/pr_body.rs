@@ -129,13 +129,14 @@ mod tests {
     const REAL_TEMPLATE: &str = include_str!("../../../.github/pull_request_template.md");
 
     /// Its sections, as the check must find them.
-    const HEADINGS: [&str; 6] = [
+    const HEADINGS: [&str; 7] = [
         "Phase",
         "Acceptance criteria",
         "Final review",
         "Rulings",
         "Gate",
         "Protected paths",
+        "Trial",
     ];
 
     /// A description with a section for each pair: the heading and what is under it.
@@ -338,10 +339,7 @@ mod tests {
         assert_eq!(found.len(), 1, "{found:?}");
         assert!(found[0].contains("no `## Gate` section"), "{found:?}");
         // A comment that is not closed runs to the end, and takes the sections after it.
-        let unclosed = full_body().replace(
-            "Done.\n\n## Protected paths",
-            "<!-- Done.\n\n## Protected paths",
-        );
+        let unclosed = full_body().replace("Done.\n\n## Trial", "<!-- Done.\n\n## Trial");
         let verdict = check_body(REAL_TEMPLATE, Some(&unclosed));
         assert_eq!(verdict.findings.len(), 2, "{:?}", verdict.findings);
     }

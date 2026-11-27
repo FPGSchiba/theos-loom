@@ -1,8 +1,8 @@
-# Contributing to theos-editor
+# Contributing to theos-loom
 
 The same rules apply to everyone who changes this repo: Claude in its work sessions (see also
-`CLAUDE.md`) and Jann. Releases are described in `docs/release.md`; what a change must pass is in
-`docs/gate.md`. This file is protected: changes wait for Jann.
+`CLAUDE.md`) and Jann. What a change must pass is in `docs/gate.md`. This file is protected:
+changes wait for Jann.
 
 ## 1. Branches
 
@@ -15,7 +15,6 @@ The same rules apply to everyone who changes this repo: Claude in its work sessi
 | `gate/<slug>` | Changes to the gate (CI, xtask, thresholds, lints) |
 | `docs/<slug>` | Documentation outside a phase |
 | `fix/<slug>` | A fix outside a phase |
-| `release-plz-*` | Created by the release pipeline only |
 
 One branch, one pull request. Delete the branch after merging (GitHub does this automatically).
 
@@ -34,35 +33,34 @@ The gate checks every commit of a pull request (`commit-msg`) and its title (`pr
 
 **Types**
 
-| Type | For | In the changelog |
-|---|---|---|
-| `feat` | New behaviour for a user of the editor, CLI or MCP | Features |
-| `fix` | A bug fix | Fixes |
-| `perf` | Faster or leaner, same behaviour | Performance |
-| `refactor` | Restructuring without changing behaviour | – |
-| `test` | Tests only | – |
-| `docs` | Documentation only | Documentation |
-| `build` | Cargo, pnpm, toolchain, dependencies | – |
-| `ci` | GitHub workflows and the gate | – |
-| `chore` | Anything else, including release commits | – |
-| `revert` | Reverts an earlier commit | Reverts |
+| Type | For |
+|---|---|
+| `feat` | New behaviour for a user of Loom (cockpit, CLI, API) |
+| `fix` | A bug fix |
+| `perf` | Faster or leaner, same behaviour |
+| `refactor` | Restructuring without changing behaviour |
+| `test` | Tests only |
+| `docs` | Documentation only |
+| `build` | Cargo, pnpm, toolchain, dependencies |
+| `ci` | GitHub workflows and the gate |
+| `chore` | Anything else |
+| `revert` | Reverts an earlier commit |
 
 **Scopes:** `core`, `plan`, `store`, `run`, `gate`, `context`, `api`, `cli`, `web`, `xtask`,
-`spec`, `docs`, `ci`. Leave the scope out only when a change
-really spans the whole repo.
+`spec`, `docs`, `ci`. Leave the scope out only when a change really spans the whole repo.
 
 **Summary:** imperative mood, lower case, no full stop, at most 72 characters:
-`feat(content): parse note callouts with their states`.
+`feat(plan): read the phases of a planning repo`.
 
 **Breaking changes** get a `!` after the scope and a `BREAKING CHANGE:` footer. These are always
-breaking: removed or renamed CLI flags or MCP tools, changed MCP tool schemas, a new
-`schema_version` of the data model, a new generator protocol version, renamed settings keys.
+breaking: removed or renamed CLI flags or MCP tools, changed MCP tool schemas, a database
+migration that cannot be rolled forward without loss, changed API routes, renamed settings keys.
 
 **Footers**
 
 | Footer | When |
 |---|---|
-| `Refs: CE-09.1, CE-09.3` | The acceptance criteria this commit works on |
+| `Refs: TU-01.1, TU-01.3` | The acceptance criteria this commit works on |
 | `Phase: P02` | Commits on a phase branch |
 | `BREAKING CHANGE: …` | See above |
 | `Co-Authored-By: Claude …` and `Claude-Session: …` | Every commit written by Claude |
@@ -73,53 +71,37 @@ branch history. On `main`, the squashed pull request is the unit.
 ## 3. Pull requests
 
 - **Title** = the squash commit on `main` = a Conventional Commit that ends with the phase:
-  `feat(content): records and grammars (P02)`. Spec PRs: `docs(spec): records and grammars (P02)`.
-  Gate and docs PRs end with `(gate)` or `(docs)` instead of a phase. The title becomes a line in
-  the changelog, so write it for someone reading release notes.
+  `feat(store): runs and steps in PostgreSQL (P02)`. Spec PRs: `docs(spec): runs and steps (P02)`.
+  Gate and docs PRs end with `(gate)` or `(docs)` instead of a phase.
 - **Description:** the template in `.github/pull_request_template.md`, every section filled.
 - **Size:** one phase per pull request. Gate, spec and documentation changes go in their own
   pull requests.
 - **Merging:** pull requests that touch no protected path merge automatically when every check
   is green. Pull requests that touch a protected path (`docs/gate.md` §5) wait until Jann adds the
-  label `approved`. Release pull requests are merged by Jann only.
+  label `approved`.
+- **Keeping up:** update a branch from `main` only when it is ready to merge and next in line,
+  not after every merge to `main`. Push when a task or a review round is finished, not after
+  every commit.
 
 ## 4. Tests
 
 - Test first (superpowers:test-driven-development). A test that proves an acceptance criterion
   carries `// AC: <id>` (`docs/gate.md` §4).
-- Tests run on Linux for every pull request, and on Windows and macOS weekly, on demand (the
-  labels `windows` and `macos`) and before every release; they need no network. Tests that need
-  ComfyUI, an LLM endpoint or another external service are marked
-  `#[ignore = "needs <service>"]` and run on request.
+- Every test runs in the `test` check on Linux for every pull request. A test that takes minutes
+  gets a name segment that starts with `slow_` (`store::slow_migrations_apply`), so that a later split
+  can tell it apart; Loom has no such test yet.
+- Tests that need PostgreSQL (from P02) read the URL of a throwaway database from
+  `LOOM_TEST_DATABASE_URL`, never the real database. Tests need no other network.
+- A test that needs an external service is marked `#[ignore = "needs <service>"]` and runs on
+  request.
 - Fixtures live in `crates/<crate>/tests/fixtures/`; synthetic fixtures say so in their file.
 
-## 5. Versions and tags
+## 5. Documentation
 
-- **One product version.** All crates share the version in `[workspace.package]` of the root
-  `Cargo.toml`. The editor app, `theos` and `theos-mcp` report it; the Tauri app takes its version
-  from `Cargo.toml`. `editor-ui/package.json` is private and its version is not used.
-- **SemVer.** While the editor is built the version stays below 1.0: a minor bump for new
-  features or breaking changes, a patch bump for fixes. Release candidates are `-rc.N`.
-- **Milestones.** 0.1.0 when slice S2 is done (CLI and MCP read usable), 0.2.0 after S3, 0.3.0
-  after S4, 0.4.0 after S5, 0.5.0 after S6, 0.6.0 after S7, 0.7.0 after S8, 1.0.0 when S9 is done
-  and Jann accepts the editor, 1.1.0 after S10, 1.2.0 after S11. Releases in between whenever
-  useful.
-- **Tags** are `vMAJOR.MINOR.PATCH[-rc.N]`, annotated, on `main`, and created only by the release
-  pipeline. Nobody creates, moves or deletes a tag by hand. A bad release is fixed by a new
-  patch release, never by moving a tag.
-- **Separate version numbers** that are not the product version: `schema_version` of the data
-  model (`docs/specs/data-model.md`), `protocol` of the generator protocol (`docs/generators.md`),
-  and the major of `format_version` of the map package (`docs/map-package.md`). Raising one of
-  them is a breaking change of the product. The map generator also reports a version of its own
-  in `describe` (`theos-maps@X.Y.Z`), raised whenever its outputs change (`docs/generators.md`
-  §6); that is not a breaking change.
+Documentation under `docs/` (except `docs/plans/` and `docs/trial/`), this file, `CLAUDE.md` and
+`.claude/` are protected. Decisions are recorded in `docs/decisions/`. Acceptance criteria change
+only in `docs/specs/00-umbrella.md`.
 
-## 6. Documentation
-
-Documentation under `docs/` (except `docs/plans/` and `docs/status.md`), this file, `CLAUDE.md`
-and `design/` are protected. Decisions are recorded in `docs/decisions/`. Acceptance criteria
-change only in `docs/specs/00-umbrella.md`.
-
-## 7. Language and files
+## 6. Language and files
 
 English everywhere. README files are named README. UTF-8 and LF for every text file we write.

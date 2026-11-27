@@ -4,20 +4,29 @@ use std::error::Error;
 use std::path::Path;
 use std::process::{Command, Output};
 
+use xtask::checks::pr_body::template_sections;
+
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
 
 /// The template of this repository, which the check reads from `--root`.
 const TEMPLATE: &str = include_str!("../../.github/pull_request_template.md");
 
 /// The sections of the template.
-const HEADINGS: [&str; 6] = [
+const HEADINGS: [&str; 7] = [
     "Phase",
     "Acceptance criteria",
     "Final review",
     "Rulings",
     "Gate",
     "Protected paths",
+    "Trial",
 ];
+
+// AC: TU-00.2
+#[test]
+fn the_template_has_every_section() {
+    assert_eq!(template_sections(TEMPLATE), HEADINGS);
+}
 
 /// A description with every section but `left_out`, each with some text under it.
 fn body_without(left_out: Option<&str>) -> String {

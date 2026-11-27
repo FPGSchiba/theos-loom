@@ -2,8 +2,9 @@
 //! and §6; spec `docs/specs/phases/P00-foundation-and-gate.md` §5.8).
 //!
 //! Two files in `gate/` say how the repository is set up: `ruleset-main.json` (the rules of the
-//! default branch) and `repo-settings.toml` (the merge settings and the labels). [`Desired`] reads them, [`Live`] reads the same things
-//! from GitHub through [`RepoAdmin`], and [`compare`] says where they differ:
+//! default branch) and `repo-settings.toml` (the merge settings and the labels). [`Desired`] reads
+//! them, [`Live`] reads the same things from GitHub through [`RepoAdmin`], and [`compare`] says
+//! where they differ:
 //!
 //! - Rulesets are matched by `name`. Only the keys the file has are compared, so what GitHub adds
 //!   (ids, timestamps, links) does not matter. Lists are compared without regard to order, and an
@@ -570,8 +571,8 @@ pub fn run_apply(root: &Path, repo: Option<&str>) -> Result<Verdict> {
 }
 
 /// The checks of `docs/gate.md` §1 as GitHub names them: the first cell of every row of the first
-/// table under the level-two section whose heading starts with `1.`, `ui` left out (it starts in
-/// P11). A cell that is not a bare job name (`[a-z0-9-]`) is skipped.
+/// table under the level-two section whose heading starts with `1.`. A cell that is not a bare job
+/// name (`[a-z0-9-]`) is skipped.
 #[must_use]
 pub fn required_contexts_from_gate_md(text: &str) -> BTreeSet<String> {
     let sections = markdown::sections(text, 2);
@@ -591,7 +592,6 @@ pub fn required_contexts_from_gate_md(text: &str) -> BTreeSet<String> {
         .filter_map(|row| row.first())
         .filter(|name| {
             !name.is_empty()
-                && name.as_str() != "ui"
                 && name
                     .chars()
                     .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')

@@ -1,4 +1,4 @@
-<!-- Title: a Conventional Commit ending with the phase, e.g. `feat(content): records and grammars (P02)`.
+<!-- Title: a Conventional Commit ending with the phase, e.g. `feat(store): runs and steps (P02)`.
      See CONTRIBUTING.md §3. -->
 
 ## Phase
@@ -7,7 +7,7 @@
 
 ## Acceptance criteria
 
-<!-- One line per AC of the phase: `- [x] CE-09.1 — test name(s)` -->
+<!-- One line per AC of the phase: `- [x] TU-01.1 — test name(s)` -->
 
 ## Final review
 
@@ -19,8 +19,12 @@
 
 ## Gate
 
-<!-- Summary of `cargo xtask gate` on the final commit (Windows and/or Linux). -->
+<!-- Summary of `cargo xtask gate` on the final commit (Windows or Linux). -->
 
 ## Protected paths
 
 <!-- "none", or the protected paths this PR changes (then it waits for Jann). -->
+
+## Trial
+
+<!-- Link to docs/trial/PNN-<slug>.md and the numbers of this step. -->

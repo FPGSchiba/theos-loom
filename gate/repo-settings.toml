@@ -1,8 +1,8 @@
-# The settings of the GitHub repository that the gate depends on (`docs/gate.md` §6), as code.
-# `cargo xtask github check` compares the live repository with this file and with the rulesets
-# next to it (`ruleset-main.json`); `cargo xtask github apply` makes the
-# repository like them, and is only run after Jann has agreed. `approval` reads the labels from
-# here, from the checkout it runs in (the base commit of the pull request, spec D3).
+# The settings of the GitHub repository that the gate depends on (`docs/gate.md` §6, umbrella R3),
+# as code. `cargo xtask github check` compares the live repository with this file and with the
+# ruleset next to it (`ruleset-main.json`); `cargo xtask github apply` makes the repository like
+# them, and is only run after Jann has agreed. `approval` reads the labels from here, from the
+# checkout it runs in (the base commit of the pull request, spec D3).
 
 # The merge settings, under the names the GitHub API gives them (`PATCH /repos/{owner}/{repo}`).
 # Squash merge only; the squash commit keeps the title of the PR and the messages of its commits,

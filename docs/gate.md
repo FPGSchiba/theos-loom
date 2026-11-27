@@ -8,66 +8,158 @@ PRs that touch protected paths wait for Jann. Claude works under Jann's GitHub a
 cannot tell the two apart: the rules in `CLAUDE.md` that Claude never approves, never weakens
 the gate and never merges a waiting PR are part of the gate.
 
+Two words are used with a fixed meaning. A **check** is a required status check on `main`: a CI
+job with that name. A **part** is one `cargo xtask` subcommand; a check runs one part or several.
+
 ## 1. Required checks
 
 All checks are required status checks on `main` (branch protection, administrators included).
+Each is a CI job of the same name, and `cargo xtask` gives its verdict locally; the commands are
+those of `.loom/checks.toml`.
 
-| Check | What it runs | OS |
+| Check | Runs | Parts |
 |---|---|---|
-| `fmt` | `cargo fmt --all --check` | Linux |
-| `clippy` | `cargo clippy --workspace --all-targets --locked -- -D warnings` | Linux |
-| `test` | `cargo nextest run --workspace --locked` (profile `ci` in CI, `default` locally; both leave out the slow tests) and `cargo test --doc --workspace --locked` | Linux |
-| `docs` | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked` | Linux |
-| `deny` | `cargo deny --locked check` (licences, advisories, bans, sources) | Linux |
-| `coverage` | `cargo xtask coverage`: per-crate line coverage ≥ floor in `gate/thresholds.toml`, and no crate drops more than the allowed amount below `main` | Linux |
-| `lints` | `cargo xtask lints`: `[workspace.lints]` in the root `Cargo.toml` equals `gate/lints.toml`; the config files equal their `gate/` copies and exist nowhere else; library and binary code comes only from its crate's `src/`; `cfg` names only what `gate/cfg-names.toml` allows, and no `cfg` is an empty `any()`; no `allow` or `warn` attribute anywhere, outer or inner; no `allow` or `expect` of a guard lint or of `clippy::pedantic`/`clippy::restriction` (§2); no reasonless `#[expect]` or `#[ignore]` anywhere, macro input and code behind another OS's `cfg` included (P00 spec §5.10). | Linux |
-| `ac-trace` | `cargo xtask ac-trace`: every acceptance criterion of the PR's phase has at least one test tagged `AC: <id>`; no tag names an unknown criterion | Linux |
-| `pr-body` | `cargo xtask pr-body`: the PR description has every section of the template, filled | Linux |
-| `pr-title` | `cargo xtask pr-title`: the title is a Conventional Commit ending with `(PNN)`, `(gate)`, `(docs)` or a release title (`CONTRIBUTING.md` §3) | Linux |
-| `commit-msg` | `cargo xtask commit-msg`: every commit of the PR is a Conventional Commit (`CONTRIBUTING.md` §2) | Linux |
-| `approval` | fails while the PR touches a protected path and lacks the label `approved` | Linux |
-| `ui` | from P11: `pnpm install --frozen-lockfile`, `svelte-check`, `eslint`, `vitest`, Playwright component tests | Linux |
+| `gate` | `cargo xtask gate --skip test,coverage,ui` | `fmt`, `lints`, `commit-msg`, `secrets`, `clippy`, `docs`, `deny`, `ac-trace` |
+| `test` | `cargo xtask gate --only test` | `test` |
+| `coverage` | `cargo xtask gate --only coverage` | `coverage` |
+| `ui` | `cargo xtask gate --only ui` | `ui` |
+| `pr` | `cargo xtask pr --title <title> --body-file <file>` | `pr-title`, `pr-body` |
+| `approval` | `cargo xtask approval` | `approval` |
 
-**Slow tests** are tests that take minutes, such as the map generator's parity and golden runs
-(P08 spec §5.14). A test is slow when a segment of its name, the path nextest shows, starts with
-`slow_`: `maps::parity::slow_recipes_match`, or every test in a module `slow_runs`. The nextest
-profiles in `gate/nextest.toml` split the suite: `default` and `ci` leave the slow tests out, and
-the profile `slow` runs only them, so every test runs in exactly one of `test` and `slow-tests`.
-`coverage` uses the profile `default` and so measures without the slow tests. A test that is not
-slow has no name segment that starts with `slow_`, or `test` would leave it out.
+`cargo xtask gate` runs the parts in this order: `tools`, `fmt`, `lints`, `commit-msg`, `secrets`,
+`clippy`, `docs`, `deny`, `test`, `coverage`, `ui`, `ac-trace`. `tools` runs first in every
+`cargo xtask gate` job and is no part of a check: it fails when a tool the selected parts need
+is missing or has another version than `gate/tools.toml` pins. `approval` runs only on GitHub,
+and `pr` needs a pull request title and description, so a plain `cargo xtask gate` leaves both
+out. `--only` and `--skip` take part names; a name that is not a part of the gate is refused.
+Claude runs `cargo xtask gate` on Windows or Linux before claiming a phase is done; it gives the
+same verdicts as CI (`commit-msg` and `secrets` look at the commits since `main`).
 
-`ac-trace` adds a result column to its table when nextest wrote reports: it merges the report of
-the profile `ci` (`default` locally) with that of `slow`, so a criterion proven only by a slow
-test shows `pass` or `FAIL` from the slow run. A report that is missing adds nothing, so a slow
-test that did not run shows `–`; no pass is ever claimed that did not happen. `cargo xtask gate`
-runs `ac-trace` after `test` and `slow-tests` for that reason. The CI job `ac-trace` runs no
-tests and receives no reports from the other jobs, so there the table has no result column; the
-verdict never depends on it, because `test` and `slow-tests` fail for a failing test.
+### 1.1 Parts
 
-On a pull request, `slow-tests` runs the slow tests only when the pull request changes, since its
-merge base, a file of a workspace crate with slow tests (one of its `.rs` files contains `slow_`),
-of a workspace crate such a crate depends on, or one of `Cargo.toml`, `Cargo.lock`,
-`rust-toolchain.toml`, `.cargo/`, `.config/`, `.github/`, `gate/` and `xtask/`. Otherwise it
-passes with a note that says so, without building anything. The job runs and reports on every
-pull request either way, so the required check is never missing. A push to `main`, a manual run,
-the `platforms` schedule and `cargo xtask gate` always run the slow tests.
+| Part | What it runs |
+|---|---|
+| `fmt` | `cargo fmt --all --check` |
+| `lints` | `cargo xtask lints`: `[workspace.lints]` in the root `Cargo.toml` equals `gate/lints.toml`; the config files equal their `gate/` copies and exist nowhere else; library and binary code comes only from its crate's `src/`; `cfg` names only what `gate/cfg-names.toml` allows, and no `cfg` is an empty `any()`; no `allow` or `warn` attribute anywhere, outer or inner; no `allow` or `expect` of a guard lint or of `clippy::pedantic`/`clippy::restriction` (§2); no reasonless `#[expect]` or `#[ignore]` anywhere, macro input and code behind another OS's `cfg` included |
+| `commit-msg` | `cargo xtask commit-msg`: every commit of the PR is a Conventional Commit (`CONTRIBUTING.md` §2) |
+| `secrets` | `cargo xtask secrets`: gitleaks scans the commits of the PR (the push, or the branch since its merge base with `origin/main`), not the working tree; without a range, the whole history. A finding names the rule, file, line and commit, never the secret. |
+| `clippy` | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
+| `docs` | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked` |
+| `deny` | `cargo deny --locked check` (licences, advisories, bans, sources) |
+| `test` | `cargo nextest run --workspace --locked` (profile `ci` in CI, `default` locally) and `cargo test --doc --workspace --locked`. Every test runs, there is no slow-test split. Tests that need PostgreSQL use `LOOM_TEST_DATABASE_URL` (a throwaway database, never the real one). |
+| `coverage` | `cargo xtask coverage`: per-crate line coverage at or above the floor in `gate/thresholds.toml`, and no crate drops more than the allowed amount below `main` (§3) |
+| `ui` | `cargo xtask ui` in `web/`: `pnpm install --frozen-lockfile`, then `pnpm exec tsc -b`, `pnpm exec eslint . --max-warnings 0` and `pnpm exec vitest run`. It never runs a `package.json` script, because a script is unprotected text. |
+| `ac-trace` | `cargo xtask ac-trace`: every acceptance criterion of the PR's phase has at least one test tagged `AC: <id>`; no tag names an unknown criterion (§4) |
+| `pr-title` | `cargo xtask pr-title`: the title is a Conventional Commit ending with `(PNN)`, `(gate)` or `(docs)` (`CONTRIBUTING.md` §3) |
+| `pr-body` | `cargo xtask pr-body`: the PR description has every section of the template, filled |
+| `approval` | fails while the PR touches a protected path and lacks the label `approved` (§5) |
 
-**Windows and macOS** are not in the per-PR checks, because their runner minutes cost two and ten
-times as much as Linux on a private repository. Instead the workflow `platforms` runs `clippy`,
-`test`, `slow-tests`, `lints`, `ac-trace` and (from P11) `ui` on `windows-latest` and
-`macos-latest`, and `test` and `slow-tests` also on `macos-15-intel`: for `main` once a week, on
-demand, and on a PR when the label `windows` or `macos` is added (each label runs its own OS). The
-full test suite is `test` and `slow-tests` together; `release.yml` runs both on all three before
-every release (`docs/release.md`).
-These runs are not required checks. A red run is fixed before the next release; it is listed in
-`docs/status.md` under "Needs Jann" until then. `lints` and `ac-trace` run there too because
-they read what the compiler builds on the machine they run on, and code behind `#[cfg(windows)]`
-or `#[cfg(target_os = "macos")]` is only built there.
+`pr-title` and `pr-body` run together as `cargo xtask pr`, through the same runner as the gate: one
+table, one summary, and both always run.
 
-`cargo xtask gate` runs every check except `pr-body`, `pr-title` and `approval` locally, on
-Windows and Linux, with the same results as CI (`commit-msg` checks the commits since `main`).
-`slow-tests` always runs the slow tests there, so the local gate is never more lenient than CI.
-Claude runs it before claiming a phase is done.
+`ac-trace` adds a result column to its table when nextest wrote a report: the report of the
+profile `ci` (`default` locally). A missing report adds nothing, so a test that did not run shows
+`–`; no pass is ever claimed that did not happen. `cargo xtask gate` runs `ac-trace` after `test`
+for that reason. In CI the check `gate` runs no tests, so there the table has no result column;
+the verdict never depends on it, because `test` fails for a failing test.
+
+### 1.2 Docs-only rule
+
+A pull request that changes only documents cannot change the verdict of most parts, so those
+parts report *not needed* (shown as `skip` in the table) and finish in seconds. `gate/code-paths.toml`
+has three lists of globs against repo-relative paths with `/`; `*` stays in a folder, `**` crosses
+folders. Non-code and `ui` match exactly; always-code ignores letter case and wins over non-code.
+Everything not on the non-code list is code, so a new path is code until a protected PR adds it
+to the non-code list.
+
+#### Non-code
+
+- `docs/**`
+- `README.md`
+- `CLAUDE.md`
+- `.claude/**`
+
+#### Always-code
+
+- `docs/specs/00-umbrella.md`
+- `docs/specs/phases/**`
+- `docs/gate.md`
+- `**/*.ts`
+- `**/*.tsx`
+- `**/Cargo.toml`
+- `**/Cargo.lock`
+- `**/rust-toolchain`
+- `**/rust-toolchain.toml`
+- `**/clippy.toml`
+- `**/.clippy.toml`
+- `**/rustfmt.toml`
+- `**/.rustfmt.toml`
+- `**/.cargo/**`
+- `**/.gitignore`
+- `**/.gitattributes`
+- `web/package.json`
+- `web/pnpm-lock.yaml`
+
+#### ui
+
+- `web/**`
+- `gate/tools.toml`
+- `gate/code-paths.toml`
+- `xtask/**`
+- `.github/**`
+
+#### How it decides
+
+The same rule decides in CI and locally. Its inputs:
+
+- **pull request in CI:** the event's head branch, and the paths changed between the merge base
+  of the event's base and head and the head;
+- **local run:** the current branch, and every path changed since the merge base with
+  `origin/main`: committed, staged, unstaged and untracked (not ignored), so uncommitted code
+  counts;
+- **push, manual run, detached HEAD:** no rule; every part runs.
+
+Before any part runs, the runner decides, in every job and locally alike:
+
+1. The head branch starts with `phase/`: every selected part runs (`ac-trace` reads the phase from
+   the branch). Only `ui` may still be not needed, by step 5.
+2. The changed paths cannot be listed (a missing commit, git failing): every selected part runs,
+   with a note.
+3. No changed path at all: every selected part runs.
+4. Every changed path is non-code and none is always-code: of the selected parts only `commit-msg`
+   and `secrets` run; every other one is reported as not needed, naming `gate/code-paths.toml`.
+   `commit-msg` and `secrets` always run: they read the commits, and a document can hold a secret.
+5. Otherwise every selected part runs, except `ui`, which is not needed when no changed path is on
+   the `ui` list.
+
+The changed paths are those of the whole pull request or branch against the merge base, never
+those of the last push, with renames as a deletion and an addition. `tools` checks only the pins
+of the parts that will run. Every uncertain case adds parts; none removes one.
+
+Why a non-code change cannot change the verdict of a part that is skipped (from reading each
+part; every path it reads is code):
+
+| Part | What it reads outside `crates/` and `xtask/` | Why non-code paths cannot change its verdict |
+|---|---|---|
+| `fmt` | nothing | formats only workspace `.rs` files |
+| `clippy` | `.github/pull_request_template.md` (`include_str!` in tests) | it is code |
+| `test`, `coverage` | the umbrella, `docs/gate.md`, `CONTRIBUTING.md`, `docs/specs/phases/`, `.github/**`, `.loom/**`, `gate/**` | all code (`CONTRIBUTING.md` is on no non-code list); no doc tests read a doc file |
+| `docs` | nothing (rustdoc does not compile `cfg(test)`) | none |
+| `deny` | Cargo files, `deny.toml`, the advisory database | Cargo files are code; a new advisory is not caused by the PR and shows at the next code PR and the next push to `main` |
+| `lints` | every file name (it looks for `Cargo.toml` and tool configs anywhere) and the files in `gate/` | those names and files are always-code or code |
+| `ac-trace` | the umbrella, the phase specs, every `*.ts` and `*.tsx` file, the branch name | umbrella, phase specs and TypeScript are always-code; `phase/` branches run every part |
+| `ui` | `web/**`, `gate/tools.toml` (`web/.nvmrc` and `web/package.json` must equal the pins) | all on the `ui` list; the part is skipped only when none changed |
+| `tools` | `gate/tools.toml` | code |
+
+`commit-msg`, `secrets`, `pr-title`, `pr-body` and `approval` always run: they read the commits
+and the pull request, not files.
+
+### 1.3 Speed
+
+On a warm cache a code pull request's `gate`, `test` and `coverage` each finish within 3 minutes
+of the run's start; `pr` and `approval` within 20 seconds; the required jobs of a docs-only pull
+request within 1 minute. Pull requests restore caches but never save them; only `main` saves.
+The budgets are measured on a phase's PR and recorded in its trial record.
 
 ## 2. Lints (`gate/lints.toml`, mirrored into `Cargo.toml`)
 
@@ -84,31 +176,37 @@ one of the four or the groups `clippy::pedantic` and `clippy::restriction` that 
 also asks for a reason on every `#[expect]` and `#[ignore]`, also where clippy does not look, so
 none of the four can be switched off. The result: no `#[allow]` or `#[warn]` anywhere, a reason
 on every `#[expect]` and `#[ignore]`, and no unknown cfg name. Lint levels live only in
-`gate/lints.toml`. P00 writes the final list; later changes need approval.
+`gate/lints.toml`. Later changes need approval.
 
 ## 3. Thresholds (`gate/thresholds.toml`)
 
 | Item | Start value |
 |---|---|
-| Line coverage, library crates | 80 % |
-| Line coverage, binary crates (`theos`, `theos-mcp`, `theos-editor`) | 60 % |
+| Line coverage, library crates (`loom-core`, `loom-plan`, `loom-store`, `loom-run`, `loom-gate`, `loom-context`, `loom-api`, `xtask`) | 80 % |
+| Line coverage, binary crates (`loom`) | 60 % |
 | Largest allowed drop of a crate below `main` | 1.0 percentage point |
 
-Raising a floor is welcome and still a protected change. Lowering one is never done to make a PR
-pass.
+Every workspace member needs a class there, so a new crate cannot escape the floors. Raising a
+floor is welcome and still a protected change. Lowering one is never done to make a PR pass.
 
 ## 4. Acceptance-criterion tags
 
 A test proves a criterion by a comment directly above it:
 
 ```rust
-// AC: CE-09.1
+// AC: TU-01.1
 #[test]
-fn imported_records_round_trip_byte_for_byte() { … }
+fn a_plan_round_trips_byte_for_byte() { … }
 ```
 
-Several: `// AC: CE-09.1, CE-09.3`. TypeScript tests use the same comment. Criteria are defined
+Several: `// AC: TU-01.1, TU-01.3`. TypeScript tests use the same comment. Criteria are defined
 only in `docs/specs/00-umbrella.md`.
+
+The criteria a `phase/PNN-<slug>` branch must prove are those listed in section 2 of the phase
+spec `docs/specs/phases/PNN-<slug>.md`: the list items whose first word is a criterion id. Every
+id must belong to that phase in the umbrella, and the list must not be empty; a wrong scope fails
+loudly. Without a phase spec the umbrella's entry for the phase decides. A phase built in another
+repository (its heading in the umbrella ends with (repo `owner/name`)) demands no tag here.
 
 ## 5. Protected paths — Jann approves
 
@@ -117,13 +215,15 @@ only in `docs/specs/00-umbrella.md`.
 - `.github/**`, `gate/**`, `xtask/**`, `.loom/**`, `deny.toml`, `rust-toolchain.toml`, `.cargo/**`
 - `web/eslint.config.*`, `web/tsconfig*.json`, `web/vite.config.*`
 - `.gitleaksignore`, `.gitleaks.toml`
-- the `[workspace.lints]` table of the root `Cargo.toml` (checked by `lints`)
+- the `[workspace.lints]` table of the root `Cargo.toml` (checked by `approval`)
 
-The list is `.loom/protected.toml`.
+The list is `.loom/protected.toml`. `approval` reads it, and `gate/repo-settings.toml`, from the
+base commit of the pull request, so a pull request cannot loosen the rules it is judged by.
 
 Flow: CI adds the label `needs-jann` to such a PR and `approval` fails. Jann reviews and adds the
-label `approved`; the check re-runs and auto-merge completes. Only Jann adds `approved`.
-`needs-jann` stays on: CI adds it back, and removing it only starts another run.
+label `approved`; the check re-runs and auto-merge completes. Only Jann adds `approved`. An
+approval is tied to the content it was given for: when the PR changes afterwards, CI removes
+`approved`. `needs-jann` stays on: CI adds it back, and removing it only starts another run.
 
 Crate-level READMEs and rustdoc are not protected; they are reviewed in the phase reviews.
 
@@ -134,11 +234,16 @@ Crate-level READMEs and rustdoc are not protected; they are reviewed in the phas
 - No direct pushes, force pushes or deletions on `main`, for administrators too.
 - Claude enables auto-merge on its PRs that do not touch protected paths; the PR merges when all
   checks pass.
-- Release PRs are merged by Jann only. Tags are created only by the release pipeline
-  (`docs/release.md`); nobody creates, moves or deletes a tag by hand.
+- The checks `loom-review`, `loom-contract` and `loom-approval` of umbrella R3, posted by the
+  Loom GitHub App, come with P07; until then `approval` is the check for protected paths.
+- The ruleset is `gate/ruleset-main.json` and the repository settings are
+  `gate/repo-settings.toml`. `cargo xtask github check` compares the live repository with them;
+  `cargo xtask github apply` makes the repository like them, and is only run after Jann has said
+  so. Nobody changes the live settings by hand.
 
 ## 7. Process requirements outside CI
 
-- Every phase follows `.claude/skills/theos-phase/SKILL.md`.
+- Every phase follows `.claude/skills/loom-phase/SKILL.md`.
 - The final whole-branch review loops until a fresh reviewer finds nothing (CLAUDE.md).
-- The PR description carries the final review summary and every ruling Claude made.
+- The PR description carries the final review summary, every ruling Claude made and a link to
+  the trial record of the step.

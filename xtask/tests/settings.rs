@@ -9,10 +9,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
+use xtask::code_paths::CodePaths;
 use xtask::github::LabelSpec;
 use xtask::github::settings::{
     Desired, Live, compare, differences, required_contexts_from_gate_md,
 };
+use xtask::markdown;
+use xtask::verdict::Check;
 
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
 
@@ -78,30 +81,131 @@ fn ruleset_contexts_equal_gate_md_checks() -> TestResult {
     let gate_md = fs::read_to_string(root.join("docs").join("gate.md"))?;
     let required = required_contexts_from_gate_md(&gate_md);
     assert_eq!(contexts, required);
-    let expected: BTreeSet<String> = [
-        "fmt",
-        "clippy",
-        "test",
-        "docs",
-        "deny",
-        "coverage",
-        "lints",
-        "ac-trace",
-        "commit-msg",
-        "pr-title",
-        "pr-body",
-        "approval",
-    ]
-    .into_iter()
-    .map(String::from)
-    .collect();
-    assert_eq!(required, expected, "docs/gate.md §1 lists other checks");
+    assert_eq!(
+        required,
+        names(&CHECKS),
+        "docs/gate.md §1 lists other checks"
+    );
+    Ok(())
+}
+
+/// The six checks of D5: the required status checks on `main`.
+const CHECKS: [&str; 6] = ["gate", "test", "coverage", "ui", "pr", "approval"];
+
+fn names(list: &[&str]) -> BTreeSet<String> {
+    list.iter().map(|name| (*name).to_owned()).collect()
+}
+
+/// The level-two section of `text` whose heading starts with `number`, as its body.
+fn section<'a>(text: &'a str, number: &str) -> TestResult<&'a str> {
+    markdown::sections(text, 2)
+        .into_iter()
+        .find(|section| section.heading.text.starts_with(number))
+        .map(|section| section.body)
+        .ok_or_else(|| format!("docs/gate.md has no section {number}").into())
+}
+
+/// The patterns that `.loom/checks.toml` and `docs/gate.md` have to agree on, per check.
+struct CheckRow {
+    name: String,
+    command: String,
+    parts: Vec<String>,
+}
+
+fn checks_toml(root: &Path) -> TestResult<Vec<CheckRow>> {
+    let table: toml::Table = fs::read_to_string(root.join(".loom").join("checks.toml"))?.parse()?;
+    let list = table
+        .get("check")
+        .and_then(toml::Value::as_array)
+        .ok_or("checks.toml has no [[check]] tables")?;
+    list.iter()
+        .map(|item| {
+            let text = |key: &str| {
+                item.get(key)
+                    .and_then(toml::Value::as_str)
+                    .map(str::to_owned)
+                    .ok_or_else(|| format!("a check has no `{key}`"))
+            };
+            let parts = item
+                .get("parts")
+                .and_then(toml::Value::as_array)
+                .ok_or("a check has no `parts`")?
+                .iter()
+                .map(|part| Ok(part.as_str().ok_or("a part is not a string")?.to_owned()))
+                .collect::<TestResult<Vec<String>>>()?;
+            Ok(CheckRow {
+                name: text("name")?,
+                command: text("command")?,
+                parts,
+            })
+        })
+        .collect()
+}
+
+// AC: TU-00.2
+#[test]
+fn checks_toml_lists_the_checks_of_gate_md() -> TestResult {
+    let root = root()?;
+    let rows = checks_toml(&root)?;
+    let gate_md = fs::read_to_string(root.join("docs").join("gate.md"))?;
+    let in_checks_toml: BTreeSet<String> = rows.iter().map(|row| row.name.clone()).collect();
+    assert_eq!(in_checks_toml.len(), rows.len(), "a check is listed twice");
+    assert_eq!(in_checks_toml, required_contexts_from_gate_md(&gate_md));
+    assert_eq!(in_checks_toml, names(&CHECKS));
+
+    // Every part but `tools` (it runs first in every gate job) and `github` (the settings, not a
+    // check) is in exactly one check.
+    let mut parts: Vec<&str> = rows
+        .iter()
+        .flat_map(|row| row.parts.iter().map(String::as_str))
+        .collect();
+    parts.sort_unstable();
+    let mut expected: Vec<&str> = Check::ALL
+        .into_iter()
+        .filter(|check| !matches!(check, Check::Tools | Check::Github))
+        .map(Check::name)
+        .collect();
+    expected.sort_unstable();
+    assert_eq!(
+        parts, expected,
+        "the parts of the checks are not every part"
+    );
+
+    // docs/gate.md §1: one row per check, with the same command and parts.
+    let section = section(&gate_md, "1.")?;
+    let tables = markdown::tables(section);
+    let table = tables.first().ok_or("docs/gate.md §1 has no table")?;
+    assert_eq!(table.header, ["Check", "Runs", "Parts"]);
+    for row in &rows {
+        assert!(
+            row.command.starts_with("cargo xtask "),
+            "the command of {} is not a cargo xtask command",
+            row.name
+        );
+        let cells = table
+            .rows
+            .iter()
+            .find(|cells| cells.first() == Some(&row.name))
+            .ok_or_else(|| format!("docs/gate.md §1 has no row for {}", row.name))?;
+        assert_eq!(
+            cells.get(1).map(String::as_str),
+            Some(row.command.as_str()),
+            "the command of {} differs from docs/gate.md §1",
+            row.name
+        );
+        let in_doc: Vec<&str> = cells
+            .get(2)
+            .ok_or("a row has no third cell")?
+            .split(", ")
+            .collect();
+        assert_eq!(in_doc, row.parts, "the parts of {} differ", row.name);
+    }
     Ok(())
 }
 
 // AC: TU-00.2
 #[test]
-fn main_ruleset_encodes_section_6() -> TestResult {
+fn main_ruleset_encodes_r3() -> TestResult {
     let desired = Desired::load(&root()?)?;
     let main = ruleset(&desired, "main")?;
     assert_eq!(main["target"], "branch");
@@ -112,8 +216,8 @@ fn main_ruleset_encodes_section_6() -> TestResult {
     assert_eq!(included["include"], json!(["~DEFAULT_BRANCH"]));
     assert_eq!(included["exclude"], json!([]));
 
-    // No force push (`non_fast_forward`) and no deletion; linear history; a pull request for
-    // every change; the checks.
+    // R3: no force push (`non_fast_forward`) and no deletion; linear history; a pull request for
+    // every change; the checks. The `loom-*` checks of the App come with P07.
     let expected: BTreeSet<String> = [
         "deletion",
         "non_fast_forward",
@@ -183,7 +287,7 @@ fn repo_settings_encode_section_6() -> TestResult {
 }
 
 #[test]
-fn required_contexts_are_the_first_column_of_section_1_without_ui() {
+fn required_contexts_are_the_first_column_of_section_1() {
     let text = "# The gate
 
 ## 1. Required checks
@@ -192,7 +296,7 @@ fn required_contexts_are_the_first_column_of_section_1_without_ui() {
 |---|---|---|
 | `fmt` | `cargo fmt --all --check` | Linux |
 | `clippy` | `cargo clippy` | Linux |
-| `ui` | from P11: `pnpm install` | Linux |
+| `ui` | `pnpm install` | Linux |
 | `docs` | `cargo doc` with warnings | Linux |
 
 Text after the table, and `not-a-check` in it.
@@ -203,7 +307,7 @@ Text after the table, and `not-a-check` in it.
 |---|---|---|
 | `other` | not in section 1 | Linux |
 ";
-    let expected: BTreeSet<String> = ["fmt", "clippy", "docs"]
+    let expected: BTreeSet<String> = ["fmt", "clippy", "ui", "docs"]
         .into_iter()
         .map(String::from)
         .collect();
@@ -402,9 +506,9 @@ fn required_checks_are_a_set_of_context_and_app() -> TestResult {
         let checks = rule["parameters"]["required_status_checks"]
             .as_array_mut()
             .ok_or("checks is not a list")?;
-        // `docs` is gone, `fmt` is pinned to another app, `lint` is new.
-        checks.retain(|check| check["context"] != "docs");
-        for check in checks.iter_mut().filter(|check| check["context"] == "fmt") {
+        // `pr` is gone, `gate` is pinned to another app, `lint` is new.
+        checks.retain(|check| check["context"] != "pr");
+        for check in checks.iter_mut().filter(|check| check["context"] == "gate") {
             check["integration_id"] = json!(1);
         }
         checks.push(json!({"context": "lint"}));
@@ -412,9 +516,9 @@ fn required_checks_are_a_set_of_context_and_app() -> TestResult {
     assert_eq!(
         differences(&desired, &live),
         [
-            "ruleset main: rule required_status_checks: required check docs (app 15368) is missing",
-            "ruleset main: rule required_status_checks: required check fmt (app 15368) is missing",
-            "ruleset main: rule required_status_checks: required check fmt (app 1) is on \
+            "ruleset main: rule required_status_checks: required check gate (app 15368) is missing",
+            "ruleset main: rule required_status_checks: required check pr (app 15368) is missing",
+            "ruleset main: rule required_status_checks: required check gate (app 1) is on \
              GitHub but not in the file",
             "ruleset main: rule required_status_checks: required check lint (any app) is on \
              GitHub but not in the file",
@@ -484,5 +588,33 @@ fn long_values_from_github_are_cut() -> TestResult {
     assert_eq!(found.len(), 1);
     assert!(found[0].chars().count() < 200, "{}", found[0]);
     assert!(found[0].contains('…'), "{}", found[0]);
+    Ok(())
+}
+
+// AC: TU-00.3
+#[test]
+fn gate_md_lists_the_code_paths_exactly() -> TestResult {
+    let root = root()?;
+    let paths = CodePaths::load(&root)?;
+    let gate_md = fs::read_to_string(root.join("docs").join("gate.md"))?;
+    let section_1 = section(&gate_md, "1.")?;
+    let sub = markdown::sections(section_1, 3)
+        .into_iter()
+        .find(|section| section.heading.text.starts_with("1.2"))
+        .ok_or("docs/gate.md §1 has no section 1.2")?;
+    let lists = markdown::sections(sub.body, 4);
+    let list_of = |name: &str| -> TestResult<Vec<String>> {
+        let list = lists
+            .iter()
+            .find(|list| list.heading.text.eq_ignore_ascii_case(name))
+            .ok_or_else(|| format!("docs/gate.md §1.2 has no list `{name}`"))?;
+        Ok(markdown::list_items(list.body)
+            .into_iter()
+            .map(|item| item.text)
+            .collect())
+    };
+    assert_eq!(list_of("non-code")?, paths.non_code());
+    assert_eq!(list_of("always-code")?, paths.always_code());
+    assert_eq!(list_of("ui")?, paths.ui());
     Ok(())
 }
