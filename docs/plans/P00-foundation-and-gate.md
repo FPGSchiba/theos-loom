@@ -539,7 +539,8 @@ profile; the comment says `test` runs every test (the slow-test ruling).
 `cargo nextest run -p xtask --lib -E 'test(/lints/)'` and `cargo xtask lints` — Expected: PASS,
 and `pass  lints`.
 
-- [ ] **Step 4: Commit** — `feat(gate): Loom's lint and test configuration`.
+- [ ] **Step 4: Commit** — `feat(gate): lint and test configuration for Loom` (a summary may not
+start upper-case; the plan first said `Loom's lint…`. (Plan change allowed by Jann during implementation, 27 Nov 2026.))
 
 ---
 
@@ -1066,7 +1067,8 @@ section `## Trial` (`<!-- Link to docs/trial/PNN-<slug>.md and the numbers of th
 - [ ] **Step 5: Run** the Step 2 command, `cargo nextest run -p xtask --test approval --test commit_msg`
 and `cargo nextest run -p xtask -E 'test(/settings|conventional|pr_body/)'` — Expected: PASS.
 
-- [ ] **Step 6: Commit** — `docs(gate): Loom's gate, contributing rules and PR template`.
+- [ ] **Step 6: Commit** — `docs(gate): the gate, contributing rules and PR template for Loom` (a
+summary may not start upper-case; the plan first said `Loom's gate…`. (Plan change allowed by Jann during implementation, 27 Nov 2026.))
 
 ---
 
@@ -1105,7 +1107,9 @@ and `cargo nextest run -p xtask -E 'test(/settings|conventional|pr_body/)'` — 
   rust-cache.
 - `the_xtask_cache_is_saved_by_gate_on_main_and_restored_by_exact_key`: `gate` saves
   `target/xtask-bin/debug/xtask` only on `main`, under a key that hashes `xtask/**`,
-  `Cargo.lock`, `rust-toolchain.toml` and `.cargo/**` with the runner OS; `ui`, `pr` and
+  `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml` and `.cargo/**` with the runner OS (the root
+  `Cargo.toml` added to P50 §5.5's list: its `[workspace.dependencies]`, `[profile]` and
+  `[workspace.lints]` change the binary too. (Plan change allowed by Jann during implementation, 27 Nov 2026.)); `ui`, `pr` and
   `approval` restore with the same key and no `restore-keys`, and never save it.
 - `test_and_coverage_get_a_throwaway_postgres`: a `postgres:18` service with a health check and
   `POSTGRES_HOST_AUTH_METHOD: trust`; job env `LOOM_TEST_DATABASE_URL:
