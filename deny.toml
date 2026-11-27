@@ -1,5 +1,5 @@
 # cargo-deny configuration (`cargo deny --locked check`). Changing it is a protected change.
-# The licence allowlist is the one decided in the P00 spec (section 4.2): nothing else is
+# The licence allowlist is the one decided in the P00 spec (section 5.6): nothing else is
 # allowed, so no GPL family.
 
 [graph]
