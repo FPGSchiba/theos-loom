@@ -342,6 +342,7 @@ mod tests {
         }
     }
 
+    // AC: TU-00.4
     #[test]
     fn expect_and_ignore_in_the_tree_need_a_reason_too() {
         let text = "#[expect(dead_code)]\nfn a() {}\n#[test]\n#[ignore]\nfn b() {}\n";
@@ -353,6 +354,7 @@ mod tests {
         assert_eq!(judged(inner), [(2, EXPECT.to_owned())]);
     }
 
+    // AC: TU-00.4
     #[test]
     fn a_reasonless_expect_or_ignore_behind_a_cfg_is_a_finding() {
         // Clippy never sees an item that a `cfg` strips on the machine that checks.
@@ -364,6 +366,7 @@ mod tests {
         assert_eq!(judged(macos), [(3, IGNORE.to_owned())]);
     }
 
+    // AC: TU-00.4
     #[test]
     fn an_expect_or_ignore_with_a_reason_behind_a_cfg_passes() {
         let text = "#[cfg(windows)]\n#[test]\n#[ignore = \"why\"]\nfn a() {}\n\
@@ -432,6 +435,7 @@ mod tests {
         assert_eq!(judged(other), []);
     }
 
+    // AC: TU-00.4
     #[test]
     fn warn_attributes_are_findings_everywhere_allow_is() {
         for text in [
@@ -451,6 +455,7 @@ mod tests {
         assert_eq!(judged(inner), [(2, WARN.to_owned())]);
     }
 
+    // AC: TU-00.4
     #[test]
     fn deny_and_forbid_raise_a_level_and_are_not_findings() {
         let text = "#![deny(warnings)]\n#![forbid(unsafe_code)]\n#[deny(clippy::unwrap_used)]\n\
