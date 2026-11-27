@@ -90,11 +90,7 @@ impl Git {
         refuse_option(base)?;
         refuse_option(head)?;
         let names = self.run(&["diff", "--name-only", "--no-renames", "-z", base, head])?;
-        Ok(names
-            .split('\0')
-            .filter(|name| !name.is_empty())
-            .map(str::to_owned)
-            .collect())
+        Ok(nul_separated(&names))
     }
 
     /// The files whose work tree content differs from `base`, staged or not, with renames shown as
@@ -301,7 +297,7 @@ fn arg_strings<S: AsRef<OsStr>>(args: &[S]) -> Vec<String> {
 }
 
 fn nul_separated(text: &str) -> Vec<String> {
-    text.split(' ')
+    text.split('\0')
         .filter(|name| !name.is_empty())
         .map(str::to_owned)
         .collect()
