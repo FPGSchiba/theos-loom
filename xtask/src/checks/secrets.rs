@@ -76,6 +76,9 @@ fn is_all_zeros(sha: &str) -> bool {
 /// The arguments of gitleaks (after the program name) to scan `range` and write a redacted JSON
 /// report to `report`.
 ///
+/// `--ignore-gitleaks-allow` keeps a `gitleaks:allow` comment from hiding a finding (decision
+/// 0007); the exceptions live in the protected `.gitleaksignore`.
+///
 /// The exit code is 0 even with leaks, so the report decides and a crash of gitleaks stays an
 /// error.
 #[must_use]
@@ -88,6 +91,7 @@ pub fn command(range: &Range, report: &Path) -> Vec<String> {
         [
             "--redact",
             "--no-banner",
+            "--ignore-gitleaks-allow",
             "--exit-code",
             "0",
             "--report-format",
@@ -268,6 +272,7 @@ mod tests {
         let tail = [
             "--redact",
             "--no-banner",
+            "--ignore-gitleaks-allow",
             "--exit-code",
             "0",
             "--report-format",
