@@ -78,19 +78,13 @@ impl Desired {
     /// # Errors
     ///
     /// Fails when a file cannot be read, is not JSON or TOML of the expected shape, or has a
-    /// ruleset without a name, a name twice, a label with a colour that is not six hex digits, a
-    /// description that is too long, or no label for the gate (`needs-jann`, `approved`). The errors never quote the files.
+    /// ruleset without a name, a label with a colour that is not six hex digits, a description
+    /// that is too long, or no label for the gate (`needs-jann`, `approved`). The errors never
+    /// quote the files.
     pub fn load(root: &Path) -> Result<Self> {
         let mut rulesets: Vec<Value> = Vec::new();
         for file in RULESET_FILES {
-            let ruleset = read_ruleset(root, file)?;
-            if rulesets
-                .iter()
-                .any(|known| known["name"] == ruleset["name"])
-            {
-                return Err(config_error(file, "has the name of another ruleset"));
-            }
-            rulesets.push(ruleset);
+            rulesets.push(read_ruleset(root, file)?);
         }
         let SettingsFile { repo, labels } = read_settings(root)?;
         Ok(Self {
