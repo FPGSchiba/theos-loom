@@ -40,7 +40,7 @@ same verdicts as CI (`commit-msg` and `secrets` look at the commits since `main`
 | Part | What it runs |
 |---|---|
 | `fmt` | `cargo fmt --all --check` |
-| `lints` | `cargo xtask lints`: `[workspace.lints]` in the root `Cargo.toml` equals `gate/lints.toml`; the config files equal their `gate/` copies and exist nowhere else; library and binary code comes only from its crate's `src/`; `cfg` names only what `gate/cfg-names.toml` allows, and no `cfg` is an empty `any()`; no `allow` or `warn` attribute anywhere, outer or inner; no `allow` or `expect` of a guard lint or of `clippy::pedantic`/`clippy::restriction` (§2); no reasonless `#[expect]` or `#[ignore]` anywhere, macro input and code behind another OS's `cfg` included |
+| `lints` | `cargo xtask lints`: `[workspace.lints]` in the root `Cargo.toml` equals `gate/lints.toml`; the config files equal their `gate/` copies and exist nowhere else; no `eslint.config.*` anywhere but directly in `web/`; library and binary code comes only from its crate's `src/`; `cfg` names only what `gate/cfg-names.toml` allows, and no `cfg` is an empty `any()`; no `allow` or `warn` attribute anywhere, outer or inner; no `allow` or `expect` of a guard lint or of `clippy::pedantic`/`clippy::restriction` (§2); no reasonless `#[expect]` or `#[ignore]` anywhere, macro input and code behind another OS's `cfg` included |
 | `commit-msg` | `cargo xtask commit-msg`: every commit of the PR is a Conventional Commit (`CONTRIBUTING.md` §2) |
 | `secrets` | `cargo xtask secrets`: gitleaks scans the commits of the PR (the push, or the branch since its merge base with `origin/main`), not the working tree; without a range, the whole history. A finding names the rule, file, line and commit, never the secret. |
 | `clippy` | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
@@ -213,7 +213,8 @@ repository (its heading in the umbrella ends with (repo `owner/name`)) demands n
 - `CLAUDE.md`, `.claude/**`, `CONTRIBUTING.md`
 - `docs/**`, except `docs/plans/**` and `docs/trial/**`
 - `.github/**`, `gate/**`, `xtask/**`, `.loom/**`, `deny.toml`, `rust-toolchain.toml`, `.cargo/**`
-- `web/eslint.config.*`, `web/tsconfig*.json`, `web/vite.config.*`
+- `web/eslint.config.*`, `web/**/eslint.config.*`, `web/tsconfig*.json`, `web/vite.config.*`,
+  `web/vitest.config.*`, `web/vitest.workspace.*`
 - `.gitleaksignore`, `.gitleaks.toml`
 - the `[workspace.lints]` table of the root `Cargo.toml` (checked by `approval`)
 

@@ -12,6 +12,8 @@
 //! - a clippy or rustfmt configuration, or a `.cargo` folder, anywhere else (the root `.cargo`
 //!   and `gate/clippy.toml` are the only exceptions), because clippy and cargo find these files
 //!   by walking up from the crate;
+//! - an `eslint.config.*` anywhere but directly in `web/`, because ESLint takes the config
+//!   nearest to each file it lints, so a nested one could switch the `ui` rules off;
 //! - a file called `rust-toolchain` anywhere, which rustup reads instead of the pinned
 //!   `rust-toolchain.toml`.
 //!
@@ -226,6 +228,13 @@ fn mirror(
     Ok(())
 }
 
+/// Whether the lower-case file name `name` is an ESLint flat config: `eslint.config.` and an
+/// extension.
+fn is_eslint_config(name: &str) -> bool {
+    name.strip_prefix("eslint.config.")
+        .is_some_and(|extension| !extension.is_empty())
+}
+
 /// The clippy and rustfmt configuration files, the legacy `rust-toolchain` files and the `.cargo`
 /// folders that must not exist: the ones that are not the root copy of `clippy.toml` and its
 /// original, and not the root `.cargo`. A `rust-toolchain` file anywhere wins over the protected
@@ -253,6 +262,12 @@ fn stray_config(files: &[String]) -> Vec<Finding> {
                 "a rustfmt configuration: the gate has none, and one outside `gate/` could \
                  change what `fmt` checks",
             )),
+            name if is_eslint_config(name) && path != &format!("web/{name}") => {
+                findings.push(at_file(
+                    path,
+                    "an ESLint configuration outside `web/`: ESLint takes the config nearest to                      each file, so it could replace the protected one for the files below it;                      only `web/eslint.config.*` may exist",
+                ));
+            }
             "rust-toolchain" => findings.push(at_file(
                 path,
                 "a legacy toolchain file: rustup reads it instead of `rust-toolchain.toml`, \
@@ -337,6 +352,7 @@ mod tests {
         assert!(!same_text("a = 1\n", "a = 1\n\n"));
     }
 
+    // AC: TU-00.4
     #[test]
     fn config_files_are_found_wherever_they_are_not_allowed() {
         let allowed = paths(&[
@@ -354,6 +370,9 @@ mod tests {
             "crates/a/tests/fixtures/x/.cargo/config.toml",
             "rust-toolchain.toml",
             "tests/fixtures/rust-toolchain",
+            "web/eslint.config.js",
+            "web/eslint.config.mjs",
+            "tests/fixtures/web/src/eslint.config.js",
         ]);
         assert_eq!(stray_config(&allowed), Vec::<Finding>::new());
 
@@ -379,6 +398,10 @@ mod tests {
             ("rust-toolchain", "rust-toolchain"),
             ("crates/a/rust-toolchain", "crates/a/rust-toolchain"),
             ("Rust-Toolchain", "Rust-Toolchain"),
+            ("web/src/eslint.config.js", "web/src/eslint.config.js"),
+            ("eslint.config.mjs", "eslint.config.mjs"),
+            ("crates/a/eslint.config.ts", "crates/a/eslint.config.ts"),
+            ("web/src/ESLint.Config.js", "web/src/ESLint.Config.js"),
         ] {
             let findings = stray_config(&paths(&[stray]));
             assert_eq!(findings.len(), 1, "{stray}: {findings:?}");

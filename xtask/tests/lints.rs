@@ -128,6 +128,15 @@ fn nested_clippy_toml_fails() -> TestResult {
     Ok(())
 }
 
+// AC: TU-00.4
+#[test]
+fn nested_eslint_config_fails() -> TestResult {
+    let verdict = config_case("nested-eslint-config")?;
+    let message = only_finding(&verdict, "web/src/eslint.config.js");
+    assert!(message.contains("ESLint"), "{message}");
+    Ok(())
+}
+
 #[test]
 fn rustfmt_toml_fails() -> TestResult {
     let verdict = config_case("rustfmt-toml")?;

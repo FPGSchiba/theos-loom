@@ -17,8 +17,11 @@ protected = [
     "rust-toolchain.toml",
     ".cargo/**",
     "web/eslint.config.*",
+    "web/**/eslint.config.*",
     "web/tsconfig*.json",
     "web/vite.config.*",
+    "web/vitest.config.*",
+    "web/vitest.workspace.*",
     ".gitleaksignore",
     ".gitleaks.toml",
 ]
