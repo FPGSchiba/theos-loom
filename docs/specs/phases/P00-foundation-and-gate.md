@@ -162,7 +162,8 @@ except `docs/plans/**` and `docs/trial/**`, `.github/**`, `gate/**`, `xtask/**`,
 `[workspace.lints]` table of the root `Cargo.toml`.
 
 **Docs-only rule** (`gate/code-paths.toml`, editor P50 §5.3), adapted: non-code adds
-`docs/trial/**`; always-code adds `**/*.tsx`, `web/package.json` and `web/pnpm-lock.yaml`.
+`docs/trial/**`; always-code adds `**/*.tsx`, `**/eslint.config.*`, `web/package.json` and
+`web/pnpm-lock.yaml`.
 
 ### 5.4 Adaptations to the ported xtask
 
@@ -173,7 +174,7 @@ except `docs/plans/**` and `docs/trial/**`, `.github/**`, `gate/**`, `xtask/**`,
 | `pr-title` | Suffixes `(PNN)`, `(gate)`, `(docs)`. No release titles. |
 | `commit-msg` | Scopes from Loom's `CONTRIBUTING.md` (§5.7). `Refs:` names only `TU-` ids. |
 | `coverage` | Loom's crates and classes. Unchanged otherwise. |
-| `ui` | New (R-j): `pnpm install --frozen-lockfile`, `tsc --noEmit`, `eslint`, `vitest run`, in `web/`. |
+| `ui` | New (R-j): `pnpm install --frozen-lockfile --ignore-scripts`, `tsc --noEmit`, `eslint`, `vitest run`, in `web/`. |
 | `secrets` | New (R-h): `gitleaks` over the changes of the PR (CI) or since the merge base (local). Runs in `gate`. |
 | `approval` | Unchanged, label-based (`needs-jann`, `approved`, fingerprint). P07 replaces it with `loom-approval`. |
 | `github` | Loom's required checks and labels (no `windows`/`macos`). |

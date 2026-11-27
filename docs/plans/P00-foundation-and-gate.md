@@ -231,6 +231,14 @@ Put this in every implementer, reviewer and fix brief:
   spec §9 leaves them to the build — a job cut off on a very slow runner day.
 - Ruling: two probe pull requests against the phase branch prove the docs-only rule and the `ui`
   list in CI; they are closed unmerged — P50 §5.9 did the same — two short-lived PRs.
+- Ruling: `ui` installs with `pnpm install --frozen-lockfile --ignore-scripts` (final review round 3,
+  approved by Jann) — a lifecycle script of the root project (`preinstall`, `prepare`, ...) is
+  unprotected text and would run in the gate; the other `ui` calls are fixed `pnpm exec` calls —
+  a dependency that needs its install script (e.g. a native build) fails the install and has to be
+  allowed by a later change.
+- Ruling: `**/eslint.config.*` is always-code in `gate/code-paths.toml` (final review round 3,
+  approved by Jann) — an ESLint config can switch rules off, so a change to one anywhere in the
+  tree must run every part — a PR that only edits an eslint config runs the full gate.
 
 ## Review Focus
 
@@ -805,7 +813,7 @@ Expected: `pass  secrets`.
 - [ ] **Step 1: Write the failing tests**
 
 In `ui.rs`: `the_ui_part_runs_fixed_pnpm_exec_calls`: `commands()` is exactly
-`["install", "--frozen-lockfile"]`, `["exec", "tsc", "-b"]` (the template's tsconfigs set
+`["install", "--frozen-lockfile", "--ignore-scripts"]`, `["exec", "tsc", "-b"]` (the template's tsconfigs set
 `noEmit`, and they are protected), `["exec", "eslint", ".", "--max-warnings", "0"]`,
 `["exec", "vitest", "run"]`, each run as `pnpm` in `web/`; none is `run <script>`.
 
