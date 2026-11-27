@@ -2,7 +2,7 @@
 
 const DATA: &str = include_str!("data.rs");
 
-// AC: CE-90.1
+// AC: TU-90.1
 #[test]
 fn proves_the_first() {
     assert!(!DATA.is_empty());

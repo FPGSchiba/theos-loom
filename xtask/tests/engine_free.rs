@@ -94,7 +94,6 @@ fn assert_passes(verdict: &Verdict) {
     assert!(verdict.passed(), "{:?}", verdict.findings);
 }
 
-// AC: CE-08.2
 #[test]
 fn non_optional_engine_dep_fails() -> TestResult {
     let verdict = check_case("non-optional-engine-dep")?;
@@ -102,7 +101,6 @@ fn non_optional_engine_dep_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn optional_dep_behind_other_feature_fails() -> TestResult {
     let verdict = check_case("optional-dep-behind-other-feature")?;
@@ -110,7 +108,6 @@ fn optional_dep_behind_other_feature_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn engine_reached_from_default_fails() -> TestResult {
     let verdict = check_case("engine-reached-from-default")?;
@@ -120,7 +117,6 @@ fn engine_reached_from_default_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn renamed_engine_dep_fails() -> TestResult {
     let verdict = check_case("renamed-engine-dep")?;
@@ -128,7 +124,6 @@ fn renamed_engine_dep_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn dev_dependency_on_engine_fails() -> TestResult {
     let verdict = check_case("dev-dependency-on-engine")?;
@@ -136,7 +131,6 @@ fn dev_dependency_on_engine_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn build_dependency_on_engine_fails() -> TestResult {
     let verdict = check_case("build-dependency-on-engine")?;
@@ -144,7 +138,6 @@ fn build_dependency_on_engine_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn target_specific_dependency_on_engine_fails() -> TestResult {
     // The condition is for Windows; the check does not run on one platform only.
@@ -153,7 +146,6 @@ fn target_specific_dependency_on_engine_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn implicit_feature_fails() -> TestResult {
     // Without a `dep:` anywhere cargo makes a feature of the dependency's name.
@@ -162,7 +154,6 @@ fn implicit_feature_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn weak_feature_on_engine_dep_fails() -> TestResult {
     let verdict = check_case("weak-feature-on-engine-dep")?;
@@ -179,14 +170,12 @@ fn weak_feature_on_engine_dep_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn dep_behind_engine_only_passes() -> TestResult {
     assert_passes(&check_case("dep-behind-engine-only")?);
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn own_member_named_theos_editor_passes() -> TestResult {
     // `theos-editor` is in the name list, because the engine has a crate of that name. Ours is
@@ -197,7 +186,6 @@ fn own_member_named_theos_editor_passes() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn member_with_its_engine_feature_on_must_be_optional() -> TestResult {
     let verdict = check_case("member-engine-feature-not-optional")?;
@@ -205,14 +193,12 @@ fn member_with_its_engine_feature_on_must_be_optional() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn member_with_its_engine_feature_on_behind_engine_passes() -> TestResult {
     assert_passes(&check_case("member-engine-feature-behind-engine")?);
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn member_engine_feature_behind_other_feature_fails() -> TestResult {
     let verdict = check_case("member-engine-feature-behind-other-feature")?;
@@ -220,7 +206,6 @@ fn member_engine_feature_behind_other_feature_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn path_outside_the_workspace_is_engine_without_the_name_list() -> TestResult {
     let engine = EngineCrates {
@@ -234,7 +219,6 @@ fn path_outside_the_workspace_is_engine_without_the_name_list() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn git_dependency_on_the_engine_repo_fails_whatever_its_name() -> TestResult {
     // The URL of the dependency holds the source of the engine repository and names a repository
@@ -255,7 +239,6 @@ fn git_dependency_on_the_engine_repo_fails_whatever_its_name() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn declared_findings_stand_when_the_workspace_cannot_be_resolved() -> TestResult {
     // A lock file that is not up to date, as in a pull request that forgot it: the manifests
@@ -273,7 +256,6 @@ fn declared_findings_stand_when_the_workspace_cannot_be_resolved() -> TestResult
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn a_workspace_that_cannot_be_resolved_is_no_pass() -> TestResult {
     let result = check_copy("dep-behind-engine-only", &gate_engine_crates()?, true)?;

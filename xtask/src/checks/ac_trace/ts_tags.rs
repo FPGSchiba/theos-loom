@@ -115,28 +115,28 @@ mod tests {
         scan("editor-ui/e2e/editor.spec.ts", &lines.join("\n"))
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn ts_playwright_test_counts_inside_describe() {
         let (tags, findings) = scan_lines(&[
             "import { expect, test } from '@playwright/test';",
             "",
             "test.describe('editor', () => {",
-            "  // AC: CE-11.1",
+            "  // AC: TU-11.1",
             "  test('opens a record', async ({ page }) => {",
             "    await page.goto('/');",
             "  });",
             "",
             "  test.describe('nested', () => {",
-            "    // AC: CE-11.2, CE-11.3",
+            "    // AC: TU-11.2, TU-11.3",
             "\tit.each([1, 2])('works %i', (n) => {});",
-            "    // AC: CE-11.4",
+            "    // AC: TU-11.4",
             "    test.only(\"focused\", () => {});",
-            "    // AC: CE-11.5",
+            "    // AC: TU-11.5",
             "    it.only(`template ${1}`, () => {});",
-            "    // AC: CE-11.6",
+            "    // AC: TU-11.6",
             "    test.each([1])('x', () => {});",
-            "    // AC: CE-11.7",
+            "    // AC: TU-11.7",
             "    it('vitest style', () => {});",
             "  });",
             "});",
@@ -151,12 +151,12 @@ mod tests {
         assert_eq!(
             found,
             [
-                (4, &ids(&["CE-11.1"])[..], Some("opens a record"), true),
-                (10, &ids(&["CE-11.2", "CE-11.3"])[..], None, true),
-                (12, &ids(&["CE-11.4"])[..], Some("focused"), true),
-                (14, &ids(&["CE-11.5"])[..], Some("template ${1}"), true),
-                (16, &ids(&["CE-11.6"])[..], None, true),
-                (18, &ids(&["CE-11.7"])[..], Some("vitest style"), true),
+                (4, &ids(&["TU-11.1"])[..], Some("opens a record"), true),
+                (10, &ids(&["TU-11.2", "TU-11.3"])[..], None, true),
+                (12, &ids(&["TU-11.4"])[..], Some("focused"), true),
+                (14, &ids(&["TU-11.5"])[..], Some("template ${1}"), true),
+                (16, &ids(&["TU-11.6"])[..], None, true),
+                (18, &ids(&["TU-11.7"])[..], Some("vitest style"), true),
             ]
         );
         assert!(
@@ -165,15 +165,15 @@ mod tests {
         );
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn ts_skip_and_fixme_do_not_count() {
         let (tags, findings) = scan_lines(&[
-            "// AC: CE-11.1",
+            "// AC: TU-11.1",
             "test.skip('later', () => {});",
-            "// AC: CE-11.2",
+            "// AC: TU-11.2",
             "  it.skip('later', () => {});",
-            "// AC: CE-11.3",
+            "// AC: TU-11.3",
             "test.fixme('broken', () => {});",
         ]);
         assert!(findings.is_empty(), "{findings:?}");
@@ -182,17 +182,17 @@ mod tests {
         assert_eq!(tags[0].test.as_deref(), Some("later"));
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn ts_tag_above_anything_else_is_dangling() {
         for lines in [
-            &["// AC: CE-11.1", "function helper() {}"][..],
-            &["// AC: CE-11.1", "", "test('a', () => {});"],
-            &["// AC: CE-11.1", "// a comment", "test('a', () => {});"],
-            &["// AC: CE-11.1", "test.describe('group', () => {"],
-            &["// AC: CE-11.1", "test.beforeEach(() => {});"],
-            &["// AC: CE-11.1", "item('not a test call');"],
-            &["// AC: CE-11.1"],
+            &["// AC: TU-11.1", "function helper() {}"][..],
+            &["// AC: TU-11.1", "", "test('a', () => {});"],
+            &["// AC: TU-11.1", "// a comment", "test('a', () => {});"],
+            &["// AC: TU-11.1", "test.describe('group', () => {"],
+            &["// AC: TU-11.1", "test.beforeEach(() => {});"],
+            &["// AC: TU-11.1", "item('not a test call');"],
+            &["// AC: TU-11.1"],
         ] {
             let (tags, findings) = scan_lines(lines);
             assert!(tags.is_empty(), "{lines:?}: {tags:?}");
@@ -205,13 +205,13 @@ mod tests {
         }
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn ts_malformed_tags_are_findings() {
         for line in [
             "//AC: x",
-            "// AC - CE-11.1",
-            "// AC: CE-11.1,CE-11.2",
+            "// AC - TU-11.1",
+            "// AC: TU-11.1,TU-11.2",
             "  // AC:",
         ] {
             let (tags, findings) = scan_lines(&[line, "test('a', () => {});"]);
@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn crlf_line_ends_do_not_matter() {
-        let (tags, findings) = scan("a.ts", "// AC: CE-11.1\r\ntest('a', () => {});\r\n");
+        let (tags, findings) = scan("a.ts", "// AC: TU-11.1\r\ntest('a', () => {});\r\n");
         assert!(findings.is_empty(), "{findings:?}");
         assert_eq!(tags.len(), 1);
         assert_eq!(tags[0].test.as_deref(), Some("a"));

@@ -2,14 +2,14 @@
 
 #[cfg(test)]
 mod tests {
-    // AC: CE-90.1
+    // AC: TU-90.1
     #[test]
     fn proves_the_first() {}
 }
 
 #[cfg(any())]
 mod never_compiled {
-    // AC: CE-90.2
+    // AC: TU-90.2
     #[test]
     fn would_prove_the_second() {}
 }

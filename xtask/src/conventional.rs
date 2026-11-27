@@ -16,21 +16,9 @@ pub const TYPES: [&str; 10] = [
 ];
 
 /// The commit scopes of `CONTRIBUTING.md` §2.
-pub const SCOPES: [&str; 14] = [
-    "content",
-    "vcs",
-    "studio",
-    "cli",
-    "mcp",
-    "editor",
-    "ui",
-    "generators",
-    "xtask",
-    "gate",
-    "spec",
-    "docs",
-    "design",
-    "release",
+pub const SCOPES: [&str; 13] = [
+    "core", "plan", "store", "run", "gate", "context", "api", "cli", "web", "xtask", "spec",
+    "docs", "ci",
 ];
 
 /// The first line of a commit: `type(scope)!: summary`.
@@ -223,7 +211,7 @@ pub fn parse_message(text: &str) -> std::result::Result<Message, String> {
 /// - a `Phase:` footer that is not a phase, or that is not the phase of a `phase/` branch, or
 ///   that is missing on a `phase/` branch;
 /// - a `Refs:` id that is not in `known_acs`. With no known ids at all the list is unavailable,
-///   and an id only has to look like one (`CE-08.10`, `CE-08R.1`).
+///   and an id only has to look like one (`TU-00.10`, `TU-01.1`).
 #[must_use]
 pub fn message_problems(
     message: &Message,
@@ -300,7 +288,7 @@ fn refs_problems(message: &Message, known_acs: &BTreeSet<String>, problems: &mut
     for (_, value) in message.footers.iter().filter(|(key, _)| key == "Refs") {
         for id in value.split(',').map(str::trim) {
             let known = if known_acs.is_empty() {
-                is_ac_id(id)
+                crate::umbrella::is_ac_id(id)
             } else {
                 known_acs.contains(id)
             };
@@ -316,16 +304,6 @@ fn refs_problems(message: &Message, known_acs: &BTreeSet<String>, problems: &mut
             }
         }
     }
-}
-
-/// `CE-`, a group number with an optional `R`, a dot and a number: `CE-08.10`, `CE-08R.1`.
-fn is_ac_id(id: &str) -> bool {
-    let digits = |text: &str| !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit());
-    id.strip_prefix("CE-")
-        .and_then(|rest| rest.split_once('.'))
-        .is_some_and(|(group, number)| {
-            digits(group.strip_suffix('R').unwrap_or(group)) && digits(number)
-        })
 }
 
 #[cfg(test)]
@@ -364,7 +342,7 @@ mod tests {
         found.iter().any(|problem| problem.contains(needle))
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn parses_header_with_scope_and_bang() -> TestResult {
         assert_eq!(
@@ -391,7 +369,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn headers_with_the_wrong_shape_do_not_parse() {
         for bad in [
@@ -421,7 +399,7 @@ mod tests {
         }
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn autosquash_and_revert_headers_say_what_to_do() {
         let fixup = parse_header("fixup! feat(xtask): x")
@@ -435,7 +413,7 @@ mod tests {
         assert!(revert.contains("revert("), "{revert}");
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn rejects_unknown_type() -> TestResult {
         let problems = header_problems(&parse_header("feature(xtask): add a thing")?);
@@ -446,7 +424,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn rejects_unknown_scope() -> TestResult {
         let problems = header_problems(&parse_header("feat(nope): add a thing")?);
@@ -477,7 +455,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn summary_of_72_chars_passes_73_fails() -> TestResult {
         let line = |summary: &str| format!("feat(xtask): {summary}");
@@ -494,7 +472,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn rejects_uppercase_start_and_full_stop() -> TestResult {
         let upper = header_problems(&parse_header("feat(xtask): Add a thing")?);
@@ -531,11 +509,11 @@ mod tests {
         assert_eq!(wording_problems("Add a thing.").len(), 2);
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn crlf_message_parses_like_lf() -> TestResult {
         let lf = "feat(xtask)!: drop the flag\n\nThe flag was never used.\nSecond line.\n\n\
-                  BREAKING CHANGE: the flag is gone\nRefs: CE-08.10\nPhase: P00\n";
+                  BREAKING CHANGE: the flag is gone\nRefs: TU-00.10\nPhase: P00\n";
         let crlf = lf.replace('\n', "\r\n");
         assert_eq!(parse_message(&crlf)?, parse_message(lf)?);
         let message = parse_message(&crlf)?;
@@ -551,7 +529,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn a_blank_line_must_follow_the_header() -> TestResult {
         let error = parse_message("feat: x\nbody right after the header")
@@ -575,12 +553,12 @@ mod tests {
     #[test]
     fn a_paragraph_shaped_like_a_footer_starts_the_footers() -> TestResult {
         let both =
-            parse_message("feat: x\n\nFirst paragraph\nstill first.\n\nSecond.\n\nRefs: CE-08.1")?;
+            parse_message("feat: x\n\nFirst paragraph\nstill first.\n\nSecond.\n\nRefs: TU-00.1")?;
         assert_eq!(
             both.body,
             ["First paragraph", "still first.", "", "Second."]
         );
-        assert_eq!(both.footers, [("Refs".to_owned(), "CE-08.1".to_owned())]);
+        assert_eq!(both.footers, [("Refs".to_owned(), "TU-00.1".to_owned())]);
 
         // git-conventional's grammar: a paragraph that starts like a footer starts the footers,
         // and the lines after it continue its value.
@@ -595,13 +573,13 @@ mod tests {
         );
 
         // The last paragraph is the footers, even when it is the only one.
-        let only_footers = parse_message("feat: x\n\nPhase: P00\nRefs: CE-08.1, CE-08.2")?;
+        let only_footers = parse_message("feat: x\n\nPhase: P00\nRefs: TU-00.1, TU-00.2")?;
         assert_eq!(only_footers.body, Vec::<String>::new());
         assert_eq!(
             only_footers.footers,
             [
                 ("Phase".to_owned(), "P00".to_owned()),
-                ("Refs".to_owned(), "CE-08.1, CE-08.2".to_owned()),
+                ("Refs".to_owned(), "TU-00.1, TU-00.2".to_owned()),
             ]
         );
 
@@ -612,7 +590,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn the_rules_still_judge_a_message_whose_first_paragraph_looks_like_a_footer() -> TestResult {
         let text = "feat: x
@@ -621,19 +599,19 @@ Why: a sentence.
 
 More.
 Phase: P01
-Refs: CE-99.1";
-        let found = problems(text, "phase/P00-x", &["CE-08.1"])?;
+Refs: TU-99.1";
+        let found = problems(text, "phase/P00-x", &["TU-00.1"])?;
         assert!(has_problem(&found, "Phase: P01"), "{found:?}");
-        assert!(has_problem(&found, "CE-99.1"), "{found:?}");
+        assert!(has_problem(&found, "TU-99.1"), "{found:?}");
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn multi_line_footer_joins() -> TestResult {
         let message = parse_message(
             "feat(cli)!: rename the flag\n\nWhy.\n\nBREAKING CHANGE: `--old` is now `--new`;\n\
-             scripts that pass `--old` must change.\nRefs: CE-08.1\nPhase: P00",
+             scripts that pass `--old` must change.\nRefs: TU-00.1\nPhase: P00",
         )?;
         assert_eq!(
             message.footers,
@@ -642,7 +620,7 @@ Refs: CE-99.1";
                     "BREAKING CHANGE".to_owned(),
                     "`--old` is now `--new`;\nscripts that pass `--old` must change.".to_owned()
                 ),
-                ("Refs".to_owned(), "CE-08.1".to_owned()),
+                ("Refs".to_owned(), "TU-00.1".to_owned()),
                 ("Phase".to_owned(), "P00".to_owned()),
             ]
         );
@@ -650,7 +628,7 @@ Refs: CE-99.1";
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn bang_requires_breaking_footer_and_back() -> TestResult {
         let bang_only = problems("feat(cli)!: rename the flag\n\nPhase: P00", "main", &[])?;
@@ -676,7 +654,7 @@ Refs: CE-99.1";
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn both_breaking_spellings_count() -> TestResult {
         for key in ["BREAKING CHANGE", "BREAKING-CHANGE"] {
@@ -695,7 +673,7 @@ Refs: CE-99.1";
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn long_body_line_fails_but_url_line_passes() -> TestResult {
         let at_limit = "word ".repeat(19) + "word";
@@ -719,7 +697,7 @@ Refs: CE-99.1";
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn footer_lines_are_held_to_the_same_limit() -> TestResult {
         let long = "words ".repeat(20);
@@ -736,12 +714,12 @@ Refs: CE-99.1";
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn phase_footer_must_match_a_phase_branch() -> TestResult {
         let on = |footers: &str| problems(&format!("feat: x\n\n{footers}"), "phase/P00-x", &[]);
         assert_eq!(on("Phase: P00")?, Vec::<String>::new());
-        let missing = on("Refs: CE-08.1")?;
+        let missing = on("Refs: TU-00.1")?;
         assert_eq!(missing.len(), 1, "{missing:?}");
         assert!(missing[0].contains("P00"), "{missing:?}");
         let no_footers = problems("feat: x", "phase/P00-x", &[])?;
@@ -757,7 +735,7 @@ Refs: CE-99.1";
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn phase_footer_is_optional_but_valid_elsewhere() -> TestResult {
         for branch in [
@@ -784,36 +762,36 @@ Refs: CE-99.1";
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn refs_must_all_be_known() -> TestResult {
-        let acs = ["CE-08.1", "CE-08.10", "CE-08R.1"];
+        let acs = ["TU-00.1", "TU-00.10", "TU-01.1"];
         let refs = |value: &str| problems(&format!("feat: x\n\nRefs: {value}"), "main", &acs);
-        assert_eq!(refs("CE-08.1")?, Vec::<String>::new());
-        assert_eq!(refs("CE-08.1, CE-08.10,CE-08R.1")?, Vec::<String>::new());
-        let unknown = refs("CE-08.1, CE-99.1")?;
+        assert_eq!(refs("TU-00.1")?, Vec::<String>::new());
+        assert_eq!(refs("TU-00.1, TU-00.10,TU-01.1")?, Vec::<String>::new());
+        let unknown = refs("TU-00.1, TU-99.1")?;
         assert_eq!(unknown.len(), 1, "{unknown:?}");
-        assert!(unknown[0].contains("CE-99.1"), "{unknown:?}");
-        assert_eq!(refs("CE-98.1, CE-99.1")?.len(), 2);
-        assert_eq!(refs("CE-08.1,")?.len(), 1);
-        assert_eq!(refs("CE-08.1,,CE-08.10")?.len(), 1);
+        assert!(unknown[0].contains("TU-99.1"), "{unknown:?}");
+        assert_eq!(refs("TU-98.1, TU-99.1")?.len(), 2);
+        assert_eq!(refs("TU-00.1,")?.len(), 1);
+        assert_eq!(refs("TU-00.1,,TU-00.10")?.len(), 1);
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn refs_without_a_list_only_have_to_look_like_ids() -> TestResult {
         let refs = |value: &str| problems(&format!("feat: x\n\nRefs: {value}"), "main", &[]);
-        assert_eq!(refs("CE-08.10, CE-08R.1, CE-123.45")?, Vec::<String>::new());
+        assert_eq!(refs("TU-00.10, TU-01.1, TU-12.345")?, Vec::<String>::new());
         for bad in [
-            "CE-08", "CE-.1", "CE-08.", "ce-08.1", "CE-08.1a", "08.1", "CE-0 8.1", "nope",
+            "TU-00", "TU-.1", "TU-00.", "ce-08.1", "TU-00.1a", "08.1", "TU-0 0.1", "nope",
         ] {
             assert_eq!(refs(bad)?.len(), 1, "{bad}");
         }
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn the_bang_comes_from_the_header_not_from_the_footer() -> TestResult {
         let text = "feat(cli): rename the flag
@@ -830,11 +808,11 @@ BREAKING CHANGE: it is renamed";
     fn a_good_message_has_no_problems() -> TestResult {
         let text = "feat(xtask): check commit messages against contributing rules\n\n\
                     Every commit of a pull request is parsed and judged.\n\n\
-                    Refs: CE-08.10\nPhase: P00\n\
+                    Refs: TU-00.10\nPhase: P00\n\
                     Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>\n\
                     Claude-Session: 666a12cd-ea1d-44dd-bf09-077295de681d";
         assert_eq!(
-            problems(text, "phase/P00-foundation-and-gate", &["CE-08.10"])?,
+            problems(text, "phase/P00-foundation-and-gate", &["TU-00.10"])?,
             Vec::<String>::new()
         );
         Ok(())

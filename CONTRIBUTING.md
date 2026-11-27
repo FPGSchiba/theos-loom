@@ -47,8 +47,8 @@ The gate checks every commit of a pull request (`commit-msg`) and its title (`pr
 | `chore` | Anything else, including release commits | – |
 | `revert` | Reverts an earlier commit | Reverts |
 
-**Scopes:** `content`, `vcs`, `studio`, `cli`, `mcp`, `editor` (Tauri), `ui`, `generators`,
-`xtask`, `gate`, `spec`, `docs`, `design`, `release`. Leave the scope out only when a change
+**Scopes:** `core`, `plan`, `store`, `run`, `gate`, `context`, `api`, `cli`, `web`, `xtask`,
+`spec`, `docs`, `ci`. Leave the scope out only when a change
 really spans the whole repo.
 
 **Summary:** imperative mood, lower case, no full stop, at most 72 characters:

@@ -27,7 +27,7 @@ use xtask::verdict::{Check, Verdict};
 use xtask::view::Shared;
 use xtask::{Error, ci, report, tools};
 
-/// Gate tooling for the theos-editor workspace (`docs/gate.md`).
+/// Gate tooling for the Loom workspace (`docs/gate.md`).
 #[derive(Parser)]
 #[command(name = "xtask")]
 struct Cli {

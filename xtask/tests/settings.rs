@@ -54,7 +54,7 @@ fn rule_types(ruleset: &Value) -> TestResult<BTreeSet<String>> {
         .collect()
 }
 
-// AC: CE-08.3
+// AC: TU-00.2
 #[test]
 fn ruleset_contexts_equal_gate_md_checks() -> TestResult {
     let root = root()?;
@@ -101,7 +101,7 @@ fn ruleset_contexts_equal_gate_md_checks() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.3
+// AC: TU-00.2
 #[test]
 fn main_ruleset_encodes_section_6() -> TestResult {
     let desired = Desired::load(&root()?)?;
@@ -140,7 +140,7 @@ fn main_ruleset_encodes_section_6() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.3
+// AC: TU-00.2
 #[test]
 fn tag_ruleset_blocks_update_and_deletion() -> TestResult {
     let desired = Desired::load(&root()?)?;
@@ -159,7 +159,7 @@ fn tag_ruleset_blocks_update_and_deletion() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.3
+// AC: TU-00.2
 #[test]
 fn repo_settings_encode_section_6() -> TestResult {
     let desired = Desired::load(&root()?)?;

@@ -111,7 +111,9 @@ fn every_member_inherits_the_workspace_package() -> TestResult {
         .and_then(toml::Value::as_str)
         .ok_or("`[workspace.package]` has no `version`")?;
     assert_eq!(
-        workspace_package.get("license").and_then(toml::Value::as_str),
+        workspace_package
+            .get("license")
+            .and_then(toml::Value::as_str),
         Some("MIT"),
         "`[workspace.package]` must have `license = \"MIT\"`"
     );

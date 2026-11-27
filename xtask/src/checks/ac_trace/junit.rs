@@ -168,7 +168,7 @@ mod tests {
 
     const REPORT: &str = include_str!("../../../tests/fixtures/ac-trace/nextest-junit.xml");
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn junit_parses_pass_and_fail() -> TestResult {
         let results = parse(REPORT)?;

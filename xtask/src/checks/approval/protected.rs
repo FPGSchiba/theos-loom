@@ -230,7 +230,7 @@ mod tests {
         ProtectedPaths::parse(text)
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn docs_protected_plans_and_status_not() -> Result<()> {
         let rules = real()?;
@@ -244,7 +244,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn case_variants_are_protected() -> Result<()> {
         let rules = real()?;
@@ -270,7 +270,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn star_does_not_cross_slash() -> Result<()> {
         let rules = rules("protected = [\"a/*.md\", \"b/**\"]\nexcept = [\"b/*.tmp\"]")?;

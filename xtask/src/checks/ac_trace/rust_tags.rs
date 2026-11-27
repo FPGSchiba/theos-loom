@@ -236,29 +236,29 @@ mod tests {
 
     /// The tag above `attributes` and a function, and whether it counts.
     fn counts(attributes: &[&str]) -> bool {
-        let mut lines = vec!["// AC: CE-08.1"];
+        let mut lines = vec!["// AC: TU-00.1"];
         lines.extend_from_slice(attributes);
         lines.push("fn a_test() {}");
         only_tag(&lines).counts
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn rust_tag_above_test_counts() {
-        let tag = only_tag(&["// AC: CE-08.1", "#[test]", "fn works() {}"]);
+        let tag = only_tag(&["// AC: TU-00.1", "#[test]", "fn works() {}"]);
         assert_eq!(tag.file, "src/lib.rs");
         assert_eq!(tag.line, 1);
-        assert_eq!(tag.ids, ["CE-08.1"]);
+        assert_eq!(tag.ids, ["TU-00.1"]);
         assert_eq!(tag.test.as_deref(), Some("works"));
         assert!(tag.counts);
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn rust_tag_with_doc_and_attrs_counts() {
         let tag = only_tag(&[
             "mod tests {",
-            "    // AC: CE-08.1, CE-08.2",
+            "    // AC: TU-00.1, TU-00.2",
             "    /// What it proves.",
             "    #[tokio::test(flavor = \"multi_thread\")]",
             "    #[should_panic(",
@@ -268,17 +268,17 @@ mod tests {
             "}",
         ]);
         assert_eq!(tag.line, 2);
-        assert_eq!(tag.ids, ["CE-08.1", "CE-08.2"]);
+        assert_eq!(tag.ids, ["TU-00.1", "TU-00.2"]);
         assert_eq!(tag.test.as_deref(), Some("proves_it"));
         assert!(tag.counts);
     }
 
     #[test]
     fn the_attribute_and_the_function_may_share_a_line() {
-        let tag = only_tag(&["// AC: CE-08.1", "#[test] fn one_line() {}"]);
+        let tag = only_tag(&["// AC: TU-00.1", "#[test] fn one_line() {}"]);
         assert_eq!(tag.test.as_deref(), Some("one_line"));
         let tag = only_tag(&[
-            "// AC: CE-08.1",
+            "// AC: TU-00.1",
             "#[test]",
             "#[ignore] pub(crate) fn two() {}",
         ]);
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn crlf_line_ends_do_not_matter() {
-        let text = "// AC: CE-08.1\r\n#[test]\r\nfn works() {}\r\n";
+        let text = "// AC: TU-00.1\r\n#[test]\r\nfn works() {}\r\n";
         let (tags, findings) = scan_text(text, true);
         assert!(findings.is_empty(), "{findings:?}");
         assert_eq!(tags.len(), 1);
@@ -307,17 +307,17 @@ mod tests {
         }
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn rust_tag_above_helper_is_dangling() {
         for lines in [
-            &["// AC: CE-08.1", "fn helper() {}"][..],
-            &["// AC: CE-08.1", "#[inline]", "fn helper() {}"],
-            &["// AC: CE-08.1", "#[derive(Debug)]", "struct Case;"],
-            &["// AC: CE-08.1", "#[test]", "struct NotAFunction;"],
-            &["// AC: CE-08.1"],
+            &["// AC: TU-00.1", "fn helper() {}"][..],
+            &["// AC: TU-00.1", "#[inline]", "fn helper() {}"],
+            &["// AC: TU-00.1", "#[derive(Debug)]", "struct Case;"],
+            &["// AC: TU-00.1", "#[test]", "struct NotAFunction;"],
+            &["// AC: TU-00.1"],
             &[
-                "// AC: CE-08.1",
+                "// AC: TU-00.1",
                 "fn helper() {}",
                 "#[test]",
                 "fn works() {}",
@@ -336,7 +336,7 @@ mod tests {
         only_tag(lines).counts
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_test_in_a_module_counts_only_when_the_module_cfg_names_test_or_the_target() {
         let cases = [
@@ -352,7 +352,7 @@ mod tests {
             let lines = [
                 cfg,
                 "mod t {",
-                "    // AC: CE-08.1",
+                "    // AC: TU-00.1",
                 "    #[test]",
                 "    fn inner() {}",
                 "}",
@@ -361,7 +361,7 @@ mod tests {
         }
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn only_the_target_os_and_family_keys_leave_a_test_counting() {
         // The spec: a test does not count when its cfg names anything besides the target OS.
@@ -378,7 +378,7 @@ mod tests {
         }
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_cfg_on_any_enclosing_module_decides() {
         for (outer, inner, expected) in [
@@ -391,7 +391,7 @@ mod tests {
                 "mod a {",
                 inner,
                 "    mod b {",
-                "        // AC: CE-08.1",
+                "        // AC: TU-00.1",
                 "        #[test]",
                 "        fn inner() {}",
                 "    }",
@@ -401,7 +401,7 @@ mod tests {
         }
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_test_in_a_file_counts_only_when_the_file_cfg_names_test_or_the_target() {
         let cases = [
@@ -416,7 +416,7 @@ mod tests {
                 "//! A file with a doc comment before its cfg.",
                 cfg,
                 "",
-                "// AC: CE-08.1",
+                "// AC: TU-00.1",
                 "#[test]",
                 "fn inner() {}",
             ];
@@ -424,7 +424,7 @@ mod tests {
         }
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_test_in_a_function_body_follows_the_cfg_of_the_function() {
         for (cfg, expected) in [
@@ -435,7 +435,7 @@ mod tests {
             let lines = [
                 cfg,
                 "fn outer() {",
-                "    // AC: CE-08.1",
+                "    // AC: TU-00.1",
                 "    #[test]",
                 "    fn inner() {}",
                 "}",
@@ -444,12 +444,12 @@ mod tests {
         }
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_module_without_cfg_does_not_stop_a_test_from_counting() {
         assert!(tag_counts(&[
             "mod t {",
-            "    // AC: CE-08.1",
+            "    // AC: TU-00.1",
             "    #[test]",
             "    fn inner() {}",
             "}",
@@ -458,7 +458,7 @@ mod tests {
 
     #[test]
     fn the_dangling_message_reads_as_one_line_of_prose() {
-        let (_, findings) = scan_lines(&["// AC: CE-08.1", "fn helper() {}"]);
+        let (_, findings) = scan_lines(&["// AC: TU-00.1", "fn helper() {}"]);
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert!(
             findings[0].message.contains("no test follows"),
@@ -467,20 +467,20 @@ mod tests {
         assert!(!findings[0].message.contains("  "), "{findings:?}");
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn rust_tag_with_blank_line_is_dangling() {
         for lines in [
-            &["// AC: CE-08.1", "", "#[test]", "fn works() {}"][..],
+            &["// AC: TU-00.1", "", "#[test]", "fn works() {}"][..],
             &[
-                "// AC: CE-08.1",
+                "// AC: TU-00.1",
                 "",
                 "// a plain comment",
                 "#[test]",
                 "fn works() {}",
             ],
             &[
-                "// AC: CE-08.1",
+                "// AC: TU-00.1",
                 "fn helper() {}",
                 "#[test]",
                 "fn works() {}",
@@ -492,26 +492,26 @@ mod tests {
         }
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_tag_among_the_comments_above_a_test_counts() {
         // Spec §5.10, controller ruling: the whole run of comments above the test is read.
         for lines in [
             &[
-                "// AC: CE-08.1",
+                "// AC: TU-00.1",
                 "// an explanation",
                 "#[test]",
                 "fn works() {}",
             ][..],
             &[
-                "// AC: CE-08.1",
+                "// AC: TU-00.1",
                 "//// not a doc line",
                 "#[test]",
                 "fn works() {}",
             ],
             &[
                 "// an explanation",
-                "// AC: CE-08.1",
+                "// AC: TU-00.1",
                 "#[test]",
                 "fn works() {}",
             ],
@@ -521,12 +521,12 @@ mod tests {
         }
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn two_tag_lines_in_a_row_above_a_test_both_count() {
         let (tags, findings) = scan_lines(&[
-            "// AC: CE-08.1",
-            "// AC: CE-08.2, CE-08.3",
+            "// AC: TU-00.1",
+            "// AC: TU-00.2, TU-00.3",
             "#[test]",
             "fn works() {}",
         ]);
@@ -535,12 +535,12 @@ mod tests {
         assert_eq!(found, [(1, 1), (2, 2)]);
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_tag_below_a_doc_comment_is_inside_the_test_and_dangling() {
         let (tags, findings) = scan_lines(&[
             "/// What it proves.",
-            "// AC: CE-08.1",
+            "// AC: TU-00.1",
             "#[test]",
             "fn works() {}",
         ]);
@@ -549,13 +549,13 @@ mod tests {
         assert_eq!(findings[0].line, Some(2));
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn blank_lines_and_comments_inside_the_item_do_not_matter() {
         for lines in [
-            &["// AC: CE-08.1", "#[test]", "", "fn works() {}"][..],
+            &["// AC: TU-00.1", "#[test]", "", "fn works() {}"][..],
             &[
-                "// AC: CE-08.1",
+                "// AC: TU-00.1",
                 "#[test]",
                 "// a note",
                 "#[cfg(windows)]",
@@ -566,12 +566,12 @@ mod tests {
         }
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn inner_attributes_of_the_body_do_not_hide_the_test() {
         // `syn` lists a body's inner attributes among the function's attributes.
         let tag = only_tag(&[
-            "// AC: CE-08.1",
+            "// AC: TU-00.1",
             "#[test]",
             "fn works() {",
             "    #![expect(unused_variables, reason = \"a probe\")]",
@@ -581,7 +581,7 @@ mod tests {
         assert!(tag.counts);
         // An `ignore` in the body is not the test's attribute.
         let tag = only_tag(&[
-            "// AC: CE-08.1",
+            "// AC: TU-00.1",
             "#[test]",
             "fn works() {",
             "    #![ignore]",
@@ -590,12 +590,12 @@ mod tests {
         assert!(tag.counts);
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_file_that_did_not_parse_has_no_tags() {
         let (source, finding) = parse_source(
             "src/lib.rs",
-            b"// AC: CE-08.1
+            b"// AC: TU-00.1
 #[test
 ",
         );
@@ -604,7 +604,7 @@ mod tests {
         assert!(tags.is_empty() && findings.is_empty());
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn ignored_test_does_not_count() {
         assert!(!counts(&["#[test]", "#[ignore]"]));
@@ -619,7 +619,7 @@ mod tests {
         assert!(counts(&["#[test]", "#[cfg_attr(windows, should_panic)]"]));
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn cfg_any_test_does_not_count_cfg_windows_does() {
         let cases = [
@@ -645,19 +645,19 @@ mod tests {
         }
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn malformed_tags_are_findings() {
         for line in [
             "//AC: x",
-            "// AC - CE-08.1",
-            "// AC: CE-08.1,CE-08.2",
-            "// AC:CE-08.1",
+            "// AC - TU-00.1",
+            "// AC: TU-00.1,TU-00.2",
+            "// AC:TU-00.1",
             "// AC: ",
             "// AC:",
-            "//  AC: CE-08.1",
-            "// AC: CE-08.1 and more",
-            "// AC: CE-08.1, ",
+            "//  AC: TU-00.1",
+            "// AC: TU-00.1 and more",
+            "// AC: TU-00.1, ",
             "// AC: CE 08.1",
             "\t//AC",
         ] {
@@ -671,15 +671,15 @@ mod tests {
     #[test]
     fn comments_that_are_not_tags_are_left_alone() {
         let (tags, findings) = scan_lines(&[
-            "//! AC: CE-08.1",
+            "//! AC: TU-00.1",
             "// ACs are acceptance criteria",
             "// ACL rules",
-            "// the AC: CE-08.1 tag",
+            "// the AC: TU-00.1 tag",
             "fn helper() {",
-            "    let text = \"// AC: CE-08.1\";",
+            "    let text = \"// AC: TU-00.1\";",
             "    drop(text);",
             "}",
-            "/// AC: CE-08.1",
+            "/// AC: TU-00.1",
             "#[test]",
             "fn works() {}",
         ]);
@@ -690,15 +690,15 @@ mod tests {
     #[test]
     fn every_tag_of_a_file_is_found_with_its_line() {
         let (tags, findings) = scan_lines(&[
-            "// AC: CE-08.1",
+            "// AC: TU-00.1",
             "#[test]",
             "fn first() {}",
             "",
-            "    // AC: CE-08.2",
+            "    // AC: TU-00.2",
             "    #[test]",
             "    fn second() {}",
-            "// AC: CE-08.3",
-            "// AC: CE-08.4",
+            "// AC: TU-00.3",
+            "// AC: TU-00.4",
             "#[test]",
             "fn third() {}",
         ]);
@@ -710,25 +710,25 @@ mod tests {
         assert_eq!(
             found,
             [
-                (1, "CE-08.1"),
-                (5, "CE-08.2"),
-                (8, "CE-08.3"),
-                (9, "CE-08.4")
+                (1, "TU-00.1"),
+                (5, "TU-00.2"),
+                (8, "TU-00.3"),
+                (9, "TU-00.4")
             ]
         );
         assert!(findings.is_empty(), "{findings:?}");
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_tag_line_inside_a_string_is_not_a_tag() {
         let (tags, findings) = scan_lines(&[
             "const S: &str = \"",
-            "// AC: CE-08.1",
+            "// AC: TU-00.1",
             "//AC: broken",
             "\";",
             "",
-            "// AC: CE-08.2",
+            "// AC: TU-00.2",
             "#[test]",
             "fn works() {}",
         ]);
@@ -736,17 +736,17 @@ mod tests {
         assert_eq!(tags.len(), 1, "{tags:?}");
         assert_eq!(
             (tags[0].line, tags[0].ids.as_slice()),
-            (6, &["CE-08.2".to_owned()][..])
+            (6, &["TU-00.2".to_owned()][..])
         );
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_tag_above_a_test_in_an_inline_module_counts() {
         let tag = only_tag(&[
             "#[cfg(test)]",
             "mod tests {",
-            "    // AC: CE-08.1",
+            "    // AC: TU-00.1",
             "    #[test]",
             "    fn inner() {}",
             "}",
@@ -757,12 +757,12 @@ mod tests {
         );
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_tag_above_a_test_in_a_function_body_counts() {
         let tag = only_tag(&[
             "fn outer() {",
-            "    // AC: CE-08.1",
+            "    // AC: TU-00.1",
             "    #[test]",
             "    fn inner() {}",
             "}",
@@ -773,20 +773,20 @@ mod tests {
         );
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_trailing_comment_after_an_attribute_keeps_the_tag() {
-        let tag = only_tag(&["// AC: CE-08.1", "#[test] // slow", "fn works() {}"]);
+        let tag = only_tag(&["// AC: TU-00.1", "#[test] // slow", "fn works() {}"]);
         assert_eq!(
             (tag.line, tag.test.as_deref(), tag.counts),
             (1, Some("works"), true)
         );
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn tags_in_a_file_no_test_target_compiles_are_dangling() {
-        let text = source(&["// AC: CE-08.1", "#[test]", "fn works() {}", "//AC: broken"]);
+        let text = source(&["// AC: TU-00.1", "#[test]", "fn works() {}", "//AC: broken"]);
         let (tags, findings) = scan_text(&text, false);
         assert!(tags.is_empty(), "{tags:?}");
         assert_eq!(findings.len(), 2, "{findings:?}");

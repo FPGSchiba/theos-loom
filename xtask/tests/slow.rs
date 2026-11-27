@@ -48,7 +48,7 @@ fn filters(profiles: &[&str]) -> TestResult<Vec<Option<String>>> {
         .collect()
 }
 
-// AC: CE-08.1
+// AC: TU-00.1
 #[test]
 fn every_test_runs_in_exactly_one_of_test_and_slow_tests() -> TestResult {
     // `default` is the `test` check locally and the coverage run, `ci` the `test` check in CI,

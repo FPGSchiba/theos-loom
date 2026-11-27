@@ -29,9 +29,6 @@ use crate::verdict::{Check, Finding, Verdict};
 use crate::view::{Shared, View};
 use crate::{Error, Result};
 
-/// The repository whose tests this check can see. A phase built in another one demands nothing.
-const OWN_REPO: &str = "theos-editor";
-
 /// A `// AC: <id>[, <id>]*` comment that is directly above a test.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Tag {
@@ -106,7 +103,7 @@ pub fn check(
                 )));
                 (phase.to_string(), Vec::new())
             }
-            Some(info) if info.repo != OWN_REPO => {
+            Some(info) if info.repo != umbrella::OWN_REPO => {
                 verdict.notes.push(format!(
                     "{phase} is built in {}, where its tests are, so no test is demanded here",
                     info.repo
@@ -394,13 +391,10 @@ fn classify(line: &str) -> Comment {
     }
 }
 
-/// An id as a tag may write it: ASCII letters, digits, `.`, `-` and `_`. Whether it is a
-/// criterion is for [`check`].
+/// An id as a tag may write it: an acceptance criterion id ([`umbrella::is_ac_id`]). Whether it
+/// is a criterion of the spec is for [`check`].
 fn is_tag_id(id: &str) -> bool {
-    !id.is_empty()
-        && id
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_'))
+    umbrella::is_ac_id(id)
 }
 
 /// The number of the line at `index` (counting from 0) in the unit of a finding: from 1.
@@ -477,39 +471,39 @@ mod tests {
         Ok((verdict, table))
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_phase_criterion_without_a_counting_tag_is_a_finding() -> TestResult {
         let p90 = Some(phase("P90")?);
-        let first = tag("src/a.rs", 3, &["CE-90.1"], Some("one"), true);
+        let first = tag("src/a.rs", 3, &["TU-90.1"], Some("one"), true);
 
         let (verdict, _) = run_check(p90, std::slice::from_ref(&first), None)?;
         assert_eq!(verdict.check, Check::AcTrace);
         assert_eq!(verdict.findings.len(), 1, "{:?}", verdict.findings);
-        assert!(verdict.findings[0].message.contains("CE-90.2"));
+        assert!(verdict.findings[0].message.contains("TU-90.2"));
 
         // A tag that does not count proves nothing.
-        let ignored = tag("src/a.rs", 9, &["CE-90.2"], Some("two"), false);
+        let ignored = tag("src/a.rs", 9, &["TU-90.2"], Some("two"), false);
         let (verdict, _) = run_check(p90, &[first.clone(), ignored], None)?;
         assert_eq!(verdict.findings.len(), 1, "{:?}", verdict.findings);
 
         // One tag may prove several criteria.
-        let both = tag("src/a.rs", 3, &["CE-90.1", "CE-90.2"], Some("both"), true);
+        let both = tag("src/a.rs", 3, &["TU-90.1", "TU-90.2"], Some("both"), true);
         let (verdict, _) = run_check(p90, &[both], None)?;
         assert!(verdict.passed(), "{:?}", verdict.findings);
         Ok(())
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn an_unknown_id_is_a_finding_at_its_tag() -> TestResult {
         let tags = [
-            tag("src/a.rs", 3, &["CE-90.1", "CE-90.2"], Some("one"), true),
-            tag("src/b.rs", 7, &["CE-99.9"], Some("two"), true),
+            tag("src/a.rs", 3, &["TU-90.1", "TU-90.2"], Some("one"), true),
+            tag("src/b.rs", 7, &["TU-99.9"], Some("two"), true),
             // Even a test that does not count must name a criterion that exists.
-            tag("src/c.rs", 2, &["CE-98.1"], Some("three"), false),
+            tag("src/c.rs", 2, &["TU-98.1"], Some("three"), false),
             // An id of another phase is known; it just proves nothing for this one.
-            tag("src/d.rs", 4, &["CE-91.1"], Some("four"), true),
+            tag("src/d.rs", 4, &["TU-91.1"], Some("four"), true),
         ];
         for phase in [Some(phase("P90")?), None] {
             let (verdict, _) = run_check(phase, &tags, None)?;
@@ -522,8 +516,8 @@ mod tests {
                 places,
                 [(Some("src/b.rs"), Some(7)), (Some("src/c.rs"), Some(2))]
             );
-            assert!(verdict.findings[0].message.contains("CE-99.9"));
-            assert!(verdict.findings[1].message.contains("CE-98.1"));
+            assert!(verdict.findings[0].message.contains("TU-99.9"));
+            assert!(verdict.findings[1].message.contains("TU-98.1"));
         }
         Ok(())
     }
@@ -537,14 +531,14 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_phase_built_in_another_repository_demands_nothing() -> TestResult {
         let (verdict, table) = run_check(Some(phase("P91")?), &[], None)?;
         assert!(verdict.passed(), "{:?}", verdict.findings);
         assert_eq!(verdict.notes.len(), 1, "{:?}", verdict.notes);
         assert!(
-            verdict.notes[0].contains("tower-of-theos"),
+            verdict.notes[0].contains("FPGSchiba/bmad-method"),
             "{:?}",
             verdict.notes
         );
@@ -563,35 +557,35 @@ mod tests {
     #[test]
     fn the_table_lists_every_criterion_with_its_tests() -> TestResult {
         let tags = [
-            tag("src/a.rs", 3, &["CE-90.1"], Some("one"), true),
+            tag("src/a.rs", 3, &["TU-90.1"], Some("one"), true),
             tag(
                 "web/a.spec.ts",
                 12,
-                &["CE-90.1", "CE-90.2"],
+                &["TU-90.1", "TU-90.2"],
                 Some("shows a record"),
                 true,
             ),
-            tag("src/a.rs", 20, &["CE-90.1"], None, true),
-            tag("src/a.rs", 30, &["CE-90.2"], Some("later"), false),
+            tag("src/a.rs", 20, &["TU-90.1"], None, true),
+            tag("src/a.rs", 30, &["TU-90.2"], Some("later"), false),
         ];
         let (verdict, table) = run_check(Some(phase("P90")?), &tags, None)?;
         assert!(verdict.passed(), "{:?}", verdict.findings);
         assert_eq!(
             table,
             [
-                "ac-trace: P90 Fixture phase (theos-editor); criteria: 2",
-                "CE-90.1   src/a.rs:3 one",
-                "CE-90.1   web/a.spec.ts:12 shows a record",
-                "CE-90.1   src/a.rs:20",
-                "CE-90.2   web/a.spec.ts:12 shows a record",
-                "CE-90.2   src/a.rs:30 later (does not count)",
+                "ac-trace: P90 Fixture phase (theos-loom); criteria: 2",
+                "TU-90.1   src/a.rs:3 one",
+                "TU-90.1   web/a.spec.ts:12 shows a record",
+                "TU-90.1   src/a.rs:20",
+                "TU-90.2   web/a.spec.ts:12 shows a record",
+                "TU-90.2   src/a.rs:30 later (does not count)",
             ]
         );
 
         let (_, table) = run_check(Some(phase("P90")?), &tags[..1], None)?;
         assert_eq!(
             table.last().map(String::as_str),
-            Some("CE-90.2   no counting test")
+            Some("TU-90.2   no counting test")
         );
 
         // Without a phase the table is every criterion that has a tag.
@@ -600,7 +594,7 @@ mod tests {
             table,
             [
                 "ac-trace: no phase; criteria with a tag: 1",
-                "CE-90.1   src/a.rs:3 one",
+                "TU-90.1   src/a.rs:3 one",
             ]
         );
         Ok(())
@@ -609,11 +603,11 @@ mod tests {
     #[test]
     fn a_report_adds_the_result_of_each_test() -> TestResult {
         let tags = [
-            tag("src/a.rs", 3, &["CE-90.1"], Some("passes"), true),
-            tag("src/a.rs", 9, &["CE-90.1"], Some("fails"), true),
-            tag("src/a.rs", 12, &["CE-90.2"], Some("in_two_modules"), true),
-            tag("src/a.rs", 15, &["CE-90.2"], Some("not_run"), true),
-            tag("src/a.rs", 21, &["CE-90.2"], Some("ignored_one"), false),
+            tag("src/a.rs", 3, &["TU-90.1"], Some("passes"), true),
+            tag("src/a.rs", 9, &["TU-90.1"], Some("fails"), true),
+            tag("src/a.rs", 12, &["TU-90.2"], Some("in_two_modules"), true),
+            tag("src/a.rs", 15, &["TU-90.2"], Some("not_run"), true),
+            tag("src/a.rs", 21, &["TU-90.2"], Some("ignored_one"), false),
         ];
         let junit = report(&[
             ("tests::passes", true),
@@ -626,14 +620,14 @@ mod tests {
         assert_eq!(
             table,
             [
-                "ac-trace: P90 Fixture phase (theos-editor); criteria: 2; results of the last \
+                "ac-trace: P90 Fixture phase (theos-loom); criteria: 2; results of the last \
                  test run",
-                "CE-90.1   pass  src/a.rs:3 passes",
-                "CE-90.1   FAIL  src/a.rs:9 fails",
+                "TU-90.1   pass  src/a.rs:3 passes",
+                "TU-90.1   FAIL  src/a.rs:9 fails",
                 // It failed in one of the two places, so it did not pass.
-                "CE-90.2   FAIL  src/a.rs:12 in_two_modules",
-                "CE-90.2   –     src/a.rs:15 not_run",
-                "CE-90.2   –     src/a.rs:21 ignored_one (does not count)",
+                "TU-90.2   FAIL  src/a.rs:12 in_two_modules",
+                "TU-90.2   –     src/a.rs:15 not_run",
+                "TU-90.2   –     src/a.rs:21 ignored_one (does not count)",
             ]
         );
 
@@ -641,13 +635,13 @@ mod tests {
         let (_, table) = run_check(Some(phase("P90")?), &tags[..1], Some(&junit))?;
         assert_eq!(
             table.last().map(String::as_str),
-            Some("CE-90.2   –     no counting test")
+            Some("TU-90.2   –     no counting test")
         );
 
         // A test of a top-level function in an integration test file has no path.
         let junit = report(&[("passes", true)]);
         let (_, table) = run_check(Some(phase("P90")?), &tags[..1], Some(&junit))?;
-        assert_eq!(table[1], "CE-90.1   pass  src/a.rs:3 passes");
+        assert_eq!(table[1], "TU-90.1   pass  src/a.rs:3 passes");
         Ok(())
     }
 
@@ -655,12 +649,12 @@ mod tests {
     fn a_test_is_matched_by_the_end_of_its_path_and_not_by_the_end_of_its_name() -> TestResult {
         let junit = report(&[("tests::big_test", true), ("tests::test", false)]);
         let tags = [
-            tag("src/a.rs", 3, &["CE-90.1"], Some("test"), true),
-            tag("src/a.rs", 9, &["CE-90.2"], Some("big_test"), true),
+            tag("src/a.rs", 3, &["TU-90.1"], Some("test"), true),
+            tag("src/a.rs", 9, &["TU-90.2"], Some("big_test"), true),
         ];
         let (_, table) = run_check(Some(phase("P90")?), &tags, Some(&junit))?;
-        assert_eq!(table[1], "CE-90.1   FAIL  src/a.rs:3 test");
-        assert_eq!(table[2], "CE-90.2   pass  src/a.rs:9 big_test");
+        assert_eq!(table[1], "TU-90.1   FAIL  src/a.rs:3 test");
+        assert_eq!(table[2], "TU-90.2   pass  src/a.rs:9 big_test");
         Ok(())
     }
 
@@ -672,14 +666,14 @@ mod tests {
             tag(
                 "a\r::error x.ts",
                 1,
-                &["CE-90.1"],
+                &["TU-90.1"],
                 Some("t\n::error b\r::warning c"),
                 true,
             ),
             tag(
                 "src/\u{2028}::error.ts",
                 2,
-                &["CE-90.2"],
+                &["TU-90.2"],
                 Some("\u{85}::error"),
                 false,
             ),
@@ -690,7 +684,7 @@ mod tests {
             assert!(table.len() >= 3, "{table:?}");
             for line in &table {
                 assert!(
-                    line.starts_with("ac-trace: ") || line.starts_with("CE-90."),
+                    line.starts_with("ac-trace: ") || line.starts_with("TU-90."),
                     "{line:?}"
                 );
                 assert!(
@@ -700,11 +694,11 @@ mod tests {
             }
         }
 
-        // The umbrella is part of the pull request too, and the name and the repository of the
-        // phase go into the heading of the table and into a note. The parser does not let them
+        // The umbrella is part of the pull request too, and the name of the phase goes into the
+        // heading of the table and into a note. The parser does not let them
         // hold a line break or a control character, so no such line can be written.
-        let p90 = "| P90 | Fixture phase | theos-editor | S2 | – |";
-        let p91 = "| P91 | Elsewhere | tower-of-theos | S1 | – |";
+        let p90 = "| P90 | Fixture phase | S2 | – |";
+        let p91 = "| P91 | Elsewhere | S1 | – |";
         assert!(UMBRELLA.contains(p90) && UMBRELLA.contains(p91));
         for cell in [
             "A\r::error::x",
@@ -713,9 +707,8 @@ mod tests {
             "A\t::error",
         ] {
             for hostile in [
-                UMBRELLA.replace(p90, &format!("| P90 | {cell} | theos-editor | S2 | – |")),
-                UMBRELLA.replace(p90, &format!("| P90 | Fixture phase | {cell} | S2 | – |")),
-                UMBRELLA.replace(p91, &format!("| P91 | Elsewhere | {cell} | S1 | – |")),
+                UMBRELLA.replace(p90, &format!("| P90 | {cell} | S2 | – |")),
+                UMBRELLA.replace(p91, &format!("| P91 | {cell} | S1 | – |")),
             ] {
                 let result = umbrella::parse(&hostile);
                 assert!(
@@ -786,8 +779,8 @@ mod tests {
         assert_eq!(printable("ünï/ć.rs"), "ünï/ć.rs");
     }
 
-    /// A git repository with the fixture umbrella, a file that tags `CE-90.1` and one that tags
-    /// `CE-90.2`, on a branch called `branch`.
+    /// A git repository with the fixture umbrella, a file that tags `TU-90.1` and one that tags
+    /// `TU-90.2`, on a branch called `branch`.
     fn repository(branch: &str) -> TestResult<tempfile::TempDir> {
         let dir = init_repo()?;
         let path = dir.path();
@@ -818,7 +811,7 @@ version = \"0.0.0\"
         )?;
         std::fs::write(
             path.join("src").join("lib.rs"),
-            "// AC: CE-90.1\n#[test]\nfn proves_the_first() {}\n",
+            "// AC: TU-90.1\n#[test]\nfn proves_the_first() {}\n",
         )?;
         commit(path, "chore: start")?;
         git(path, &["switch", "-q", "-c", branch])?;
@@ -838,14 +831,14 @@ version = \"0.0.0\"
         })
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn the_phase_comes_from_the_branch_or_from_the_pull_request() -> TestResult {
         let dir = repository("phase/P90-fixture")?;
         let path = dir.path();
         let verdict = run(path, None, &shared(), &mut Vec::new())?;
         assert_eq!(verdict.findings.len(), 1, "{:?}", verdict.findings);
-        assert!(verdict.findings[0].message.contains("CE-90.2"));
+        assert!(verdict.findings[0].message.contains("TU-90.2"));
 
         // The head branch of the pull request wins over the one checked out.
         let verdict = run(
@@ -870,11 +863,11 @@ version = \"0.0.0\"
         let dir = repository("fix/x")?;
         std::fs::write(
             dir.path().join("src").join("lib.rs"),
-            "mod more;\n// AC: CE-90.1\n#[test]\nfn proves_the_first() {}\n",
+            "mod more;\n// AC: TU-90.1\n#[test]\nfn proves_the_first() {}\n",
         )?;
         std::fs::write(
             dir.path().join("src").join("more.rs"),
-            "// AC: CE-99.9\n#[test]\nfn unknown() {}\n",
+            "// AC: TU-99.9\n#[test]\nfn unknown() {}\n",
         )?;
         let verdict = run(dir.path(), None, &shared(), &mut Vec::new())?;
         assert_eq!(verdict.findings.len(), 1, "{:?}", verdict.findings);
@@ -914,7 +907,7 @@ version = \"0.0.0\"
 
         let mut out = Vec::new();
         run(path, None, &shared(), &mut out)?;
-        assert_eq!(first_row(out)?, "CE-90.1   src/lib.rs:1 proves_the_first");
+        assert_eq!(first_row(out)?, "TU-90.1   src/lib.rs:1 proves_the_first");
 
         for (profile, ci) in [("default", false), ("ci", true)] {
             let folder = path.join("target").join("nextest").join(profile);
@@ -927,7 +920,7 @@ version = \"0.0.0\"
             run_phase(path, Some(phase("P90")?), ci, &shared(), &mut out)?;
             assert_eq!(
                 first_row(out)?,
-                "CE-90.1   pass  src/lib.rs:1 proves_the_first",
+                "TU-90.1   pass  src/lib.rs:1 proves_the_first",
                 "{profile}"
             );
         }
@@ -971,14 +964,14 @@ version = \"0.0.0\"
         Ok(text.lines().nth(1).unwrap_or_default().to_owned())
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_slow_test_shows_the_result_of_the_slow_report() -> TestResult {
         let dir = repository("phase/P90-fixture")?;
         let path = dir.path();
         std::fs::write(
             path.join("src").join("lib.rs"),
-            "// AC: CE-90.1
+            "// AC: TU-90.1
 #[test]
 fn slow_proves_the_first() {}
 ",
@@ -989,24 +982,24 @@ fn slow_proves_the_first() {}
         // Without the slow report the slow test has no result.
         assert_eq!(
             first_row_of_run(path)?,
-            "CE-90.1   –     src/lib.rs:1 slow_proves_the_first"
+            "TU-90.1   –     src/lib.rs:1 slow_proves_the_first"
         );
 
         write_report(path, "slow", "lib::slow_proves_the_first", true)?;
         assert_eq!(
             first_row_of_run(path)?,
-            "CE-90.1   pass  src/lib.rs:1 slow_proves_the_first"
+            "TU-90.1   pass  src/lib.rs:1 slow_proves_the_first"
         );
 
         write_report(path, "slow", "lib::slow_proves_the_first", false)?;
         assert_eq!(
             first_row_of_run(path)?,
-            "CE-90.1   FAIL  src/lib.rs:1 slow_proves_the_first"
+            "TU-90.1   FAIL  src/lib.rs:1 slow_proves_the_first"
         );
         Ok(())
     }
 
-    // AC: CE-08.6
+    // AC: TU-00.4
     #[test]
     fn a_slow_report_alone_does_not_hide_the_missing_default_report() -> TestResult {
         let dir = repository("phase/P90-fixture")?;
@@ -1014,7 +1007,7 @@ fn slow_proves_the_first() {}
         write_report(path, "slow", "lib::slow_other", true)?;
         assert_eq!(
             first_row_of_run(path)?,
-            "CE-90.1   –     src/lib.rs:1 proves_the_first"
+            "TU-90.1   –     src/lib.rs:1 proves_the_first"
         );
         Ok(())
     }

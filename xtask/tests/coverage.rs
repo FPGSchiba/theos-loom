@@ -104,7 +104,6 @@ fn the_thresholds_of_the_gate_are_the_decided_ones() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn every_workspace_member_has_a_class() -> TestResult {
     let metadata = MetadataCommand::new().no_deps().exec()?;
@@ -120,7 +119,6 @@ fn every_workspace_member_has_a_class() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn the_fixture_is_judged_against_the_thresholds_of_the_gate() -> TestResult {
     let thresholds = Thresholds::load(&repo_root()?)?;

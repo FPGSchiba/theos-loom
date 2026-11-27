@@ -63,7 +63,7 @@ fn commit(dir: &Path, message: &str) -> TestResult<String> {
 }
 
 fn known() -> BTreeSet<String> {
-    BTreeSet::from(["CE-08.1".to_owned()])
+    BTreeSet::from(["TU-00.1".to_owned()])
 }
 
 /// Checks `base..head` of the repository at `dir` as commits of `branch`.
@@ -97,7 +97,7 @@ fn messages(verdict: &Verdict) -> String {
         .join("\n")
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn good_range_passes() -> TestResult {
     let (dir, base) = phase_branch()?;
@@ -105,7 +105,7 @@ fn good_range_passes() -> TestResult {
     commit(
         path,
         "feat(xtask): parse commit messages\n\nThe parser is shared with pr-title.\n\n\
-         Refs: CE-08.1\nPhase: P00\nCo-Authored-By: Claude <noreply@anthropic.com>",
+         Refs: TU-00.1\nPhase: P00\nCo-Authored-By: Claude <noreply@anthropic.com>",
     )?;
     let head = commit(path, "fix(gate): keep the range open\n\nPhase: P00")?;
 
@@ -115,7 +115,7 @@ fn good_range_passes() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn bad_header_fails() -> TestResult {
     let (dir, base) = phase_branch()?;
@@ -135,7 +135,7 @@ fn bad_header_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn unknown_type_or_scope_fails() -> TestResult {
     let (dir, base) = phase_branch()?;
@@ -153,7 +153,7 @@ fn unknown_type_or_scope_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn long_summary_fails() -> TestResult {
     let (dir, base) = phase_branch()?;
@@ -173,7 +173,7 @@ fn long_summary_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn bang_without_breaking_footer_fails() -> TestResult {
     let (dir, base) = phase_branch()?;
@@ -185,7 +185,7 @@ fn bang_without_breaking_footer_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn missing_phase_footer_fails_on_phase_branch() -> TestResult {
     let (dir, base) = phase_branch()?;
@@ -204,28 +204,28 @@ fn missing_phase_footer_fails_on_phase_branch() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn unknown_ref_fails() -> TestResult {
     let (dir, base) = phase_branch()?;
     let head = commit(
         dir.path(),
-        "feat(xtask): parse commit messages\n\nRefs: CE-99.1\nPhase: P00",
+        "feat(xtask): parse commit messages\n\nRefs: TU-99.1\nPhase: P00",
     )?;
 
     let verdict = run_check(dir.path(), &base, &head, "phase/P00-x")?;
     assert_eq!(verdict.findings.len(), 1, "{:?}", verdict.findings);
-    assert!(messages(&verdict).contains("CE-99.1"));
+    assert!(messages(&verdict).contains("TU-99.1"));
 
     let known_ref = commit(
         dir.path(),
-        "feat(xtask): parse commit messages\n\nRefs: CE-08.1\nPhase: P00",
+        "feat(xtask): parse commit messages\n\nRefs: TU-00.1\nPhase: P00",
     )?;
     assert!(run_check(dir.path(), &head, &known_ref, "phase/P00-x")?.passed());
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn merge_commit_is_skipped() -> TestResult {
     let dir = init()?;
@@ -262,7 +262,7 @@ fn merge_commit_is_skipped() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn fixup_commit_fails() -> TestResult {
     let (dir, base) = phase_branch()?;
@@ -277,14 +277,14 @@ fn fixup_commit_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn crlf_message_from_windows_passes() -> TestResult {
     let (dir, base) = phase_branch()?;
     let head = commit(
         dir.path(),
         "feat(xtask): parse commit messages\r\n\r\nThe parser is shared.\r\n\r\n\
-         Refs: CE-08.1\r\nPhase: P00",
+         Refs: TU-00.1\r\nPhase: P00",
     )?;
 
     let verdict = run_check(dir.path(), &base, &head, "phase/P00-x")?;
@@ -292,7 +292,7 @@ fn crlf_message_from_windows_passes() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn every_bad_commit_is_reported() -> TestResult {
     let (dir, base) = phase_branch()?;
@@ -324,7 +324,7 @@ fn xtask_commit_msg(dir: &Path, extra: &[&str]) -> TestResult<Output> {
         .output()?)
 }
 
-/// An umbrella spec with the criterion CE-08.1 in `dir`: the list `Refs:` footers are checked
+/// An umbrella spec with the criterion TU-00.1 in `dir`: the list `Refs:` footers are checked
 /// against comes from there.
 fn add_umbrella(dir: &Path) -> TestResult {
     let specs = dir.join("docs").join("specs");
@@ -332,22 +332,22 @@ fn add_umbrella(dir: &Path) -> TestResult {
     std::fs::write(
         specs.join("00-umbrella.md"),
         "| Phase | Name | Repo |\n|---|---|---|\n| P00 | Foundation | theos-editor |\n\n\
-         ### P00 · Foundation\n- CE-08.1 First.\n",
+         ### P00 · Foundation\n- TU-00.1 First.\n",
     )?;
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn refs_are_checked_against_the_umbrella_spec() -> TestResult {
     let (dir, base) = phase_branch()?;
     let path = dir.path();
     add_umbrella(path)?;
-    let known = commit(path, "feat(xtask): fine\n\nRefs: CE-08.1\nPhase: P00")?;
+    let known = commit(path, "feat(xtask): fine\n\nRefs: TU-00.1\nPhase: P00")?;
     // It looks like an id, but the umbrella does not have it.
     let unknown = commit(
         path,
-        "feat(xtask): fine\n\nRefs: CE-08.1, CE-99.9\nPhase: P00",
+        "feat(xtask): fine\n\nRefs: TU-00.1, TU-99.9\nPhase: P00",
     )?;
 
     let pass = xtask_commit_msg(path, &["--base", &base, "--head", &known])?;
@@ -355,7 +355,7 @@ fn refs_are_checked_against_the_umbrella_spec() -> TestResult {
 
     let fail = xtask_commit_msg(path, &["--base", &known, "--head", &unknown])?;
     assert_eq!(fail.status.code(), Some(1), "{fail:?}");
-    assert!(String::from_utf8_lossy(&fail.stdout).contains("CE-99.9"));
+    assert!(String::from_utf8_lossy(&fail.stdout).contains("TU-99.9"));
 
     // Without an umbrella spec there is no list to check against: an error, not a pass.
     std::fs::remove_dir_all(path.join("docs"))?;
@@ -364,7 +364,7 @@ fn refs_are_checked_against_the_umbrella_spec() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn command_line_flags_choose_the_range_and_the_branch() -> TestResult {
     let (dir, base) = phase_branch()?;
@@ -399,7 +399,7 @@ fn command_line_flags_choose_the_range_and_the_branch() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn an_unreadable_range_is_exit_code_2() -> TestResult {
     let (dir, _base) = phase_branch()?;
@@ -427,7 +427,7 @@ fn list_differences(what: &str, document: &BTreeSet<&str>, code: &[&str]) -> Vec
     differences
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn types_and_scopes_equal_contributing_md_section_2() -> TestResult {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -461,7 +461,7 @@ fn types_and_scopes_equal_contributing_md_section_2() -> TestResult {
     let scopes: BTreeSet<&str> = scopes_paragraph.split('`').skip(1).step_by(2).collect();
 
     assert!(
-        types.contains("feat") && scopes.contains("content"),
+        types.contains("feat") && scopes.contains("core"),
         "not read: {section}"
     );
     assert_eq!(
@@ -475,7 +475,7 @@ fn types_and_scopes_equal_contributing_md_section_2() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.10
+// AC: TU-00.4
 #[test]
 fn a_type_or_scope_on_one_side_only_is_a_difference() {
     let document: BTreeSet<&str> = ["feat", "fix"].into();

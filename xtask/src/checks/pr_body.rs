@@ -203,7 +203,6 @@ mod tests {
         run(root, ci, &mut Vec::new())
     }
 
-    // AC: CE-08.7
     #[test]
     fn the_sections_are_the_level_two_headings_of_the_template() {
         assert_eq!(template_sections(REAL_TEMPLATE), HEADINGS);
@@ -215,7 +214,6 @@ mod tests {
         assert_eq!(template_sections("no sections\n"), Vec::<String>::new());
     }
 
-    // AC: CE-08.7
     #[test]
     fn full_body_passes() {
         let verdict = check_body(REAL_TEMPLATE, Some(&full_body()));
@@ -227,7 +225,6 @@ mod tests {
         assert!(verdict.passed(), "{:?}", verdict.findings);
     }
 
-    // AC: CE-08.7
     #[test]
     fn missing_section_fails() {
         let verdict = check_body(REAL_TEMPLATE, Some(&filled(&all_but("Gate"))));
@@ -244,7 +241,6 @@ mod tests {
         }
     }
 
-    // AC: CE-08.7
     #[test]
     fn placeholder_only_section_fails() {
         // Every section has text but the gate's, which has what is under it in the template.
@@ -276,7 +272,6 @@ mod tests {
         );
     }
 
-    // AC: CE-08.7
     #[test]
     fn crlf_body_passes() {
         let crlf = full_body().replace('\n', "\r\n");
@@ -298,7 +293,6 @@ mod tests {
         );
     }
 
-    // AC: CE-08.7
     #[test]
     fn reordered_sections_pass() {
         let mut reversed = HEADINGS;
@@ -307,7 +301,6 @@ mod tests {
         assert!(verdict.passed(), "{:?}", verdict.findings);
     }
 
-    // AC: CE-08.7
     #[test]
     fn null_body_fails_every_section() {
         for body in [None, Some(""), Some("  \n\t\r\n"), Some("<!-- nothing -->")] {
@@ -321,7 +314,6 @@ mod tests {
         }
     }
 
-    // AC: CE-08.7
     #[test]
     fn headings_match_after_trimming_and_extra_sections_do_not_matter() {
         let spaced = full_body().replace("## Gate", "## Gate   ");
@@ -338,7 +330,6 @@ mod tests {
         assert_eq!(check_body(REAL_TEMPLATE, Some(&deeper)).findings.len(), 1);
     }
 
-    // AC: CE-08.7
     #[test]
     fn a_heading_in_a_comment_is_no_section() {
         let hidden = format!("{}<!--\n## Gate\n\nDone.\n-->\n", filled(&all_but("Gate")));
@@ -355,7 +346,6 @@ mod tests {
         assert_eq!(verdict.findings.len(), 2, "{:?}", verdict.findings);
     }
 
-    // AC: CE-08.7
     #[test]
     fn a_byte_order_mark_does_not_hide_the_first_heading() {
         let with_mark = format!("\u{feff}{}", full_body());
@@ -363,7 +353,6 @@ mod tests {
         assert!(verdict.passed(), "{:?}", verdict.findings);
     }
 
-    // AC: CE-08.7
     #[test]
     fn a_heading_that_comes_twice_needs_content_under_one_of_them() {
         let twice = format!("## Gate\n\n{}", full_body());
@@ -375,7 +364,6 @@ mod tests {
         assert!(found[0].contains("`## Gate` section is empty"), "{found:?}");
     }
 
-    // AC: CE-08.7
     #[test]
     fn findings_name_headings_and_nothing_from_the_body() {
         let body = "## Phase\n\nSECRET ::error::forged\n";
@@ -387,7 +375,6 @@ mod tests {
         }
     }
 
-    // AC: CE-08.7
     #[test]
     fn a_pull_request_event_gives_the_description() -> TestResult {
         let root = root_with(REAL_TEMPLATE)?;
@@ -410,7 +397,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.7
     #[test]
     fn the_template_of_the_root_decides_the_sections() -> TestResult {
         let root = root_with("## Only\n\n<!-- say it -->\n")?;
@@ -421,7 +407,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.7
     #[test]
     fn without_a_pull_request_there_is_no_description_to_check() -> TestResult {
         let root = root_with(REAL_TEMPLATE)?;
@@ -439,7 +424,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.7
     #[test]
     fn a_template_that_cannot_be_read_is_an_io_error() -> TestResult {
         let dir = tempfile::tempdir()?;
@@ -451,7 +435,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.7
     #[test]
     fn a_template_without_sections_is_a_config_error() -> TestResult {
         // It would pass every description.
@@ -464,7 +447,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.7
     #[test]
     fn the_real_template_is_usable() -> TestResult {
         let root = root_with(REAL_TEMPLATE)?;
@@ -472,7 +454,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.7
     #[test]
     fn a_heading_inside_a_code_block_is_no_section() {
         let hidden = format!(
@@ -498,7 +479,6 @@ Done.
         assert_eq!(template_sections(template), ["A"]);
     }
 
-    // AC: CE-08.7
     #[test]
     fn a_heading_inside_an_html_comment_is_no_section() {
         let hidden = format!(
@@ -516,7 +496,6 @@ Done.
         assert!(found[0].contains("no `## Gate` section"), "{found:?}");
     }
 
-    // AC: CE-08.7
     #[test]
     fn a_heading_with_a_closing_sequence_or_trailing_spaces_matches() {
         let closed = full_body().replace("## Gate", "## Gate ##");
@@ -530,7 +509,6 @@ Done.
         assert_eq!(template_sections(template), ["A", "B"]);
     }
 
-    // AC: CE-08.7
     #[test]
     fn a_section_whose_only_content_is_a_code_block_is_filled() {
         let sections: Vec<(&str, &str)> = HEADINGS

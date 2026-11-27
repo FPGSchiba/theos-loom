@@ -1,5 +1,5 @@
 //! The `coverage` check: line coverage per crate against floors and against `main`
-//! (`docs/gate.md` §1 and §3, CE-08.8).
+//! (`docs/gate.md` §1 and §3).
 //!
 //! The check [`check`] runs `cargo llvm-cov nextest --workspace --locked --json` and reads the
 //! line coverage of every crate from its export ([`llvm_json`]). Nextest's profile `default`
@@ -448,7 +448,6 @@ mod tests {
             .any(|note| parts.iter().all(|part| note.contains(part)))
     }
 
-    // AC: CE-08.8
     #[test]
     fn crate_below_floor_fails() {
         let head = map(&[("theos-content", tenths(799)), ("xtask", tenths(800))]);
@@ -465,7 +464,6 @@ mod tests {
         }
     }
 
-    // AC: CE-08.8
     #[test]
     fn binary_floor_is_60() {
         let passes = verdict(&map(&[("theos", tenths(600))]), None, &gate(), &members());
@@ -483,7 +481,6 @@ mod tests {
         }
     }
 
-    // AC: CE-08.8
     #[test]
     fn drop_over_max_fails() {
         let head = map(&[("theos-content", tenths(809))]);
@@ -501,7 +498,6 @@ mod tests {
         }
     }
 
-    // AC: CE-08.8
     #[test]
     fn drop_within_max_passes() {
         let head = map(&[("theos-content", tenths(810))]);
@@ -510,7 +506,6 @@ mod tests {
         assert!(result.passed(), "{result:?}");
     }
 
-    // AC: CE-08.8
     #[test]
     fn unlisted_member_fails() {
         let mut members = members();
@@ -527,7 +522,6 @@ mod tests {
         );
     }
 
-    // AC: CE-08.8
     #[test]
     fn empty_crate_passes() {
         let head = map(&[("theos-vcs", cov(0, 0))]);
@@ -544,7 +538,6 @@ mod tests {
         );
     }
 
-    // AC: CE-08.8
     #[test]
     fn crate_new_in_pr_has_no_drop_check() {
         let head = map(&[("theos-vcs", tenths(805)), ("theos-content", tenths(900))]);
@@ -553,7 +546,6 @@ mod tests {
         assert!(result.passed(), "{result:?}");
     }
 
-    // AC: CE-08.8
     #[test]
     fn a_new_crate_still_has_its_floor() {
         let head = map(&[("theos-vcs", tenths(700))]);
@@ -866,7 +858,6 @@ mod tests {
         Ok(names)
     }
 
-    // AC: CE-08.8
     #[test]
     fn the_first_pull_request_with_xtask_is_checked_against_the_floors_only() -> TestResult {
         let dir = repo("90 100", false)?;
@@ -889,7 +880,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.8
     #[test]
     fn the_export_is_read_against_the_root_as_cargo_names_it() -> TestResult {
         let dir = repo("90 100", true)?;
@@ -907,7 +897,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.8
     #[test]
     fn a_drop_below_the_merge_base_fails_and_leaves_no_work_tree() -> TestResult {
         let dir = repo("90 100", true)?;
@@ -949,7 +938,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.8
     #[test]
     fn a_branch_behind_main_is_compared_with_the_merge_base() -> TestResult {
         let dir = repo("85 100", true)?;
@@ -980,7 +968,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.8
     #[test]
     fn failing_tests_are_a_failing_verdict() -> TestResult {
         let dir = repo("90 100", true)?;
@@ -1056,7 +1043,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.8
     #[test]
     fn an_export_that_does_not_fit_the_root_is_an_error_not_a_pass() -> TestResult {
         // If the paths of the export and the root disagree (a root given through a link, a short

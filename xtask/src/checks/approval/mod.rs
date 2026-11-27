@@ -256,7 +256,7 @@ mod tests {
         ])
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn an_unprotected_pr_passes_and_changes_nothing() -> TestResult {
         let (dir, base) = main_repo()?;
@@ -277,7 +277,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn a_protected_pr_waits_for_jann_and_gets_needs_jann() -> TestResult {
         let (dir, base) = main_repo()?;
@@ -306,7 +306,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn approval_follows_the_content_of_the_pr() -> TestResult {
         let (dir, base) = main_repo()?;
@@ -397,7 +397,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn a_run_for_an_earlier_commit_changes_nothing() -> TestResult {
         let (dir, base) = main_repo()?;
@@ -443,7 +443,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn a_comment_by_someone_else_does_not_keep_an_approval() -> TestResult {
         let (dir, base) = main_repo()?;
@@ -481,7 +481,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn approved_with_nothing_recorded_fails_without_removing_or_commenting() -> TestResult {
         let (dir, base) = main_repo()?;
@@ -518,7 +518,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn an_approval_that_cannot_be_recorded_is_not_a_pass() -> TestResult {
         let (dir, base) = main_repo()?;
@@ -561,7 +561,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn a_head_that_is_missing_is_fetched_as_the_pull_request_ref() -> TestResult {
         let (origin, base) = main_repo()?;

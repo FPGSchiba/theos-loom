@@ -85,7 +85,6 @@ fn the_view_lists_the_artifacts_of_the_members() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[cfg(unix)]
 #[test]
 fn a_root_reached_through_a_symlink_is_repo_relative() -> TestResult {
@@ -107,7 +106,6 @@ fn a_root_reached_through_a_symlink_is_repo_relative() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn dep_info_lists_path_modules_includes_and_data() -> TestResult {
     let dir = copy_case("path-and-include")?;
@@ -262,7 +260,6 @@ fn with_shared_target_dir(shared: &Path) -> TestResult<ViewOptions> {
     })
 }
 
-// AC: CE-08.8
 #[test]
 fn fixtures_do_not_share_builds_through_an_inherited_target_dir() -> TestResult {
     let shared = tempfile::tempdir()?;
@@ -293,7 +290,6 @@ fn fixtures_do_not_share_builds_through_an_inherited_target_dir() -> TestResult 
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn a_failing_fixture_still_fails_with_an_inherited_target_dir() -> TestResult {
     let shared = tempfile::tempdir()?;

@@ -242,7 +242,7 @@ mod tests {
         comment(BOT, &marker(&fp(digit), HEAD), time, time)
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn unprotected_pr_passes() {
         for event in [Event::Other, labeled("approved")] {
@@ -252,7 +252,7 @@ mod tests {
         }
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn protected_without_label_fails_and_adds_needs_jann() {
         let (verdict, actions) = decide(&touched(), &Event::Other, &[], None, &fp('a'), HEAD);
@@ -280,7 +280,7 @@ mod tests {
         assert_eq!(actions, Vec::<Action>::new());
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn adding_approved_records_fingerprint_and_passes() {
         let (verdict, actions) = decide(
@@ -320,7 +320,7 @@ mod tests {
         assert_eq!(actions, expected);
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn approved_with_same_fingerprint_passes() {
         for event in [Event::Other, labeled("macos")] {
@@ -337,7 +337,7 @@ mod tests {
         }
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn changed_fingerprint_removes_approval_and_fails() {
         let (verdict, actions) = decide(
@@ -363,7 +363,7 @@ mod tests {
         );
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn approved_without_recorded_fingerprint_fails() {
         let (verdict, actions) = decide(
@@ -380,7 +380,7 @@ mod tests {
         assert_eq!(actions, needs_jann_actions());
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn a_run_of_another_event_does_not_undo_the_approval_the_labeled_run_records() {
         // Jann removes `needs-jann` and adds `approved` in the same second. The run of the
@@ -409,7 +409,7 @@ mod tests {
         assert_eq!(actions, [Action::Comment(marker(&fp('a'), HEAD))]);
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn labeled_event_with_label_already_removed_fails() {
         let (verdict, actions) = decide(
@@ -516,7 +516,7 @@ mod tests {
         assert_eq!(recorded(&[]), None);
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn recorded_ignores_comments_not_by_bot() {
         let forged = |author: &str| {
@@ -539,7 +539,7 @@ mod tests {
         assert_eq!(recorded(&comments[1..]), None);
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn recorded_ignores_edited_comments() {
         let mut edited = bot_marker('f', "2026-10-31T11:00:00Z");
@@ -549,7 +549,7 @@ mod tests {
         assert_eq!(recorded(&comments[1..]), None);
     }
 
-    // AC: CE-08.5
+    // AC: TU-00.4
     #[test]
     fn recorded_takes_newest() {
         let old = bot_marker('a', "2026-10-31T10:00:00Z");

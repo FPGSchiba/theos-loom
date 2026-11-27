@@ -286,7 +286,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.8
     #[test]
     fn a_file_that_climbs_out_of_src_is_not_in_the_crate() {
         let of = |file: &str| crate_of(&normal(file), "/r", false).map(str::to_owned);
@@ -376,7 +375,6 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.8
     #[test]
     fn an_export_without_files_is_an_error_not_an_empty_map() {
         // A run that measured nothing, say because no test ran or the instrumentation was lost,
@@ -396,7 +394,6 @@ mod tests {
         }
     }
 
-    // AC: CE-08.8
     #[test]
     fn files_that_all_belong_elsewhere_are_an_error_not_an_empty_map() {
         // The export and the root disagree about where the repository is, as they do for a root

@@ -2,26 +2,26 @@
 
 ## 3. Phases
 
-| Phase | Name | Repo | Slice | Depends on |
-|---|---|---|---|---|
-| P90 | Fixture phase | theos-editor | S2 | – |
-| P91 | Elsewhere | tower-of-theos | S1 | – |
+| Phase | Name | Slice | Depends on |
+|---|---|---|---|
+| P90 | Fixture phase | S2 | – |
+| P91 | Elsewhere | S1 | – |
 
 ---
 
 ### P90 · Fixture phase
 
-**CE-90 Fixtures**
-- CE-90.1 The first criterion.
-- CE-90.2 The second criterion,
+**TU-90 Fixtures**
+- TU-90.1 The first criterion.
+- TU-90.2 The second criterion,
   which goes on in a second line.
 
-### P91 · Elsewhere (tower-of-theos)
+### P91 · Elsewhere (repo `FPGSchiba/bmad-method`)
 
-- CE-91.1 A criterion that is proven in the other repository.
+- TU-91.1 A criterion that is proven in the other repository.
 
 ## 4. Work outside the build
 
 | Item | What |
 |---|---|
-| CE-92 | Not a criterion. |
+| TU-92 | Not a criterion. |

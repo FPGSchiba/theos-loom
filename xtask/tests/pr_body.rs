@@ -64,7 +64,6 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
-// AC: CE-08.7
 #[test]
 fn a_body_file_gives_the_description() -> TestResult {
     let root = root_with_template()?;
@@ -85,7 +84,6 @@ fn a_body_file_gives_the_description() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.7
 #[test]
 fn a_description_only_exists_on_a_pull_request() -> TestResult {
     let root = root_with_template()?;
@@ -129,7 +127,6 @@ fn run_on_event(body: Option<&str>) -> TestResult<Output> {
     )
 }
 
-// AC: CE-08.7
 #[test]
 fn under_github_actions_the_event_gives_the_description() -> TestResult {
     let pass = run_on_event(Some(&body_without(None)))?;

@@ -223,12 +223,12 @@ mod tests {
         std::fs::write(
             specs.join("00-umbrella.md"),
             "| Phase | Name | Repo |\n|---|---|---|\n| P00 | Foundation | theos-editor |\n\n\
-             ### P00 · Foundation\n- CE-08.10 First.\n",
+             ### P00 · Foundation\n- TU-00.10 First.\n",
         )?;
         Ok(dir)
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn findings_name_the_commit_by_its_short_sha_and_come_oldest_first() -> TestResult {
         let dir = init_repo()?;
@@ -292,7 +292,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn a_pull_request_event_gives_the_range_and_the_branch() -> TestResult {
         let dir = repo_with_umbrella()?;
@@ -311,7 +311,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn a_push_event_gives_before_to_after() -> TestResult {
         let dir = repo_with_umbrella()?;
@@ -333,7 +333,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn a_push_that_creates_a_branch_passes_with_a_note() -> TestResult {
         // No repository is needed: there is nothing to compare with.
@@ -348,7 +348,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn locally_the_range_starts_at_the_merge_base_with_origin_main() -> TestResult {
         let dir = repo_with_umbrella()?;
@@ -411,17 +411,17 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.10
+    // AC: TU-00.4
     #[test]
     fn known_acs_are_the_ids_of_the_umbrella_spec() -> TestResult {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
         let known = known_acs(&root)?;
-        for id in ["CE-08.1", "CE-08.10", "CE-08R.1", "CE-06.1"] {
+        for id in ["TU-00.1", "TU-00.4", "TU-01.1", "TU-06.1"] {
             assert!(known.contains(id), "{id}");
         }
-        assert!(!known.contains("CE-99.9"));
+        assert!(!known.contains("TU-99.9"));
         // The work outside the build has ids that are not criteria.
-        assert!(!known.contains("CE-02"));
+        assert!(!known.contains("TU-02"));
         Ok(())
     }
 

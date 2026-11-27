@@ -1,7 +1,7 @@
 //! `cargo xtask gate`: every local check of `docs/gate.md` §1, in a fixed order, and one table.
 //!
 //! The gate calls the same per-check runners as the subcommands do, with no override flags, so a
-//! check gives the same verdict here as in its CI job (CE-08.4); only where the inputs come from
+//! check gives the same verdict here as in its CI job (TU-00.3); only where the inputs come from
 //! differs (the repository instead of the event payload). It leaves out the checks that need a
 //! pull request (`pr-title`, `pr-body`, `approval`) and the settings check, which needs GitHub.
 //! `slow-tests` always runs its tests here, as on a push to `main`; only on a pull request that
@@ -165,7 +165,7 @@ mod tests {
         checks.iter().map(|check| check.name()).collect()
     }
 
-    // AC: CE-08.4
+    // AC: TU-00.3
     #[test]
     fn gate_runs_every_ci_check_except_pr_only() {
         let after_tools: Vec<Check> = GATE_ORDER

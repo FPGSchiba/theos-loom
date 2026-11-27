@@ -49,7 +49,7 @@ fn an_error_with_a_context_keeps_the_context_and_the_cause() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.4
+// AC: TU-00.3
 #[test]
 fn no_line_of_an_error_can_start_a_workflow_command() -> TestResult {
     // A revision name is text the caller controls, and git's complaint repeats it. The branch is

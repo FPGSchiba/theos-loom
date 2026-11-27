@@ -239,7 +239,7 @@ fn step_kind(step: &Yaml) -> TestResult<&'static str> {
     }
 }
 
-// AC: CE-08.1
+// AC: TU-00.1
 #[test]
 fn ci_builds_and_tests_on_linux() -> TestResult {
     let jobs = jobs(&workflow("ci.yml")?)?;
@@ -251,7 +251,7 @@ fn ci_builds_and_tests_on_linux() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.1
+// AC: TU-00.1
 #[test]
 fn platforms_builds_and_tests_on_windows_and_macos() -> TestResult {
     let jobs = jobs(&workflow("platforms.yml")?)?;
@@ -270,7 +270,6 @@ fn platforms_builds_and_tests_on_windows_and_macos() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.2
 #[test]
 fn engine_free_runs_on_every_pr() -> TestResult {
     let ci = workflow("ci.yml")?;
@@ -285,7 +284,7 @@ fn engine_free_runs_on_every_pr() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.3
+// AC: TU-00.2
 #[test]
 fn required_contexts_are_pr_jobs() -> TestResult {
     let mut contexts = BTreeSet::new();
@@ -330,7 +329,7 @@ fn required_contexts_are_pr_jobs() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.4
+// AC: TU-00.3
 #[test]
 fn every_job_only_runs_its_own_check() -> TestResult {
     for (file, job) in all_jobs()? {
@@ -425,7 +424,7 @@ fn unexpected_keys(node: &Yaml, allowed: &[&str]) -> TestResult<Vec<String>> {
         .collect())
 }
 
-// AC: CE-08.3, CE-08.4
+// AC: TU-00.2, TU-00.3
 #[test]
 fn no_key_lets_a_job_pass_while_xtask_fails() -> TestResult {
     for file in ALL_WORKFLOWS {
@@ -471,7 +470,7 @@ fn no_key_lets_a_job_pass_while_xtask_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.3, CE-08.4
+// AC: TU-00.2, TU-00.3
 #[test]
 fn no_key_lets_a_step_of_the_setup_action_fail_silently() -> TestResult {
     let action = parse(SETUP_ACTION)?;
@@ -514,7 +513,7 @@ fn timeout_of(name: &str) -> i64 {
     }
 }
 
-// AC: CE-08.3, CE-08.4
+// AC: TU-00.2, TU-00.3
 #[test]
 fn every_job_has_a_timeout() -> TestResult {
     for (file, job) in all_jobs()? {
@@ -529,7 +528,7 @@ fn every_job_has_a_timeout() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.4
+// AC: TU-00.3
 #[test]
 fn gate_list_equals_ci_jobs_minus_pr_only() -> TestResult {
     let mut checks = BTreeSet::new();
@@ -558,7 +557,7 @@ fn gate_list_equals_ci_jobs_minus_pr_only() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.12
+// AC: TU-08.12
 #[test]
 fn platforms_runs_weekly_on_demand_and_by_label() -> TestResult {
     let platforms = workflow("platforms.yml")?;
@@ -739,7 +738,7 @@ fn token_reaches_only_the_steps_that_call_github() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.5
+// AC: TU-00.4
 #[test]
 fn only_the_approval_checkouts_keep_the_git_credentials() -> TestResult {
     // Only `cargo xtask approval` talks to git with credentials (it fetches the pull request

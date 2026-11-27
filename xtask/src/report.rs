@@ -409,11 +409,11 @@ mod tests {
         let mut verdict = Verdict::pass(Check::AcTrace);
         verdict
             .notes
-            .push("CE-08.1\n  workspace_members".to_owned());
+            .push("TU-00.1\n  workspace_members".to_owned());
         let text = table(&[verdict])?;
         assert_eq!(
             text,
-            "pass  ac-trace\n  note: CE-08.1\n    |   workspace_members\n"
+            "pass  ac-trace\n  note: TU-00.1\n    |   workspace_members\n"
         );
         Ok(())
     }
@@ -441,10 +441,10 @@ mod tests {
     #[test]
     fn summary_markdown_puts_notes_in_a_text_block() {
         let mut verdict = Verdict::pass(Check::AcTrace);
-        verdict.notes.push("CE-08.1 -> a_test".to_owned());
+        verdict.notes.push("TU-00.1 -> a_test".to_owned());
         let text = summary_markdown(&[verdict]);
         assert!(
-            text.contains("#### `ac-trace`\n\n```text\nCE-08.1 -> a_test\n```\n"),
+            text.contains("#### `ac-trace`\n\n```text\nTU-00.1 -> a_test\n```\n"),
             "{text}"
         );
     }

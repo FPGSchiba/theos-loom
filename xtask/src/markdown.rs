@@ -308,14 +308,14 @@ mod tests {
 
     #[test]
     fn list_items_join_their_lines() {
-        let text = "- CE-90.1 The first\n- CE-90.2 The second,\n  which goes on\n  - nested\n";
+        let text = "- TU-90.1 The first\n- TU-90.2 The second,\n  which goes on\n  - nested\n";
         let items = list_items(text);
         let got: Vec<(&str, u32)> = items.iter().map(|i| (i.text.as_str(), i.line)).collect();
         assert_eq!(
             got,
             vec![
-                ("CE-90.1 The first", 1),
-                ("CE-90.2 The second, which goes on", 2),
+                ("TU-90.1 The first", 1),
+                ("TU-90.2 The second, which goes on", 2),
                 ("nested", 4)
             ]
         );

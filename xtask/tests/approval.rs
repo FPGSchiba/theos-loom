@@ -162,7 +162,7 @@ fn base_repo() -> TestResult<(Repo, String)> {
     Ok((repo, base))
 }
 
-// AC: CE-08.5
+// AC: TU-00.4
 #[test]
 fn rename_out_of_docs_is_protected() -> TestResult {
     let (repo, base) = base_repo()?;
@@ -247,7 +247,7 @@ fn paths_are_matched_in_every_case() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.5
+// AC: TU-00.4
 #[test]
 fn lints_table_change_is_protected() -> TestResult {
     let (repo, base) = base_repo()?;

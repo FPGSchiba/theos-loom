@@ -2,11 +2,11 @@
 
 #[cfg(test)]
 mod tests {
-    // AC: CE-90.1
+    // AC: TU-90.1
     #[test]
     fn proves_the_first() {}
 
-    // AC: CE-90.2
+    // AC: TU-90.2
     #[test]
     fn proves_the_second() {}
 }

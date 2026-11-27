@@ -30,13 +30,13 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
-// AC: CE-08.9
+// AC: TU-00.4
 #[test]
 fn flags_give_the_title_and_the_branch() -> TestResult {
     let dir = tempfile::tempdir()?;
     let good = [
         "--title",
-        "feat(content): records and grammars (P02)",
+        "feat(core): records and grammars (P02)",
         "--branch",
         "phase/P02-records-and-grammars",
     ];
@@ -46,7 +46,7 @@ fn flags_give_the_title_and_the_branch() -> TestResult {
 
     let wrong_phase = [
         "--title",
-        "feat(content): records and grammars (P03)",
+        "feat(core): records and grammars (P03)",
         "--branch",
         "phase/P02-records-and-grammars",
     ];
@@ -58,7 +58,7 @@ fn flags_give_the_title_and_the_branch() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.9
+// AC: TU-00.4
 #[test]
 fn without_a_branch_flag_the_checked_out_branch_is_used() -> TestResult {
     let dir = tempfile::tempdir()?;
@@ -76,7 +76,7 @@ fn without_a_branch_flag_the_checked_out_branch_is_used() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.9
+// AC: TU-00.4
 #[test]
 fn a_title_only_exists_on_a_pull_request() -> TestResult {
     let dir = tempfile::tempdir()?;
@@ -119,10 +119,10 @@ fn run_on_event(title: &str, head_ref: &str) -> TestResult<Output> {
     )
 }
 
-// AC: CE-08.9
+// AC: TU-00.4
 #[test]
 fn under_github_actions_the_event_gives_the_title_and_the_branch() -> TestResult {
-    let pass = run_on_event("feat(content): records and grammars (P02)", "phase/P02-x")?;
+    let pass = run_on_event("feat(core): records and grammars (P02)", "phase/P02-x")?;
     assert_eq!(pass.status.code(), Some(0), "{pass:?}");
 
     let release = run_on_event("chore(release): v0.1.0", "release-plz-2026-11-01")?;

@@ -2,7 +2,7 @@
 //! and the command of `slow-tests`, which [`crate::checks::slow`] runs when it is needed.
 //!
 //! The commands are `docs/gate.md` §1, with `--locked` where cargo takes it. The same lists run
-//! locally and in CI, which is what makes the verdicts the same (CE-08.4). Cargo and the tools
+//! locally and in CI, which is what makes the verdicts the same (TU-00.3). Cargo and the tools
 //! write their own output to the terminal; a command that exits non-zero is one finding that
 //! names it.
 
@@ -183,7 +183,7 @@ mod tests {
         }
     }
 
-    // AC: CE-08.4
+    // AC: TU-00.3
     #[test]
     fn commands_match_gate_md() {
         assert_eq!(fmt(), [cmd(&["fmt", "--all", "--check"], &[])]);

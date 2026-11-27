@@ -241,10 +241,7 @@ mod tests {
     /// A phase title whose summary has exactly `length` characters.
     fn title_with_summary(length: usize) -> String {
         let suffix = " (P02)";
-        format!(
-            "feat(content): {}{suffix}",
-            "a".repeat(length - suffix.len())
-        )
+        format!("feat(core): {}{suffix}", "a".repeat(length - suffix.len()))
     }
 
     /// The findings of `check`, one per line.
@@ -295,11 +292,11 @@ mod tests {
         run(Path::new("."), ci, &mut Vec::new())
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn phase_title_passes() {
         assert_passes(
-            "feat(content): records and grammars (P02)",
+            "feat(core): records and grammars (P02)",
             "phase/P02-records-and-grammars",
         );
         // Any type and scope of CONTRIBUTING.md §2, and no scope at all.
@@ -307,7 +304,7 @@ mod tests {
         assert_passes("chore: tidy up (P11)", "phase/P11-x");
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn spec_title_passes() {
         assert_passes(
@@ -316,13 +313,13 @@ mod tests {
         );
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn spec_title_needs_docs_spec() {
         assert_fails("feat(spec): x (P00)", "spec/P00-x", "docs(spec)");
-        assert_fails("docs(content): x (P00)", "spec/P00-x", "docs(spec)");
+        assert_fails("docs(core): x (P00)", "spec/P00-x", "docs(spec)");
         assert_fails("docs: x (P00)", "spec/P00-x", "docs(spec)");
-        assert_fails("feat(content): x (P00)", "spec/P00-x", "docs(spec)");
+        assert_fails("feat(core): x (P00)", "spec/P00-x", "docs(spec)");
         // The suffix is still the phase of the branch.
         assert_fails("docs(spec): x (P01)", "spec/P00-x", "(P00)");
         assert_fails("docs(spec): x (gate)", "spec/P00-x", "(P00)");
@@ -330,7 +327,7 @@ mod tests {
         assert_passes("docs(spec): x (docs)", "docs/x");
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn gate_and_docs_titles_pass() {
         assert_passes("ci(gate): x (gate)", "gate/x");
@@ -342,18 +339,18 @@ mod tests {
         assert_fails("docs: x (P02)", "docs/x", "(docs)");
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn fix_titles_take_any_of_the_three_suffixes() {
         for suffix in ["(P02)", "(P00)", "(gate)", "(docs)"] {
-            assert_passes(&format!("fix(content): x {suffix}"), "fix/x");
+            assert_passes(&format!("fix(core): x {suffix}"), "fix/x");
         }
-        assert_fails("fix(content): x", "fix/x", "(PNN)");
-        assert_fails("fix(content): x (P2)", "fix/x", "(PNN)");
-        assert_fails("fix(content): x (nope)", "fix/x", "(PNN)");
+        assert_fails("fix(core): x", "fix/x", "(PNN)");
+        assert_fails("fix(core): x (P2)", "fix/x", "(PNN)");
+        assert_fails("fix(core): x (nope)", "fix/x", "(PNN)");
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn release_titles_pass() {
         for title in [
@@ -366,11 +363,11 @@ mod tests {
         }
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn a_release_branch_needs_a_release_title() {
         assert_fails(
-            "feat(content): records (P02)",
+            "feat(core): records (P02)",
             "release-plz-2026-11-01",
             "release title",
         );
@@ -398,7 +395,7 @@ mod tests {
         }
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn a_release_title_is_only_for_a_release_branch() {
         for branch in [
@@ -414,7 +411,7 @@ mod tests {
         }
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn not_conventional_fails() {
         assert_fails(
@@ -433,20 +430,20 @@ mod tests {
         }
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn the_rules_for_a_commit_header_apply_to_the_title() {
-        assert_fails("feature(content): x (P02)", "phase/P02-x", "`feature`");
+        assert_fails("feature(core): x (P02)", "phase/P02-x", "`feature`");
         assert_fails("feat(nope): x (P02)", "phase/P02-x", "`nope`");
-        assert_fails("feat(content): Records (P02)", "phase/P02-x", "upper-case");
-        let long = format!("feat(content): {} (P02)", "a".repeat(70));
+        assert_fails("feat(core): Records (P02)", "phase/P02-x", "upper-case");
+        let long = format!("feat(core): {} (P02)", "a".repeat(70));
         assert_fails(&long, "phase/P02-x", "the limit is 72");
         // Everything wrong is reported at once: the scope, the capital and the missing suffix.
         let verdict = check("feat(nope): Records", "phase/P02-x");
         assert_eq!(verdict.findings.len(), 3, "{:?}", verdict.findings);
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn the_squash_subject_with_the_pull_request_number_is_held_to_the_limit() {
         // GitHub appends ` (#N)` to the squash subject, and `commit-msg` judges it on `main`.
@@ -465,7 +462,7 @@ mod tests {
         assert_passes(&seventy, "phase/P02-x");
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn a_pull_request_number_with_more_digits_counts_its_length() {
         // ` (#1234)` is 8 characters: 64 + 8 = 72 passes, 65 + 8 = 73 fails.
@@ -473,104 +470,104 @@ mod tests {
         assert!(!check_numbered(&title_with_summary(65), "phase/P02-x", 1234).passed());
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn a_title_over_the_limit_is_said_once() {
         let verdict = check_numbered(&title_with_summary(80), "phase/P02-x", 7);
         assert_eq!(verdict.findings.len(), 1, "{:?}", verdict.findings);
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn a_full_stop_before_the_suffix_fails() {
         // The suffix ends the summary, so the full stop is hidden from a check of its last
         // character, and the title becomes the squash commit with it.
         for (title, branch) in [
-            ("feat(content): add thing. (P02)", "phase/P02-x"),
-            ("feat(content): x. (P02)", "phase/P02-x"),
+            ("feat(core): add thing. (P02)", "phase/P02-x"),
+            ("feat(core): x. (P02)", "phase/P02-x"),
             ("ci(gate): add thing. (gate)", "gate/x"),
             ("docs: add thing. (docs)", "docs/x"),
             ("docs(spec): add thing. (P02)", "spec/P02-x"),
-            ("fix(content): add thing. (gate)", "fix/x"),
-            ("feat(content): add thing.  (P02)", "phase/P02-x"),
+            ("fix(core): add thing. (gate)", "fix/x"),
+            ("feat(core): add thing.  (P02)", "phase/P02-x"),
         ] {
             assert_fails(title, branch, "full stop");
         }
         // Only that is wrong with it, and it is said once.
-        let verdict = check("feat(content): add thing. (P02)", "phase/P02-x");
+        let verdict = check("feat(core): add thing. (P02)", "phase/P02-x");
         assert_eq!(verdict.findings.len(), 1, "{:?}", verdict.findings);
-        let verdict = check("feat(content): add thing.", "phase/P02-x");
+        let verdict = check("feat(core): add thing.", "phase/P02-x");
         let stops = messages(&verdict).matches("full stop").count();
         assert_eq!(stops, 1, "{:?}", verdict.findings);
         // The other rules for words are not said twice either.
-        let verdict = check("feat(content): Add thing. (P02)", "phase/P02-x");
+        let verdict = check("feat(core): Add thing. (P02)", "phase/P02-x");
         assert_eq!(verdict.findings.len(), 2, "{:?}", verdict.findings);
 
         // A full stop inside the summary, or none, is fine.
-        assert_passes("feat(content): add thing (P02)", "phase/P02-x");
-        assert_passes("feat(content): add v1.2 and more (P02)", "phase/P02-x");
-        assert_passes("feat(content): add thing.rs (P02)", "phase/P02-x");
+        assert_passes("feat(core): add thing (P02)", "phase/P02-x");
+        assert_passes("feat(core): add v1.2 and more (P02)", "phase/P02-x");
+        assert_passes("feat(core): add thing.rs (P02)", "phase/P02-x");
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn missing_suffix_fails() {
-        assert_fails("feat(content): records", "phase/P02-x", "(P02)");
-        assert_fails("feat(content): records", "gate/x", "(gate)");
-        assert_fails("feat(content): records", "docs/x", "(docs)");
-        assert_fails("feat(content): records", "spec/P02-x", "docs(spec)");
+        assert_fails("feat(core): records", "phase/P02-x", "(P02)");
+        assert_fails("feat(core): records", "gate/x", "(gate)");
+        assert_fails("feat(core): records", "docs/x", "(docs)");
+        assert_fails("feat(core): records", "spec/P02-x", "docs(spec)");
         assert_fails("docs(spec): records", "spec/P02-x", "(P02)");
         // The suffix is the last thing in the summary, after a space, as one word in parentheses.
         for title in [
-            "feat(content): records (P02) and more",
-            "feat(content): records(P02)",
-            "feat(content): (P02)",
-            "feat(content): records (P02",
-            "feat(content): records (P02))",
-            "feat(content): records (p02)",
-            "feat(content): records (P2)",
-            "feat(content): records (P002)",
-            "feat(content): records (GATE)",
-            "feat(content): records [P02]",
-            "feat(content): records P02",
-            "feat(content): records (P02) ",
+            "feat(core): records (P02) and more",
+            "feat(core): records(P02)",
+            "feat(core): (P02)",
+            "feat(core): records (P02",
+            "feat(core): records (P02))",
+            "feat(core): records (p02)",
+            "feat(core): records (P2)",
+            "feat(core): records (P002)",
+            "feat(core): records (GATE)",
+            "feat(core): records [P02]",
+            "feat(core): records P02",
+            "feat(core): records (P02) ",
         ] {
             assert_fails(title, "phase/P02-x", "(P02)");
         }
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn suffix_must_match_branch() {
-        assert_fails("feat(content): x (P03)", "phase/P02-x", "(P02)");
-        assert_fails("feat(content): x (gate)", "phase/P02-x", "(P02)");
-        assert_fails("feat(content): x (docs)", "phase/P02-x", "(P02)");
+        assert_fails("feat(core): x (P03)", "phase/P02-x", "(P02)");
+        assert_fails("feat(core): x (gate)", "phase/P02-x", "(P02)");
+        assert_fails("feat(core): x (docs)", "phase/P02-x", "(P02)");
         // The finding says what was found as well as what is needed.
-        assert_fails("feat(content): x (P03)", "phase/P02-x", "(P03)");
+        assert_fails("feat(core): x (P03)", "phase/P02-x", "(P03)");
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn unknown_branch_fails() {
-        assert_fails("feat(content): x (P02)", "feature/x", "CONTRIBUTING.md §1");
-        assert_fails("feat(content): x (P02)", "main", "CONTRIBUTING.md §1");
+        assert_fails("feat(core): x (P02)", "feature/x", "CONTRIBUTING.md §1");
+        assert_fails("feat(core): x (P02)", "main", "CONTRIBUTING.md §1");
         for branch in ["phase/P2-x", "phase/P02", "Phase/P02-x", "", "origin/main"] {
-            assert_fails("feat(content): x (P02)", branch, "CONTRIBUTING.md §1");
+            assert_fails("feat(core): x (P02)", branch, "CONTRIBUTING.md §1");
         }
         // The finding names the branch, so it is clear which one was read.
-        assert_fails("feat(content): x (P02)", "feature/x", "`feature/x`");
+        assert_fails("feat(core): x (P02)", "feature/x", "`feature/x`");
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn a_pull_request_event_gives_the_title_and_the_branch() -> Result<()> {
-        let good = pull_request("feat(content): records (P02)", "phase/P02-x");
+        let good = pull_request("feat(core): records (P02)", "phase/P02-x");
         let verdict = run_with(Some(&good))?;
         assert_eq!(verdict.check, Check::PrTitle);
         assert!(verdict.passed(), "{:?}", verdict.findings);
 
         // The branch is the head of the pull request, not the branch checked out here.
-        let wrong_phase = pull_request("feat(content): records (P02)", "phase/P03-x");
+        let wrong_phase = pull_request("feat(core): records (P02)", "phase/P03-x");
         assert!(!run_with(Some(&wrong_phase))?.passed());
         let release = pull_request("chore(release): v0.1.0", "release-plz-2026-11-01");
         assert!(run_with(Some(&release))?.passed());
@@ -579,7 +576,7 @@ mod tests {
         Ok(())
     }
 
-    // AC: CE-08.9
+    // AC: TU-00.4
     #[test]
     fn without_a_pull_request_there_is_no_title_to_check() {
         let push = CiEvent::Push(PushEvent {

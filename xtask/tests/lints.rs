@@ -364,7 +364,6 @@ fn lint_lib(lib_rs: &str) -> TestResult<Verdict> {
     lint(dir.path())
 }
 
-// AC: CE-08.8
 #[test]
 fn code_reached_from_src_but_outside_it_fails() -> TestResult {
     // The floor of `coverage` counts `crates/<name>/src/**` only, so code that a library builds
@@ -404,7 +403,6 @@ fn code_reached_from_src_but_outside_it_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn code_reached_from_src_inside_it_passes() -> TestResult {
     // An `include!` is a finding even inside `src/` (`include_in_library_code_fails`); `#[path]`
@@ -420,7 +418,6 @@ fn code_reached_from_src_inside_it_passes() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn xtask_source_leaving_src_fails() -> TestResult {
     // `xtask` is a member of the copy, so the view reaches it: rule 1 reports the file that
@@ -470,7 +467,6 @@ fn lint_manifest(extra: &str, files: &[&str]) -> TestResult<Verdict> {
     lint(dir.path())
 }
 
-// AC: CE-08.8
 #[test]
 fn manifest_target_outside_src_fails() -> TestResult {
     // Rule 1 reports the file that the target compiles, not the manifest.
@@ -494,7 +490,6 @@ fn manifest_target_outside_src_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn manifest_target_inside_src_or_not_measured_passes() -> TestResult {
     for (extra, file) in [
@@ -525,7 +520,6 @@ fn manifest_target_inside_src_or_not_measured_passes() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn a_legacy_rust_toolchain_file_fails() -> TestResult {
     // rustup reads `rust-toolchain` before the protected `rust-toolchain.toml`.
@@ -546,7 +540,6 @@ fn a_legacy_rust_toolchain_file_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn rust_toolchain_toml_and_fixture_copies_pass() -> TestResult {
     let dir = copy_fixture(None)?;
@@ -573,7 +566,6 @@ fn lint_source(lib_rs: &str) -> TestResult<Verdict> {
     lint(dir.path())
 }
 
-// AC: CE-08.8
 #[test]
 fn a_cfg_that_hides_code_from_coverage_fails() -> TestResult {
     // cargo-llvm-cov builds with `--cfg coverage`: code under `not(coverage)` would be built and
@@ -603,7 +595,6 @@ fn a_cfg_that_hides_code_from_coverage_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn the_coverage_attribute_fails_the_check() -> TestResult {
     // `#![coverage(off)]` is unstable, so rustc refuses it on stable and the view cannot be
@@ -628,7 +619,6 @@ fn assert_view_refused(lib_rs: &str) -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn cfgs_that_keep_code_measured_pass() -> TestResult {
     for lib_rs in [
@@ -644,7 +634,6 @@ fn cfgs_that_keep_code_measured_pass() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn an_attribute_anywhere_in_a_source_is_judged() -> TestResult {
     // Each of these is an `allow` where a scan of the start of a line would not look: after code,
@@ -686,7 +675,6 @@ fn an_attribute_anywhere_in_a_source_is_judged() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn a_cfg_attr_in_the_tree_needs_a_reason_for_ignore_and_expect() -> TestResult {
     // The compiler may not see the attribute on the machine that checks, so clippy cannot be
@@ -710,7 +698,6 @@ fn a_cfg_attr_in_the_tree_needs_a_reason_for_ignore_and_expect() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn a_reasonless_expect_or_ignore_in_the_tree_is_judged_behind_a_cfg() -> TestResult {
     // Clippy never sees an item that a `cfg` strips on the machine that checks, so the reason is
@@ -739,7 +726,6 @@ fn a_reasonless_expect_or_ignore_in_the_tree_is_judged_behind_a_cfg() -> TestRes
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn attributes_of_test_targets_and_build_scripts_are_judged() -> TestResult {
     let dir = copy_fixture(None)?;
@@ -764,7 +750,6 @@ fn attributes_of_test_targets_and_build_scripts_are_judged() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn attribute_like_text_in_strings_and_comments_passes() -> TestResult {
     for lib_rs in [
@@ -789,7 +774,6 @@ pub fn f() {}
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn a_path_attribute_after_code_is_judged_by_rule_1() -> TestResult {
     // The `#[path]` is in the middle of a line; the file it names exists, so cargo checks it.
@@ -800,7 +784,6 @@ fn a_path_attribute_after_code_is_judged_by_rule_1() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn a_cfg_outside_the_allowlist_fails() -> TestResult {
     // Each name is set by a tool or a profile, so code under it is not compiled by every check:
@@ -896,7 +879,6 @@ pub fn f() {}
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn a_cfg_inside_the_allowlist_passes() -> TestResult {
     for lib_rs in [
@@ -953,7 +935,6 @@ fn the_gate_guards_the_lints_that_guard_the_others() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn library_code_outside_src_fails() -> TestResult {
     let verdict = lint_case("outside-src")?;
@@ -969,7 +950,6 @@ fn library_code_outside_src_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn test_targets_may_compile_anything() -> TestResult {
     // A test target compiles a fixture through `#[path]`: clippy lints what it compiles, and
@@ -990,7 +970,6 @@ fn test_targets_may_compile_anything() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn include_in_library_code_fails() -> TestResult {
     let verdict = lint_case("include-in-src")?;
@@ -999,7 +978,6 @@ fn include_in_library_code_fails() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn a_build_script_compiles_from_build_rs() -> TestResult {
     let dir = copy_fixture(None)?;
@@ -1040,7 +1018,6 @@ workspace = true
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn refused_cfg_names_fail_with_their_line() -> TestResult {
     let verdict = lint_case("bad-cfg")?;
@@ -1069,7 +1046,6 @@ fn refused_cfg_names_fail_with_their_line() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn cfg_names_toml_is_what_the_pinned_rustc_prints() -> TestResult {
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
@@ -1109,7 +1085,6 @@ fn cfg_names_toml_is_what_the_pinned_rustc_prints() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn cfg_names_that_stable_rustc_refuses_fail_the_check() -> TestResult {
     // `overflow_checks` and `ub_checks` are unstable cfgs: rustc refuses them on stable, so the
@@ -1123,7 +1098,6 @@ fn cfg_names_that_stable_rustc_refuses_fail_the_check() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn a_target_outside_the_repository_is_reported_at_its_absolute_path() -> TestResult {
     // Ruling 4: a file outside the root keeps its absolute normal form, with `/` separators.
@@ -1152,7 +1126,6 @@ fn a_target_outside_the_repository_is_reported_at_its_absolute_path() -> TestRes
     Ok(())
 }
 
-// AC: CE-08.8
 #[cfg(unix)]
 #[test]
 fn a_root_reached_through_a_symlink_has_no_findings() -> TestResult {
@@ -1167,7 +1140,6 @@ fn a_root_reached_through_a_symlink_has_no_findings() -> TestResult {
     Ok(())
 }
 
-// AC: CE-08.8
 #[test]
 fn a_backslash_path_never_passes() -> TestResult {
     // A `\` separates folders in a module path on Windows only. There rule 1 reports the file
