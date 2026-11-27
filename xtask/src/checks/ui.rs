@@ -1,7 +1,8 @@
 //! The `ui` part: the web app's type check, lint and tests, run with pnpm in `web/`.
 //!
 //! Every call is `pnpm` with fixed arguments: `pnpm exec <tool>`, never a `package.json` script,
-//! because scripts are unprotected text that could make the part pass without running a tool.
+//! because scripts are unprotected text that could make the part pass without running a tool. The
+//! install passes `--ignore-scripts`, so no lifecycle script of the root project runs either.
 //! `pnpm` is found with the `which` crate, since on Windows it is a `.cmd` shim that
 //! `std::process::Command` does not find by name. `tsc -b` is the type check (the template's
 //! tsconfigs set `noEmit`), `ESLint` runs with no warnings allowed, and Vitest runs once.
@@ -17,11 +18,12 @@ use crate::{Error, Result};
 /// The web app's directory, relative to the repository root.
 pub const WEB_DIR: &str = "web";
 
-/// The `pnpm` calls of the part, in order. The first installs from the lockfile as it is.
+/// The `pnpm` calls of the part, in order. The first installs from the lockfile as it is, without
+/// running any lifecycle script.
 #[must_use]
 pub fn commands() -> Vec<Vec<&'static str>> {
     vec![
-        vec!["install", "--frozen-lockfile"],
+        vec!["install", "--frozen-lockfile", "--ignore-scripts"],
         vec!["exec", "tsc", "-b"],
         vec!["exec", "eslint", ".", "--max-warnings", "0"],
         vec!["exec", "vitest", "run"],
@@ -72,7 +74,7 @@ mod tests {
         assert_eq!(
             commands(),
             [
-                vec!["install", "--frozen-lockfile"],
+                vec!["install", "--frozen-lockfile", "--ignore-scripts"],
                 vec!["exec", "tsc", "-b"],
                 vec!["exec", "eslint", ".", "--max-warnings", "0"],
                 vec!["exec", "vitest", "run"],

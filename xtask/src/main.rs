@@ -100,8 +100,8 @@ enum Command {
     Secrets,
     /// Type-check, lint and test the web app in `web/` with pnpm.
     ///
-    /// Runs `pnpm install --frozen-lockfile`, then `pnpm exec tsc -b`, `eslint` and `vitest run` in
-    /// `web/`, with fixed arguments; it never runs a `package.json` script.
+    /// Runs `pnpm install --frozen-lockfile --ignore-scripts`, then `pnpm exec tsc -b`, `eslint`
+    /// and `vitest run` in `web/`, with fixed arguments; it never runs a `package.json` script.
     Ui,
     /// Check that every commit of the branch is a Conventional Commit.
     ///
