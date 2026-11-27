@@ -142,8 +142,8 @@ part; every path it reads is code):
 | Part | What it reads outside `crates/` and `xtask/` | Why non-code paths cannot change its verdict |
 |---|---|---|
 | `fmt` | nothing | formats only workspace `.rs` files |
-| `clippy` | `.github/pull_request_template.md` (`include_str!` in tests) | it is code |
-| `test`, `coverage` | the umbrella, `docs/gate.md`, `CONTRIBUTING.md`, `docs/specs/phases/`, `.github/**`, `.loom/**`, `gate/**` | all code (`CONTRIBUTING.md` is on no non-code list); no doc tests read a doc file |
+| `clippy` | the umbrella, `gate/code-paths.toml` and `.github/pull_request_template.md` (`include_str!` in tests) | all code |
+| `test`, `coverage` | the same three `include_str!` files, and at run time the umbrella, `docs/gate.md`, `CONTRIBUTING.md`, `docs/specs/phases/`, `.github/**`, `.loom/**`, `gate/**` | all code (`CONTRIBUTING.md` is on no non-code list); no test or doc test reads a non-code file |
 | `docs` | nothing (rustdoc does not compile `cfg(test)`) | none |
 | `deny` | Cargo files, `deny.toml`, the advisory database | Cargo files are code; a new advisory is not caused by the PR and shows at the next code PR and the next push to `main` |
 | `lints` | every file name (it looks for `Cargo.toml` and tool configs anywhere) and the files in `gate/` | those names and files are always-code or code |
