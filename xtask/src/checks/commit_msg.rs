@@ -222,7 +222,7 @@ mod tests {
         std::fs::create_dir_all(&specs)?;
         std::fs::write(
             specs.join("00-umbrella.md"),
-            "| Phase | Name | Repo |\n|---|---|---|\n| P00 | Foundation | theos-loom |\n\n\
+            "| Phase | Name | Slice | Depends on |\n|---|---|---|---|\n| P00 | Foundation | S1 | – |\n\n\
              ### P00 · Foundation\n- TU-00.10 First.\n",
         )?;
         Ok(dir)
@@ -435,7 +435,7 @@ mod tests {
         std::fs::create_dir_all(&specs)?;
         std::fs::write(
             specs.join("00-umbrella.md"),
-            "| Phase | Name | Repo |\n|---|---|---|\n| P00 | A | theos-loom |\n",
+            "| Phase | Name | Slice | Depends on |\n|---|---|---|---|\n| P00 | A | S1 | – |\n",
         )?;
         let result = known_acs(dir.path());
         assert!(matches!(result, Err(Error::Config { .. })), "{result:?}");
