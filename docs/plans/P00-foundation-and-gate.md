@@ -138,6 +138,10 @@ Put this in every implementer, reviewer and fix brief:
 - Between Task 2 and Task 15 some `xtask` test targets are red because the files they read are
   adapted later. A task turns the targets it names green and never turns a green target red.
   From Task 15 on, the whole suite is green.
+- A task that changes a list a document mirrors, where a test keeps the two equal (the scopes and
+  `CONTRIBUTING.md` §2, the protected paths and `docs/gate.md` §5, or any other such pair), also
+  changes that list in the document, so the test stays green. Task 14 writes the rest of the
+  documents. (Plan change allowed by Jann during implementation, 27 Nov 2026.)
 
 ## Rulings (Claude's calls; listed in the PR)
 
@@ -368,21 +372,23 @@ Expected: builds; both test runs PASS; deny `ok`; the help lists the subcommands
 
 ---
 
-## Task 3: Loom's ids, umbrella, branches and scopes
+## Task 3: Loom's ids, umbrella and scopes
 
 **ACs:** TU-00.4
 
 **Files:**
-- Modify: `xtask/src/umbrella.rs`, `xtask/src/branch.rs`, `xtask/src/conventional.rs`,
+- Modify: `xtask/src/umbrella.rs`, `xtask/src/conventional.rs`,
   `xtask/src/checks/ac_trace/mod.rs` (`is_tag_id`), `xtask/src/checks/commit_msg.rs`, doc
-  comments in `xtask/src/markdown.rs` and `xtask/src/report.rs`
+  comments in `xtask/src/markdown.rs` and `xtask/src/report.rs`, the scope list of
+  `CONTRIBUTING.md` §2 (the mirrored-list rule of the brief)
 - Modify: every `xtask/tests/fixtures/ac-trace/*/docs/specs/00-umbrella.md` (Loom's format) and
   every `// AC:` tag and test-data id under `xtask/` (the retagging ruling)
 
 **Interfaces:**
 - Produces: `umbrella::OWN_REPO: &str = "theos-loom"`; `pub fn umbrella::is_ac_id(id: &str) -> bool`;
   `PhaseInfo { id, name, repo, acs }` as before, with `repo` from the heading;
-  `conventional::SCOPES: [&str; 13]`; `BranchKind` without `Release`.
+  `conventional::SCOPES: [&str; 13]`. (`BranchKind` loses `Release` in Task 5, not here.
+  (Plan change allowed by Jann during implementation, 27 Nov 2026.))
 
 - [ ] **Step 1: Write the failing tests** (in `umbrella.rs`, `// AC: TU-00.4`)
 
@@ -398,24 +404,26 @@ Expected: builds; both test runs PASS; deny `ok`; the help lists the subcommands
 
 - [ ] **Step 2: Run** `cargo nextest run -p xtask -E 'test(/umbrella/)'` — Expected: FAIL.
 
-- [ ] **Step 3: Adapt the parser, branches, scopes and ids**
+- [ ] **Step 3: Adapt the parser, scopes and ids**
 
 `umbrella.rs`: ids are `TU-` + exactly two digits + `.` + one or more digits; the phase table
 needs `Phase` and `Name` columns; the repo is the heading's `(repo \`…\`)` suffix, else
 `OWN_REPO`. The editor's checks for doubled phases, list items that start `- TU-` but aren't an
 id, and lone CRs stay. `ac_trace::is_tag_id` and `commit_msg`'s `Refs:` check call
-`umbrella::is_ac_id`. `branch.rs`: remove `Release` (`release-plz-*` becomes `Other`).
+`umbrella::is_ac_id`.
 `conventional.rs`: `SCOPES = ["core", "plan", "store", "run", "gate", "context", "api", "cli",
-"web", "xtask", "spec", "docs", "ci"]`; `TYPES` unchanged.
+"web", "xtask", "spec", "docs", "ci"]`; `TYPES` unchanged. `CONTRIBUTING.md` §2 lists the same
+scopes, so the editor's test that keeps the two equal (`xtask/tests/commit_msg.rs`) stays green.
 
 Fixture umbrellas: drop the `Repo` column, write the repo of a phase built elsewhere as the
 heading suffix (`other-repo-phase`: `(repo \`FPGSchiba/bmad-method\`)`), `CE-` ids → `TU-`.
 Retag every `// AC:` comment under `xtask/` by the retagging ruling.
 
-- [ ] **Step 4: Run** `cargo nextest run -p xtask -E 'test(/umbrella|branch|conventional/)'` —
-Expected: PASS. Then `git grep -n 'CE-' -- xtask` — Expected: no output.
+- [ ] **Step 4: Run** `cargo nextest run -p xtask -E 'test(/umbrella|branch|conventional/)'` and
+`cargo nextest run -p xtask --test commit_msg -E 'test(types_and_scopes_equal_contributing_md_section_2)'`
+— Expected: PASS. Then `git grep -n 'CE-' -- xtask` — Expected: no output.
 
-- [ ] **Step 5: Commit** — `refactor(xtask): read Loom's umbrella, ids, branches and scopes`.
+- [ ] **Step 5: Commit** — `refactor(xtask): read Loom's umbrella, ids and scopes`.
 
 ---
 
@@ -474,11 +482,13 @@ Expected: PASS.
 **ACs:** TU-00.4
 
 **Files:**
-- Modify: `xtask/src/checks/pr_title.rs`, `xtask/src/checks/commit_msg.rs`,
+- Modify: `xtask/src/branch.rs`, `xtask/src/checks/pr_title.rs`, `xtask/src/checks/commit_msg.rs`,
   `xtask/tests/pr_title.rs`, `xtask/tests/commit_msg.rs`, `xtask/tests/fixtures/events/pull_request.json`
 
 **Interfaces:**
-- Consumes: Task 3's `BranchKind`, `SCOPES`, `is_ac_id`.
+- Consumes: Task 3's `SCOPES`, `is_ac_id`.
+- Produces: `BranchKind` without `Release` (moved here from Task 3, so the type and the code that
+  matches on it go in one commit. (Plan change allowed by Jann during implementation, 27 Nov 2026.))
 
 - [ ] **Step 1: Adapt the tests** (`// AC: TU-00.4`)
 
@@ -491,10 +501,11 @@ scopes). Commit tests: a `Refs: TU-00.1` footer passes, `Refs: CE-08.1` fails as
 
 - [ ] **Step 2: Run** `cargo nextest run -p xtask --test pr_title --test commit_msg` — Expected: FAIL.
 
-- [ ] **Step 3: Implement** — remove `is_release_title` and the `Release` arms; the suffix rules
+- [ ] **Step 3: Implement** — `branch.rs`: remove `Release` (`release-plz-*` becomes `Other`; its
+tests follow). Remove `is_release_title` and the `Release` arms; the suffix rules
 stay the editor's: `phase/` and `spec/` → `(PNN)`, `gate/` → `(gate)`, `docs/` → `(docs)`.
 
-- [ ] **Step 4: Run** the Step 2 command and `cargo nextest run -p xtask -E 'test(/pr_title|commit_msg|conventional/)'` — Expected: PASS.
+- [ ] **Step 4: Run** the Step 2 command and `cargo nextest run -p xtask -E 'test(/pr_title|commit_msg|conventional|branch/)'` — Expected: PASS.
 
 - [ ] **Step 5: Commit** — `feat(xtask): titles and commits by Loom's rules`.
 
@@ -539,7 +550,9 @@ and `pass  lints`.
 **Files:**
 - Move: `gate/protected-paths.toml` → `.loom/protected.toml` (`git mv`, then edit)
 - Modify: `xtask/src/checks/approval/protected.rs` (`CONFIG`), `xtask/src/checks/approval/mod.rs`
-  (messages naming the file), `xtask/tests/approval.rs`
+  (messages naming the file), `xtask/tests/approval.rs`, the list of `docs/gate.md` §5 (the
+  mirrored-list rule of the brief: the editor's `protected_paths_toml_matches_gate_md_section_5`
+  keeps it equal to `.loom/protected.toml`; it is retagged `// AC: TU-00.4`) (Plan change allowed by Jann during implementation, 27 Nov 2026.)
 
 **Interfaces:**
 - Produces: `approval::protected::CONFIG: &str = ".loom/protected.toml"`.
@@ -970,10 +983,10 @@ rest; an `Unreadable` note goes on the `tools` verdict. `approval` takes its pat
 - `repo_settings_encode_section_6` as the editor's.
 - `gate_md_lists_the_code_paths_exactly` (`// AC: TU-00.3`): §1.2's three lists equal
   `gate/code-paths.toml`.
-- `gate_md_lists_the_protected_paths_exactly` (`// AC: TU-00.4`): §5 equals
-  `.loom/protected.toml`.
-- `scopes_are_those_of_contributing`: `conventional::SCOPES` equals the list in
-  `CONTRIBUTING.md` §2.
+- No new tests for §5 and the scopes: the editor's `protected_paths_toml_matches_gate_md_section_5`
+  (`xtask/tests/approval.rs`, Task 7) and its `types_and_scopes_equal_contributing_md_section_2` (`xtask/tests/commit_msg.rs`,
+  Task 3) keep them, retagged `// AC: TU-00.4`, and must stay green over the rewritten documents.
+  (Plan change allowed by Jann during implementation, 27 Nov 2026.)
 
 `pr_body.rs`: `the_template_has_every_section`: Phase, Acceptance criteria, Final review,
 Rulings, Gate, Protected paths, Trial.
@@ -1050,7 +1063,8 @@ section `## Trial` (`<!-- Link to docs/trial/PNN-<slug>.md and the numbers of th
 `coverage`, `ui`, `pr`, `approval`, each `integration_id: 15368`.
 `xtask/README.md`: Loom's subcommands and modules.
 
-- [ ] **Step 5: Run** the Step 2 command and `cargo nextest run -p xtask -E 'test(/settings|conventional|pr_body/)'` — Expected: PASS.
+- [ ] **Step 5: Run** the Step 2 command, `cargo nextest run -p xtask --test approval --test commit_msg`
+and `cargo nextest run -p xtask -E 'test(/settings|conventional|pr_body/)'` — Expected: PASS.
 
 - [ ] **Step 6: Commit** — `docs(gate): Loom's gate, contributing rules and PR template`.
 
