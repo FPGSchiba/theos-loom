@@ -1,5 +1,5 @@
 //! The GitHub settings as files, and the comparison with the live repository (`docs/gate.md` §1
-//! and §6; spec `docs/specs/phases/P00-foundation-and-gate.md` §5.8).
+//! and §6).
 //!
 //! Two files in `gate/` say how the repository is set up: `ruleset-main.json` (the rules of the
 //! default branch) and `repo-settings.toml` (the merge settings and the labels). [`Desired`] reads
@@ -21,7 +21,7 @@
 //! [`check`] is the comparison as a verdict, and [`apply`] makes the repository like the files:
 //! it creates or replaces the ruleset, patches the settings and sets the labels. Applying again
 //! changes nothing that is already right. It changes the live repository, so it is only run
-//! after Jann has said so (spec §10).
+//! after Jann has said so (`docs/gate.md` §6).
 //!
 //! Text from GitHub ends up in the differences, and it is data: a value is shown as JSON, cut to
 //! [`MAX_SHOWN`] characters, and [`report`](crate::report) marks every line of what is written.

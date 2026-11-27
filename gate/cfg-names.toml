@@ -1,9 +1,9 @@
-# The cfg names code may test (P00 spec §5.10, rule 2). `unexpected_cfgs` at `forbid` already
+# The cfg names code may test (`docs/gate.md` §2, rule `lints`). `unexpected_cfgs` at `forbid` already
 # refuses every name rustc and cargo do not know; this list refuses the known names that differ
 # between the builds the checks make (`clippy`, `debug_assertions`, `miri`, …) and any name a
 # build script declares. `names` may stand alone, `keys` take a value, which rustc checks.
 # `keys` are the target keys the pinned toolchain (rustc 1.99.1) sets itself on stable for the
-# two targets of the local gate (D6): the union of `rustc --print cfg --target <t>` for
+# two targets of the local gate (decision 0004): the union of `rustc --print cfg --target <t>` for
 # x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc, without `debug_assertions` and `panic`,
 # plus `feature`, which cargo sets. Re-run the two commands at every toolchain pin change.
 names = ["test", "doc", "unix", "windows"]

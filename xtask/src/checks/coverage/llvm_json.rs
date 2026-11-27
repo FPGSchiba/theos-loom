@@ -3,7 +3,7 @@
 //! Only the sources of the crates count: the files under `<root>/crates/<name>/src/` and
 //! `<root>/xtask/src/`, with `xtask` as the name of the second. Integration tests (`tests/`),
 //! fixtures, build scripts and dependencies are not counted, whatever cargo-llvm-cov lists. The
-//! crate name is the name of its folder, which G4 makes the name of the package.
+//! crate name is the name of its folder, which the workspace layout (P00 spec §5.1) makes the name of the package.
 //!
 //! The export gives file names as the compiler wrote them: absolute, and on Windows with `\`.
 //! Both sides of a comparison are first written with `/` and without the `\\?\` prefix, and on

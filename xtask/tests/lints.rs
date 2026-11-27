@@ -253,7 +253,7 @@ fn bad_attributes_in_sources_fail() -> TestResult {
     let expect = "an `expect` without a reason: give one with `reason = \"…\"`";
     let ignore = "an `ignore` without a reason: give one with `#[ignore = \"…\"]`";
     let guard = "an `allow` or `expect` of `clippy::ignore_without_reason`, one of the lints \
-                 that guard the others (spec §5.2)";
+                 that guard the others (`docs/gate.md` §2)";
     let warn = "a `warn` attribute: lint levels are set in `gate/lints.toml`; a lower level \
                 here lets `cargo clippy -- -D warnings` pass with the lint printed as a warning";
     let messages: Vec<&str> = verdict

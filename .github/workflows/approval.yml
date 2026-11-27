@@ -1,6 +1,6 @@
 # The approval of a pull request that touches a protected path (docs/gate.md section 5).
 #
-# D3: the job runs the gate of `main`, not the one the pull request brings. It checks out the base
+# The job runs the gate of `main`, not the one the pull request brings. It checks out the base
 # commit of the pull request (with its history, so the head commits are there as git objects) and
 # runs that commit's xtask against the pull request's changes. Only while the base commit has no
 # xtask (the pull request that adds the gate) does the job check out the head and run its own.

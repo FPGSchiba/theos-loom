@@ -2,7 +2,7 @@
 //! crate, and holds no `include!`.
 //!
 //! `coverage` counts the lines of `crates/<name>/src/**` and `xtask/src/**` and nothing else
-//! (spec §5.4), so code that a library or a binary compiles from anywhere else, through
+//! (`docs/gate.md` §3), so code that a library or a binary compiles from anywhere else, through
 //! `#[path]`, `include!` or a `path` in the manifest, would be outside the floor. The view says
 //! which files each artifact compiled (dep-info), so the rule needs no reading of paths: a file of
 //! such an artifact that is not under `<manifest_dir>/src/` is a finding. A build script may be

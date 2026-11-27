@@ -1,4 +1,4 @@
-//! The fingerprint of a pull request: what an approval is tied to (spec D2).
+//! The fingerprint of a pull request: what an approval is tied to (`docs/gate.md` §5).
 //!
 //! It is the SHA-256 of `git diff --raw --no-renames --no-abbrev <merge-base> <head>`: one line per
 //! changed path with the mode and the full object id on both sides. So it moves with every byte

@@ -45,7 +45,7 @@ const RECORDED_SENTENCE: &str = "Approval recorded for this content of the PR.";
 /// The failure of a protected pull request without the label `approved`.
 const WAITS: &str = "waits for Jann: add the label `approved` after review";
 
-/// The failure of a pull request that has `approved` but no recorded approval. Spec §5.7 step 7
+/// The failure of a pull request that has `approved` but no recorded approval. `docs/gate.md` §5
 /// words only the changed case.
 const NOT_RECORDED: &str = "no approval is recorded for this content yet: the run of the label `approved` records it; if that run has finished and this check is still red, remove `approved` and add it again";
 

@@ -1,6 +1,6 @@
 //! The shape of the GitHub Actions workflows and of the two actions under `.github/`.
 //!
-//! CI is thin over xtask (P00 spec D1): a job checks out, sets up and runs one `cargo xtask`
+//! CI is thin over xtask (`docs/gate.md` §1): a job checks out, sets up and runs one `cargo xtask`
 //! command, and the workflow files hold triggers, runners, caching and permissions and nothing
 //! else. These tests parse the real files, so a change that breaks a rule of `docs/gate.md` §1
 //! or of the spec's §5.7 fails here, before it fails on GitHub.
@@ -471,7 +471,7 @@ fn approval_runs_the_approval_command() -> TestResult {
         ["checkout", "checkout", "xtask"],
         "the steps of job approval"
     );
-    // The two checkouts of `approval` (D3): the base commit with its history, and, only while
+    // The two checkouts of `approval` (`docs/gate.md` §5): the base commit with its history, and, only while
     // the base has no xtask, the head of the pull request.
     let steps = job.steps()?;
     let base = &steps[0]["with"];

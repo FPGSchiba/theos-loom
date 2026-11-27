@@ -21,7 +21,7 @@
 //!   that names one of the lints that guard the others (`unexpected_cfgs`,
 //!   `clippy::allow_attributes`, `clippy::allow_attributes_without_reason`,
 //!   `clippy::ignore_without_reason`) or one of the groups that contain them
-//!   (`clippy::pedantic`, `clippy::restriction`) is a finding (spec §5.2): `forbid` on a lint
+//!   (`clippy::pedantic`, `clippy::restriction`) is a finding (`docs/gate.md` §2): `forbid` on a lint
 //!   stops rustc from honouring such an attribute, but clippy's guard lints are only `deny`.
 //!
 //! A string or a comment is one token that is never an attribute. An attribute that a macro
@@ -182,12 +182,12 @@ fn guard_messages(tokens: &TokenStream) -> Vec<String> {
             if GUARDS.contains(&lint.as_str()) {
                 Some(format!(
                     "an `allow` or `expect` of `{lint}`, one of the lints that guard the others \
-                     (spec §5.2)"
+                     (`docs/gate.md` §2)"
                 ))
             } else if GROUPS.contains(&lint.as_str()) {
                 Some(format!(
                     "an `allow` or `expect` of `{lint}`, a lint group that holds lints that guard \
-                     the others (spec §5.2)"
+                     the others (`docs/gate.md` §2)"
                 ))
             } else {
                 None
@@ -326,7 +326,7 @@ mod tests {
         for lint in ["clippy::pedantic", "clippy::restriction"] {
             let message = format!(
                 "an `allow` or `expect` of `{lint}`, a lint group that holds lints that guard \
-                 the others (spec §5.2)"
+                 the others (`docs/gate.md` §2)"
             );
             for text in [
                 format!("#[expect({lint}, reason = \"r\")]\nfn a() {{}}\n"),
@@ -411,7 +411,7 @@ mod tests {
         for lint in GUARDS {
             let message = format!(
                 "an `allow` or `expect` of `{lint}`, one of the lints that guard the others \
-                 (spec §5.2)"
+                 (`docs/gate.md` §2)"
             );
             for text in [
                 format!("#[allow({lint}, reason = \"r\")]\nfn a() {{}}\n"),

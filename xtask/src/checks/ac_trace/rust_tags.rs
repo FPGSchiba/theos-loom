@@ -495,7 +495,7 @@ mod tests {
     // AC: TU-00.4
     #[test]
     fn a_tag_among_the_comments_above_a_test_counts() {
-        // Spec §5.10, controller ruling: the whole run of comments above the test is read.
+        // The whole run of comments above the test is read.
         for lines in [
             &[
                 "// AC: TU-00.1",
@@ -702,7 +702,7 @@ mod tests {
             "#[test]",
             "fn third() {}",
         ]);
-        // Spec §5.10, controller ruling: both tag lines above `third` count.
+        // Both tag lines above `third` count.
         let found: Vec<(u32, &str)> = tags
             .iter()
             .map(|tag| (tag.line, tag.ids[0].as_str()))
