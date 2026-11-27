@@ -265,7 +265,9 @@ fn stray_config(files: &[String]) -> Vec<Finding> {
             name if is_eslint_config(name) && path != &format!("web/{name}") => {
                 findings.push(at_file(
                     path,
-                    "an ESLint configuration outside `web/`: ESLint takes the config nearest to                      each file, so it could replace the protected one for the files below it;                      only `web/eslint.config.*` may exist",
+                    "an ESLint configuration outside `web/`: ESLint takes the config nearest to \
+                     each file, so it could replace the protected one for the files below it; \
+                     only `web/eslint.config.*` may exist",
                 ));
             }
             "rust-toolchain" => findings.push(at_file(
@@ -407,6 +409,19 @@ mod tests {
             assert_eq!(findings.len(), 1, "{stray}: {findings:?}");
             assert_eq!(findings[0].file.as_deref(), Some(flagged), "{stray}");
         }
+    }
+
+    #[test]
+    fn the_eslint_message_has_single_spaces() {
+        let findings = stray_config(&paths(&["crates/a/eslint.config.ts"]));
+        assert_eq!(
+            findings[0].message,
+            concat!(
+                "an ESLint configuration outside `web/`: ESLint takes the config nearest to each ",
+                "file, so it could replace the protected one for the files below it; ",
+                "only `web/eslint.config.*` may exist"
+            )
+        );
     }
 
     #[test]
