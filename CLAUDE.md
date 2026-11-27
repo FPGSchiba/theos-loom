@@ -26,6 +26,10 @@ umbrella.
   → P06 → P07 → TU-08.1 and TU-08.2 → P13 → P14.
 - Never work on `main`. Never push to `main`. Every phase runs in its own git worktree from its
   first step on (`.worktrees/<branch>` if the session has no native worktree tool).
+- **One writer per worktree.** Every agent that writes files gets its own worktree. Subagents may
+  share their session's worktree only when they run one after another. Agents that run in
+  parallel and write each get a worktree of their own, on a branch of their own, and their work
+  is merged back into the phase branch one at a time. Reviewers that only read may share.
 - During the trial, **Jann answers in the decider's place**: questions during refinement, and
   approval of the phase spec and plan. Each answer that decides something is recorded as a
   decision in `docs/decisions/` and listed in the phase's trial record.

@@ -424,7 +424,9 @@ component. The default is a self-hosted ntfy topic (my call).
   from Loom. Switching to an API key later is a config change, not a code change.
 - **T4** Loom runs in a dedicated VM on the home server (not an LXC, so rootless nested
   containers and per-container egress filtering work). Every worker and reviewer runs in its
-  own rootless container with its own git worktree. Network only to GitHub, the package
+  own rootless container with its own git worktree. Inside a run, subagents share that worktree
+  only when they run one after another; subagents that write in parallel each get their own
+  worktree and branch, merged back one at a time. Network only to GitHub, the package
   registries the repo declares, and Anthropic. No access to the home LAN. Credentials: a
   fine-grained GitHub token scoped to the project's repos (contents and pull requests only).
   Commits and PRs appear under Jann's GitHub identity, as in theos-editor.
@@ -551,7 +553,8 @@ P00, P03, P04 and P06 can run in parallel. The UI phases start after P13.
 
 **TU-03 Running Claude Code in a container**
 - TU-03.1 `loom-run` starts a rootless container from the configured image, with a fresh git
-  worktree of the story branch and the workflow kit at the pinned version.
+  worktree of the story branch and the workflow kit at the pinned version. No two runs ever share
+  a worktree (tested with two concurrent runs of one story).
 - TU-03.2 It runs `claude -p` with streamed JSON output, parses every event into typed run
   events, and stores the raw stream (T7).
 - TU-03.3 A run can be cancelled. Cancelling stops the whole process tree and the container
