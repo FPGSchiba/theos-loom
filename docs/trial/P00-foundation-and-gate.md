@@ -6,9 +6,9 @@ Started: 27 Nov 2026, 11:15 · Finished: –
 
 | | |
 |---|---|
-| Tokens (in / out) | n/a: refinement ran inside the long planning session, so its usage can't be separated |
-| Cost (API-equivalent) | n/a, same reason |
-| Wall time | |
+| Tokens (in / out) | Brainstorming and spec draft (questions 1–3): n/a, they ran inside the long planning session, so their usage can't be separated. Spec approval and plan (questions 4–7, own session, from `/cost`): Opus 5.5 150 in + 12.6M cache read + 295.2k cache write / 139.9k out; Haiku 5.5 2.2k in / 22 out |
+| Cost (API-equivalent) | Planning-session part: n/a, same reason. Own session: $7.67 |
+| Wall time | Planning-session part: n/a. Own session: 41 min 49 s (API 20 min 56 s) |
 | Builder-check questions | 5 · 0 went to Jann (all settled as rulings R-h to R-l) |
 
 Questions to the decider (Jann):
