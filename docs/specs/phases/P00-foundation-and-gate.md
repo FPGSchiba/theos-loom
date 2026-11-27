@@ -141,7 +141,7 @@ web/                    React app (§5.5)
 | Fast linking | the toolchain's default `rust-lld` (default on `x86_64-unknown-linux-gnu` since Rust 1.90; D7) | none |
 | Test runner, coverage, licences | `cargo-nextest`, `cargo-llvm-cov`, `cargo-deny`, pinned in `gate/tools.toml` | none |
 | PostgreSQL in CI | a `postgres:18` service container in `test` and `coverage` | none |
-| UI toolchain | pnpm, Vite, TypeScript, ESLint, Vitest; cache via `actions/setup-node` with `cache: pnpm` | none |
+| UI toolchain | pnpm, Vite, TypeScript, ESLint, Vitest; the pnpm store cached with `actions/cache/restore` and `actions/cache/save`, saved on `main` only (§5.7; changed in the final review with Jann's approval) | none |
 | Settings as code | the editor's `github check` / `apply` | Loom's check names and labels |
 
 ### 5.3 `gate/`
