@@ -289,11 +289,11 @@ mod tests {
     #[test]
     fn a_file_that_climbs_out_of_src_is_not_in_the_crate() {
         let of = |file: &str| crate_of(&normal(file), "/r", false).map(str::to_owned);
-        let content = Some("theos-content".to_owned());
-        assert_eq!(of("/r/crates/theos-content/src/../x.rs"), None);
+        let content = Some("loom-core".to_owned());
+        assert_eq!(of("/r/crates/loom-core/src/../x.rs"), None);
         assert_eq!(of("/r/xtask/src/../tests/x.rs"), None);
-        assert_eq!(of("/r/crates/theos-content/src/./a/../b.rs"), content);
-        assert_eq!(of("/r/crates/theos-content/src/x.rs"), content);
+        assert_eq!(of("/r/crates/loom-core/src/./a/../b.rs"), content);
+        assert_eq!(of("/r/crates/loom-core/src/x.rs"), content);
     }
 
     #[test]

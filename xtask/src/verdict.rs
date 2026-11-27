@@ -12,16 +12,12 @@ pub enum Check {
     Fmt,
     /// `cargo clippy` with warnings denied.
     Clippy,
-    /// The tests, through nextest, and the doc tests; the slow tests are left out.
+    /// The tests, through nextest, and the doc tests.
     Test,
-    /// The slow tests (a segment of the name starts with `slow_`), through nextest.
-    SlowTests,
     /// `cargo doc` with warnings denied.
     Docs,
     /// `cargo deny check`.
     Deny,
-    /// No engine crate is a dependency without the feature `engine`.
-    EngineFree,
     /// Line coverage per crate against floors and the baseline on `main`.
     Coverage,
     /// The lint list, the tool configuration and the attribute scan.
@@ -50,10 +46,8 @@ impl Check {
             Self::Fmt => "fmt",
             Self::Clippy => "clippy",
             Self::Test => "test",
-            Self::SlowTests => "slow-tests",
             Self::Docs => "docs",
             Self::Deny => "deny",
-            Self::EngineFree => "engine-free",
             Self::Coverage => "coverage",
             Self::Lints => "lints",
             Self::AcTrace => "ac-trace",
@@ -67,19 +61,17 @@ impl Check {
 }
 
 /// The checks `cargo xtask gate` runs, in order: cheap and local ones first. `ac-trace` is last,
-/// because it reads the reports of `test` and `slow-tests`.
-pub const GATE_ORDER: [Check; 12] = [
+/// because it reads the reports of `test`.
+pub const GATE_ORDER: [Check; 10] = [
     Check::Tools,
     Check::Fmt,
     Check::Lints,
-    Check::EngineFree,
     Check::CommitMsg,
     Check::Clippy,
     Check::Docs,
     Check::Deny,
     Check::Test,
     Check::Coverage,
-    Check::SlowTests,
     Check::AcTrace,
 ];
 
@@ -162,15 +154,13 @@ impl Verdict {
 mod tests {
     use super::*;
 
-    const ALL: [Check; 16] = [
+    const ALL: [Check; 14] = [
         Check::Tools,
         Check::Fmt,
         Check::Clippy,
         Check::Test,
-        Check::SlowTests,
         Check::Docs,
         Check::Deny,
-        Check::EngineFree,
         Check::Coverage,
         Check::Lints,
         Check::AcTrace,
@@ -222,10 +212,8 @@ mod tests {
                 "fmt",
                 "clippy",
                 "test",
-                "slow-tests",
                 "docs",
                 "deny",
-                "engine-free",
                 "coverage",
                 "lints",
                 "ac-trace",
@@ -246,14 +234,12 @@ mod tests {
                 "tools",
                 "fmt",
                 "lints",
-                "engine-free",
                 "commit-msg",
                 "clippy",
                 "docs",
                 "deny",
                 "test",
                 "coverage",
-                "slow-tests",
                 "ac-trace",
             ]
         );

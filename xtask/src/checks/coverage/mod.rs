@@ -411,13 +411,13 @@ mod tests {
             library: 80.0,
             binary: 60.0,
             crates: BTreeMap::from([
-                class("theos-content", CrateClass::Library),
-                class("theos-vcs", CrateClass::Library),
-                class("theos-studio", CrateClass::Library),
+                class("loom-core", CrateClass::Library),
+                class("loom-plan", CrateClass::Library),
+                class("loom-store", CrateClass::Library),
                 class("xtask", CrateClass::Library),
-                class("theos", CrateClass::Binary),
-                class("theos-mcp", CrateClass::Binary),
-                class("theos-editor", CrateClass::Binary),
+                class("loom", CrateClass::Binary),
+                class("loom-run", CrateClass::Library),
+                class("loom-gate", CrateClass::Library),
             ]),
         }
     }
@@ -450,12 +450,12 @@ mod tests {
 
     #[test]
     fn crate_below_floor_fails() {
-        let head = map(&[("theos-content", tenths(799)), ("xtask", tenths(800))]);
+        let head = map(&[("loom-core", tenths(799)), ("xtask", tenths(800))]);
         let result = verdict(&head, None, &gate(), &members());
         assert!(!result.passed(), "{result:?}");
         let messages = messages(&result);
         assert_eq!(messages.len(), 1, "{messages:?}");
-        for part in ["theos-content", "79.9", "80.0", "library"] {
+        for part in ["loom-core", "79.9", "80.0", "library"] {
             assert!(
                 messages[0].contains(part),
                 "{part} is not in {}",
@@ -466,13 +466,13 @@ mod tests {
 
     #[test]
     fn binary_floor_is_60() {
-        let passes = verdict(&map(&[("theos", tenths(600))]), None, &gate(), &members());
+        let passes = verdict(&map(&[("loom", tenths(600))]), None, &gate(), &members());
         assert!(passes.passed(), "{passes:?}");
-        let fails = verdict(&map(&[("theos", tenths(599))]), None, &gate(), &members());
+        let fails = verdict(&map(&[("loom", tenths(599))]), None, &gate(), &members());
         assert!(!fails.passed(), "{fails:?}");
         let messages = messages(&fails);
         assert_eq!(messages.len(), 1, "{messages:?}");
-        for part in ["theos", "59.9", "60.0", "binary"] {
+        for part in ["loom", "59.9", "60.0", "binary"] {
             assert!(
                 messages[0].contains(part),
                 "{part} is not in {}",
@@ -483,13 +483,13 @@ mod tests {
 
     #[test]
     fn drop_over_max_fails() {
-        let head = map(&[("theos-content", tenths(809))]);
-        let base = map(&[("theos-content", tenths(820))]);
+        let head = map(&[("loom-core", tenths(809))]);
+        let base = map(&[("loom-core", tenths(820))]);
         let result = verdict(&head, Some(&base), &gate(), &members());
         assert!(!result.passed(), "{result:?}");
         let messages = messages(&result);
         assert_eq!(messages.len(), 1, "{messages:?}");
-        for part in ["theos-content", "82.0", "80.9", "1.1", "1.0"] {
+        for part in ["loom-core", "82.0", "80.9", "1.1", "1.0"] {
             assert!(
                 messages[0].contains(part),
                 "{part} is not in {}",
@@ -500,8 +500,8 @@ mod tests {
 
     #[test]
     fn drop_within_max_passes() {
-        let head = map(&[("theos-content", tenths(810))]);
-        let base = map(&[("theos-content", tenths(820))]);
+        let head = map(&[("loom-core", tenths(810))]);
+        let base = map(&[("loom-core", tenths(820))]);
         let result = verdict(&head, Some(&base), &gate(), &members());
         assert!(result.passed(), "{result:?}");
     }
@@ -509,12 +509,12 @@ mod tests {
     #[test]
     fn unlisted_member_fails() {
         let mut members = members();
-        members.push("theos-new".to_owned());
+        members.push("loom-new".to_owned());
         let result = verdict(&map(&[]), None, &gate(), &members);
         assert!(!result.passed(), "{result:?}");
         let messages = messages(&result);
         assert_eq!(messages.len(), 1, "{messages:?}");
-        assert!(messages[0].contains("theos-new"), "{}", messages[0]);
+        assert!(messages[0].contains("loom-new"), "{}", messages[0]);
         assert!(
             messages[0].contains("gate/thresholds.toml"),
             "{}",
@@ -524,52 +524,49 @@ mod tests {
 
     #[test]
     fn empty_crate_passes() {
-        let head = map(&[("theos-vcs", cov(0, 0))]);
+        let head = map(&[("loom-plan", cov(0, 0))]);
         let result = verdict(&head, None, &gate(), &members());
         assert!(result.passed(), "{result:?}");
         assert!(
-            has_note(&result, &["theos-vcs", "no instrumented lines"]),
+            has_note(&result, &["loom-plan", "no instrumented lines"]),
             "{result:?}"
         );
         // A crate that the export does not list at all has no instrumented lines either.
         assert!(
-            has_note(&result, &["theos-studio", "no instrumented lines"]),
+            has_note(&result, &["loom-store", "no instrumented lines"]),
             "{result:?}"
         );
     }
 
     #[test]
     fn crate_new_in_pr_has_no_drop_check() {
-        let head = map(&[("theos-vcs", tenths(805)), ("theos-content", tenths(900))]);
-        let base = map(&[("theos-content", tenths(900))]);
+        let head = map(&[("loom-plan", tenths(805)), ("loom-core", tenths(900))]);
+        let base = map(&[("loom-core", tenths(900))]);
         let result = verdict(&head, Some(&base), &gate(), &members());
         assert!(result.passed(), "{result:?}");
     }
 
     #[test]
     fn a_new_crate_still_has_its_floor() {
-        let head = map(&[("theos-vcs", tenths(700))]);
-        let base = map(&[("theos-content", tenths(900))]);
+        let head = map(&[("loom-plan", tenths(700))]);
+        let base = map(&[("loom-core", tenths(900))]);
         let result = verdict(&head, Some(&base), &gate(), &members());
         assert!(!result.passed(), "{result:?}");
     }
 
     #[test]
     fn a_crate_that_lost_all_its_lines_passes_as_empty() {
-        let head = map(&[("theos-content", cov(0, 0))]);
-        let base = map(&[("theos-content", tenths(900))]);
+        let head = map(&[("loom-core", cov(0, 0))]);
+        let base = map(&[("loom-core", tenths(900))]);
         let result = verdict(&head, Some(&base), &gate(), &members());
         assert!(result.passed(), "{result:?}");
-        assert!(has_note(
-            &result,
-            &["theos-content", "no instrumented lines"]
-        ));
+        assert!(has_note(&result, &["loom-core", "no instrumented lines"]));
     }
 
     #[test]
     fn a_crate_that_is_empty_on_the_baseline_has_no_drop_check() {
-        let head = map(&[("theos-content", tenths(900))]);
-        let base = map(&[("theos-content", cov(0, 0))]);
+        let head = map(&[("loom-core", tenths(900))]);
+        let base = map(&[("loom-core", cov(0, 0))]);
         let result = verdict(&head, Some(&base), &gate(), &members());
         assert!(result.passed(), "{result:?}");
     }
@@ -577,8 +574,8 @@ mod tests {
     #[test]
     fn rounding_noise_does_not_decide_a_limit() {
         // 64.4 - 63.4 is 1.000000000000007 in floating point, and the drop is exactly 1.0.
-        let head = map(&[("theos", tenths(634))]);
-        let base = map(&[("theos", tenths(644))]);
+        let head = map(&[("loom", tenths(634))]);
+        let base = map(&[("loom", tenths(644))]);
         let result = verdict(&head, Some(&base), &gate(), &members());
         assert!(result.passed(), "{result:?}");
     }
@@ -594,14 +591,14 @@ mod tests {
 
     #[test]
     fn the_notes_have_the_numbers_of_every_crate() {
-        let head = map(&[("theos-content", tenths(851)), ("theos", cov(3, 4))]);
-        let base = map(&[("theos-content", tenths(860))]);
+        let head = map(&[("loom-core", tenths(851)), ("loom", cov(3, 4))]);
+        let base = map(&[("loom-core", tenths(860))]);
         let result = verdict(&head, Some(&base), &gate(), &members());
         assert!(result.passed(), "{result:?}");
         assert!(has_note(
             &result,
             &[
-                "theos-content",
+                "loom-core",
                 "85.1 %",
                 "1000 lines",
                 "library floor 80.0 %",
@@ -610,7 +607,7 @@ mod tests {
         ));
         assert!(has_note(
             &result,
-            &["theos:", "75.0 %", "4 lines", "binary floor 60.0 %"]
+            &["loom:", "75.0 %", "4 lines", "binary floor 60.0 %"]
         ));
         assert!(!has_note(&result, &["no baseline"]), "{result:?}");
         let without = verdict(&head, None, &gate(), &members());
@@ -734,7 +731,7 @@ mod tests {
         assert!(!stores_head(None, main));
     }
 
-    /// A `cargo llvm-cov` that writes an export for `crates/theos-content` from the file
+    /// A `cargo llvm-cov` that writes an export for `crates/loom-core` from the file
     /// `cov.txt` of the directory it runs in (`<covered> <count>`), and notes where it ran.
     #[derive(Default)]
     struct FakeLlvm {
@@ -785,7 +782,7 @@ mod tests {
             let export = json!({
                 "type": "llvm.coverage.json.export",
                 "data": [{ "files": [{
-                    "filename": format!("{place}/crates/theos-content/src/lib.rs"),
+                    "filename": format!("{place}/crates/loom-core/src/lib.rs"),
                     "summary": { "lines": { "count": count, "covered": covered } },
                 }]}],
             });
@@ -839,7 +836,7 @@ mod tests {
     }
 
     fn the_member() -> Vec<String> {
-        vec!["theos-content".to_owned()]
+        vec!["loom-core".to_owned()]
     }
 
     fn worktrees(dir: &Path) -> TestResult<usize> {
@@ -907,7 +904,7 @@ mod tests {
         assert_eq!(llvm.ran_in(), ["head", "baseline"]);
         let messages = messages(&result);
         assert_eq!(messages.len(), 1, "{messages:?}");
-        for part in ["theos-content", "90.0", "80.0", "10.0"] {
+        for part in ["loom-core", "90.0", "80.0", "10.0"] {
             assert!(
                 messages[0].contains(part),
                 "{part} is not in {}",

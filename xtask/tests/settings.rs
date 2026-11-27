@@ -82,10 +82,8 @@ fn ruleset_contexts_equal_gate_md_checks() -> TestResult {
         "fmt",
         "clippy",
         "test",
-        "slow-tests",
         "docs",
         "deny",
-        "engine-free",
         "coverage",
         "lints",
         "ac-trace",
@@ -142,25 +140,6 @@ fn main_ruleset_encodes_section_6() -> TestResult {
 
 // AC: TU-00.2
 #[test]
-fn tag_ruleset_blocks_update_and_deletion() -> TestResult {
-    let desired = Desired::load(&root()?)?;
-    let tags = ruleset(&desired, "tags")?;
-    assert_eq!(tags["target"], "tag");
-    assert_eq!(tags["enforcement"], "active");
-    assert_eq!(tags["bypass_actors"], json!([]));
-    let names = &tags["conditions"]["ref_name"];
-    assert_eq!(names["include"], json!(["refs/tags/v*"]));
-    assert_eq!(names["exclude"], json!([]));
-    let expected: BTreeSet<String> = ["update", "deletion"]
-        .into_iter()
-        .map(String::from)
-        .collect();
-    assert_eq!(rule_types(tags)?, expected);
-    Ok(())
-}
-
-// AC: TU-00.2
-#[test]
 fn repo_settings_encode_section_6() -> TestResult {
     let desired = Desired::load(&root()?)?;
     let repo = serde_json::to_value(&desired.repo)?;
@@ -197,16 +176,6 @@ fn repo_settings_encode_section_6() -> TestResult {
                 "approved",
                 "0e8a16",
                 "Reviewed by Jann; only Jann adds this label"
-            ),
-            label(
-                "windows",
-                "1d76db",
-                "Run the Windows jobs of the platforms workflow on this pull request"
-            ),
-            label(
-                "macos",
-                "5319e7",
-                "Run the macOS jobs of the platforms workflow on this pull request"
             ),
         ]
     );
@@ -313,11 +282,6 @@ fn missing_ruleset_is_a_difference() -> TestResult {
         differences(&desired, &live),
         ["ruleset main: not on GitHub"]
     );
-    live.rulesets.clear();
-    assert_eq!(
-        differences(&desired, &live),
-        ["ruleset main: not on GitHub", "ruleset tags: not on GitHub"]
-    );
     Ok(())
 }
 
@@ -325,12 +289,12 @@ fn missing_ruleset_is_a_difference() -> TestResult {
 fn a_changed_value_names_both_sides() -> TestResult {
     let (desired, mut live) = load()?;
     live_ruleset(&mut live, "main")?["enforcement"] = json!("disabled");
-    live_ruleset(&mut live, "tags")?["conditions"]["ref_name"]["include"] = json!(["refs/tags/*"]);
+    live_ruleset(&mut live, "main")?["conditions"]["ref_name"]["include"] = json!(["refs/heads/x"]);
     assert_eq!(
         differences(&desired, &live),
         [
+            r#"ruleset main: conditions.ref_name.include is ["refs/heads/x"], expected ["~DEFAULT_BRANCH"]"#,
             r#"ruleset main: enforcement is "disabled", expected "active""#,
-            r#"ruleset tags: conditions.ref_name.include is ["refs/tags/*"], expected ["refs/tags/v*"]"#,
         ]
     );
     Ok(())
@@ -370,12 +334,11 @@ fn ruleset_key_hidden_from_the_token_is_not_checked() -> TestResult {
 #[test]
 fn a_key_hidden_deeper_in_a_ruleset_is_not_checked_either() -> TestResult {
     let (desired, mut live) = load()?;
-    let tags = live_ruleset(&mut live, "tags")?;
-    tags["conditions"]["ref_name"]
+    let main = live_ruleset(&mut live, "main")?;
+    main["conditions"]["ref_name"]
         .as_object_mut()
         .ok_or("not an object")?
         .remove("exclude");
-    let main = live_ruleset(&mut live, "main")?;
     let rules = main["rules"].as_array_mut().ok_or("rules is not a list")?;
     for rule in rules
         .iter_mut()
@@ -391,9 +354,9 @@ fn a_key_hidden_deeper_in_a_ruleset_is_not_checked_either() -> TestResult {
     assert_eq!(
         comparison.notes,
         [
+            "ruleset main: conditions.ref_name.exclude: not checked, GitHub did not return it",
             "ruleset main: rule pull_request: parameters.allowed_merge_methods: not checked, \
              GitHub did not return it",
-            "ruleset tags: conditions.ref_name.exclude: not checked, GitHub did not return it",
         ]
     );
     Ok(())
@@ -485,7 +448,6 @@ fn repo_fields_are_compared_and_the_ones_github_leaves_out_are_notes() -> TestRe
 #[test]
 fn labels_are_found_in_any_case_and_compared_by_name_colour_and_description() -> TestResult {
     let (desired, mut live) = load()?;
-    live.labels.retain(|label| label.name != "macos");
     for label in &mut live.labels {
         match label.name.as_str() {
             "needs-jann" => label.color = "FFFFFF".to_owned(),
@@ -503,7 +465,6 @@ fn labels_are_found_in_any_case_and_compared_by_name_colour_and_description() ->
             "label approved: named \"Approved\", expected \"approved\"",
             "label approved: description is \"\", expected \
              \"Reviewed by Jann; only Jann adds this label\"",
-            "label macos: missing",
         ]
     );
     // The colour is compared without regard to case: GitHub writes hex digits in lower case.

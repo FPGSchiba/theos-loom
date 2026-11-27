@@ -135,7 +135,7 @@ mod tests {
     use std::fs;
 
     const THRESHOLDS: &str = "max_drop = 1.0\n\n[floors]\nlibrary = 80.0\nbinary = 60.0\n\n\
-        [crates]\ntheos-content = \"library\"\ntheos = \"binary\"\n";
+        [crates]\nloom-core = \"library\"\nloom = \"binary\"\n";
 
     #[test]
     fn thresholds_have_the_shape_of_the_file() -> TestResult {
@@ -146,8 +146,8 @@ mod tests {
         assert_eq!(
             thresholds.crates,
             BTreeMap::from([
-                ("theos".to_owned(), CrateClass::Binary),
-                ("theos-content".to_owned(), CrateClass::Library),
+                ("loom".to_owned(), CrateClass::Binary),
+                ("loom-core".to_owned(), CrateClass::Library),
             ])
         );
         Ok(())

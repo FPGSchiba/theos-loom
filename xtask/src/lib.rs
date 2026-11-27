@@ -22,8 +22,7 @@
 //!   cargo commands (`fmt`, `clippy`, `test`, `docs`, `deny`), [`checks::commit_msg`] the
 //!   `commit-msg` check, [`checks::pr_title`] the `pr-title` check, [`checks::pr_body`] the
 //!   `pr-body` check, [`checks::ac_trace`] the `ac-trace` check, [`checks::lints`] the `lints`
-//!   check, [`checks::engine_free`] the `engine-free` check, [`checks::coverage`] the
-//!   `coverage` check, [`checks::slow`] the `slow-tests` check and [`checks::approval`] the
+//!   check, [`checks::coverage`] the `coverage` check and [`checks::approval`] the
 //!   `approval` check.
 //! - [`umbrella`]: the umbrella spec's phases and acceptance criteria, which `ac-trace` and
 //!   `commit-msg` read their ids from.

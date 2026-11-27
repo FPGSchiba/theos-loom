@@ -8,8 +8,6 @@ pub mod approval;
 pub mod cargo_cmds;
 pub mod commit_msg;
 pub mod coverage;
-pub mod engine_free;
 pub mod lints;
 pub mod pr_body;
 pub mod pr_title;
-pub mod slow;

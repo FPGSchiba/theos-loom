@@ -1,6 +1,6 @@
 # The settings of the GitHub repository that the gate depends on (`docs/gate.md` §6), as code.
 # `cargo xtask github check` compares the live repository with this file and with the rulesets
-# next to it (`ruleset-main.json`, `ruleset-tags.json`); `cargo xtask github apply` makes the
+# next to it (`ruleset-main.json`); `cargo xtask github apply` makes the
 # repository like them, and is only run after Jann has agreed. `approval` reads the labels from
 # here, from the checkout it runs in (the base commit of the pull request, spec D3).
 
@@ -31,15 +31,3 @@ description = "Touches a protected path; waits for Jann"
 name = "approved"
 color = "0e8a16"
 description = "Reviewed by Jann; only Jann adds this label"
-
-# Makes the Windows jobs of `platforms.yml` run on a pull request.
-[[labels]]
-name = "windows"
-color = "1d76db"
-description = "Run the Windows jobs of the platforms workflow on this pull request"
-
-# Makes the macOS jobs of `platforms.yml` run on a pull request.
-[[labels]]
-name = "macos"
-color = "5319e7"
-description = "Run the macOS jobs of the platforms workflow on this pull request"

@@ -41,20 +41,19 @@ fn parses_llvm_cov_fixture() -> TestResult {
     let crates = parse_llvm_cov(&fixture()?, Path::new("/work/repo"))?;
     // Lines are summed over the files of a crate, `\` counts like `/`, and what is not a source
     // of the repository (tests, fixtures, build scripts, other repositories, dependencies) is
-    // left out: `theos-studio` and its `build.rs` are not there at all.
+    // left out: `loom-store` and its `build.rs` are not there at all.
     assert_eq!(
         crates,
         BTreeMap::from([
-            ("theos".to_owned(), cov(1, 1)),
-            ("theos-content".to_owned(), cov(76, 100)),
-            ("theos-mcp".to_owned(), cov(3, 5)),
-            ("theos-vcs".to_owned(), cov(0, 0)),
+            ("loom".to_owned(), cov(3, 5)),
+            ("loom-core".to_owned(), cov(76, 100)),
+            ("loom-plan".to_owned(), cov(0, 0)),
             ("xtask".to_owned(), cov(91, 100)),
         ])
     );
-    assert_eq!(crates["theos-content"].percent(), Some(76.0));
-    assert_eq!(crates["theos-mcp"].percent(), Some(60.0));
-    assert_eq!(crates["theos-vcs"].percent(), None);
+    assert_eq!(crates["loom-core"].percent(), Some(76.0));
+    assert_eq!(crates["loom"].percent(), Some(60.0));
+    assert_eq!(crates["loom-plan"].percent(), None);
     Ok(())
 }
 
@@ -90,14 +89,14 @@ fn the_thresholds_of_the_gate_are_the_decided_ones() -> TestResult {
     assert_eq!(
         classes,
         [
-            ("theos", CrateClass::Binary),
-            ("theos-content", CrateClass::Library),
-            ("theos-editor", CrateClass::Binary),
-            ("theos-map-format", CrateClass::Library),
-            ("theos-maps", CrateClass::Library),
-            ("theos-mcp", CrateClass::Binary),
-            ("theos-studio", CrateClass::Library),
-            ("theos-vcs", CrateClass::Library),
+            ("loom", CrateClass::Binary),
+            ("loom-api", CrateClass::Library),
+            ("loom-context", CrateClass::Library),
+            ("loom-core", CrateClass::Library),
+            ("loom-gate", CrateClass::Library),
+            ("loom-plan", CrateClass::Library),
+            ("loom-run", CrateClass::Library),
+            ("loom-store", CrateClass::Library),
             ("xtask", CrateClass::Library),
         ]
     );
@@ -126,13 +125,13 @@ fn the_fixture_is_judged_against_the_thresholds_of_the_gate() -> TestResult {
     let head = parse_llvm_cov(&fixture()?, Path::new("/work/repo"))?;
 
     let result = verdict(&head, None, &thresholds, &members);
-    // `theos-content` has 76 % of a library; `theos-mcp` has exactly its floor of 60 %.
+    // `loom-core` has 76 % of a library; `loom` has exactly its floor of 60 %.
     assert!(!result.passed(), "{result:?}");
     assert_eq!(result.findings.len(), 1, "{result:?}");
-    assert!(result.findings[0].message.contains("theos-content"));
+    assert!(result.findings[0].message.contains("loom-core"));
     assert!(result.findings[0].message.contains("76.0"));
-    // `theos-vcs` has a file without lines and `theos-studio` and `theos-editor` none at all.
-    for name in ["theos-vcs", "theos-studio", "theos-editor"] {
+    // `loom-plan` has a file without lines and `loom-store` and `loom-run` none at all.
+    for name in ["loom-plan", "loom-store", "loom-run"] {
         let note = format!("{name}: no instrumented lines");
         assert!(
             result.notes.contains(&note),
@@ -141,11 +140,11 @@ fn the_fixture_is_judged_against_the_thresholds_of_the_gate() -> TestResult {
         );
     }
 
-    // Against a baseline `theos-mcp` is within the allowed drop, `xtask` is not.
+    // Against a baseline `loom` is within the allowed drop, `xtask` is not.
     let baseline = BTreeMap::from([
-        ("theos-mcp".to_owned(), cov(61, 100)),
+        ("loom".to_owned(), cov(61, 100)),
         ("xtask".to_owned(), cov(93, 100)),
-        ("theos-content".to_owned(), cov(76, 100)),
+        ("loom-core".to_owned(), cov(76, 100)),
     ]);
     let result = verdict(&head, Some(&baseline), &thresholds, &members);
     let messages: Vec<&str> = result
@@ -154,7 +153,7 @@ fn the_fixture_is_judged_against_the_thresholds_of_the_gate() -> TestResult {
         .map(|finding| finding.message.as_str())
         .collect();
     assert_eq!(messages.len(), 2, "{messages:?}");
-    assert!(messages[0].contains("theos-content"), "{}", messages[0]);
+    assert!(messages[0].contains("loom-core"), "{}", messages[0]);
     assert!(messages[1].contains("xtask"), "{}", messages[1]);
     assert!(messages[1].contains("93.0"), "{}", messages[1]);
     assert!(messages[1].contains("91.0"), "{}", messages[1]);

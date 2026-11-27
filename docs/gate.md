@@ -17,10 +17,8 @@ All checks are required status checks on `main` (branch protection, administrato
 | `fmt` | `cargo fmt --all --check` | Linux |
 | `clippy` | `cargo clippy --workspace --all-targets --locked -- -D warnings` | Linux |
 | `test` | `cargo nextest run --workspace --locked` (profile `ci` in CI, `default` locally; both leave out the slow tests) and `cargo test --doc --workspace --locked` | Linux |
-| `slow-tests` | `cargo xtask slow-tests`: `cargo nextest run --workspace --locked --profile slow --no-tests=warn`, only the slow tests; on a pull request only when it can change their outcome (below) | Linux |
 | `docs` | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked` | Linux |
 | `deny` | `cargo deny --locked check` (licences, advisories, bans, sources) | Linux |
-| `engine-free` | `cargo xtask engine-free`: no engine crate in the tree without feature `engine` | Linux |
 | `coverage` | `cargo xtask coverage`: per-crate line coverage ≥ floor in `gate/thresholds.toml`, and no crate drops more than the allowed amount below `main` | Linux |
 | `lints` | `cargo xtask lints`: `[workspace.lints]` in the root `Cargo.toml` equals `gate/lints.toml`; the config files equal their `gate/` copies and exist nowhere else; library and binary code comes only from its crate's `src/`; `cfg` names only what `gate/cfg-names.toml` allows, and no `cfg` is an empty `any()`; no `allow` or `warn` attribute anywhere, outer or inner; no `allow` or `expect` of a guard lint or of `clippy::pedantic`/`clippy::restriction` (§2); no reasonless `#[expect]` or `#[ignore]` anywhere, macro input and code behind another OS's `cfg` included (P00 spec §5.10). | Linux |
 | `ac-trace` | `cargo xtask ac-trace`: every acceptance criterion of the PR's phase has at least one test tagged `AC: <id>`; no tag names an unknown criterion | Linux |

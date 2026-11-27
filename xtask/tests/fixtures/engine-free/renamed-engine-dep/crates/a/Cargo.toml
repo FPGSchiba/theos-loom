@@ -1,7 +1,0 @@
-[package]
-name = "a"
-version = "0.0.0"
-edition = "2024"
-
-[dependencies]
-core = { package = "theos-core", path = "../../../engine/theos-core" }

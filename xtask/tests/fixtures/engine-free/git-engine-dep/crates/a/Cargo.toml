@@ -1,7 +1,0 @@
-[package]
-name = "a"
-version = "0.0.0"
-edition = "2024"
-
-[dependencies]
-not-in-the-list = { git = "https://GitHub.com/FPGSchiba/Theos-Engine-fixture-does-not-exist", branch = "main" }

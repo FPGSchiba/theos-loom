@@ -12,12 +12,12 @@ binary = 60.0
 # The class of every workspace member. A member that is not listed here fails the check, so a
 # new crate cannot escape the floors.
 [crates]
-theos-content = "library"
-theos-vcs = "library"
-theos-studio = "library"
-theos-map-format = "library"
-theos-maps = "library"
+loom-core = "library"
+loom-plan = "library"
+loom-store = "library"
+loom-run = "library"
+loom-gate = "library"
+loom-context = "library"
+loom-api = "library"
 xtask = "library"
-theos = "binary"
-theos-mcp = "binary"
-theos-editor = "binary"
+loom = "binary"

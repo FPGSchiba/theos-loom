@@ -1,9 +1,8 @@
 //! The GitHub settings as files, and the comparison with the live repository (`docs/gate.md` §1
 //! and §6; spec `docs/specs/phases/P00-foundation-and-gate.md` §5.8).
 //!
-//! Three files in `gate/` say how the repository is set up: `ruleset-main.json` (the rules of the
-//! default branch), `ruleset-tags.json` (the rules of the release tags) and `repo-settings.toml`
-//! (the merge settings and the labels). [`Desired`] reads them, [`Live`] reads the same things
+//! Two files in `gate/` say how the repository is set up: `ruleset-main.json` (the rules of the
+//! default branch) and `repo-settings.toml` (the merge settings and the labels). [`Desired`] reads them, [`Live`] reads the same things
 //! from GitHub through [`RepoAdmin`], and [`compare`] says where they differ:
 //!
 //! - Rulesets are matched by `name`. Only the keys the file has are compared, so what GitHub adds
@@ -19,7 +18,7 @@
 //!   that only GitHub has, such as its defaults, are left alone.
 //!
 //! [`check`] is the comparison as a verdict, and [`apply`] makes the repository like the files:
-//! it creates or replaces both rulesets, patches the settings and sets the labels. Applying again
+//! it creates or replaces the ruleset, patches the settings and sets the labels. Applying again
 //! changes nothing that is already right. It changes the live repository, so it is only run
 //! after Jann has said so (spec §10).
 //!
@@ -45,14 +44,7 @@ use crate::{Error, Result};
 pub const FILE: &str = "gate/repo-settings.toml";
 
 /// The files with the rulesets, relative to the repository root.
-const RULESET_FILES: [&str; 2] = ["gate/ruleset-main.json", "gate/ruleset-tags.json"];
-
-/// The label that makes the Windows jobs of the `platforms` workflow run on a pull request. Only
-/// the workflow reads it, but the settings must have it.
-pub const WINDOWS: &str = "windows";
-
-/// The label that does the same for the macOS jobs.
-const MACOS: &str = "macos";
+const RULESET_FILES: [&str; 1] = ["gate/ruleset-main.json"];
 
 /// The most characters of a value from either side that a difference shows.
 pub const MAX_SHOWN: usize = 80;
@@ -63,8 +55,8 @@ const MAX_DESCRIPTION: usize = 100;
 /// How the repository should be set up: the files of `gate/`.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Desired {
-    /// The rulesets: `ruleset-main.json`, then `ruleset-tags.json`. Each is the body that GitHub
-    /// takes to create one, and has a `name`.
+    /// The rulesets: `ruleset-main.json`. Each is the body that GitHub takes to create one,
+    /// and has a `name`.
     pub rulesets: Vec<Value>,
     /// The settings of the repository, as GitHub names them.
     pub repo: toml::Table,
@@ -80,14 +72,13 @@ struct SettingsFile {
 }
 
 impl Desired {
-    /// Reads the three files of the checkout at `root`.
+    /// Reads the files of the checkout at `root`.
     ///
     /// # Errors
     ///
     /// Fails when a file cannot be read, is not JSON or TOML of the expected shape, or has a
     /// ruleset without a name, a name twice, a label with a colour that is not six hex digits, a
-    /// description that is too long, or no label for the gate (`needs-jann`, `approved`,
-    /// `macos`). The errors never quote the files.
+    /// description that is too long, or no label for the gate (`needs-jann`, `approved`). The errors never quote the files.
     pub fn load(root: &Path) -> Result<Self> {
         let mut rulesets: Vec<Value> = Vec::new();
         for file in RULESET_FILES {
@@ -202,7 +193,7 @@ fn check_labels(labels: &[LabelSpec]) -> Result<()> {
             ));
         }
     }
-    for name in [NEEDS_JANN, APPROVED, WINDOWS, MACOS] {
+    for name in [NEEDS_JANN, APPROVED] {
         if !labels.iter().any(|label| label.name == name) {
             return Err(config_error(
                 FILE,
@@ -657,12 +648,9 @@ mod tests {
             first,
             [
                 "created ruleset main",
-                "created ruleset tags",
                 "patched 8 repo settings",
                 "set label needs-jann",
                 "set label approved",
-                "set label windows",
-                "set label macos",
             ]
         );
         let kinds: Vec<&str> = gh
@@ -676,28 +664,20 @@ mod tests {
                 _ => "other",
             })
             .collect();
-        assert_eq!(
-            kinds,
-            [
-                "create", "create", "patch", "label", "label", "label", "label"
-            ]
-        );
-        assert_eq!(gh.current_rulesets().len(), 2);
+        assert_eq!(kinds, ["create", "patch", "label", "label"]);
+        assert_eq!(gh.current_rulesets().len(), 1);
 
         let second = apply(&gh, root()?)?;
         assert_eq!(
             second,
             [
                 "updated ruleset main (id 1)",
-                "updated ruleset tags (id 2)",
                 "patched 8 repo settings",
                 "set label needs-jann",
                 "set label approved",
-                "set label windows",
-                "set label macos",
             ]
         );
-        assert_eq!(gh.current_rulesets().len(), 2, "nothing was created again");
+        assert_eq!(gh.current_rulesets().len(), 1, "nothing was created again");
         assert_eq!(gh.current_repo_labels(), desired.labels);
 
         // The repository is now as the files say, whatever else GitHub added.
@@ -713,10 +693,9 @@ mod tests {
         let desired = Desired::load(root()?)?;
         let sent = gh.writes();
         assert_eq!(sent[0], Call::CreateRuleset(desired.rulesets[0].clone()));
-        assert_eq!(sent[1], Call::CreateRuleset(desired.rulesets[1].clone()));
         // Booleans and strings, as JSON: a form field would send them all as strings.
-        let Call::PatchRepo(body) = &sent[2] else {
-            return Err("the third change is not a patch of the settings".into());
+        let Call::PatchRepo(body) = &sent[1] else {
+            return Err("the second change is not a patch of the settings".into());
         };
         assert_eq!(body["allow_squash_merge"], json!(true));
         assert_eq!(body["allow_merge_commit"], json!(false));
@@ -736,7 +715,7 @@ mod tests {
         gh.create_ruleset(&json!({"name": "other"}))?;
         apply(&gh, root()?)?;
         let names: Vec<String> = gh.rulesets()?.into_iter().map(|(_, name)| name).collect();
-        assert_eq!(names, ["other", "main", "tags"]);
+        assert_eq!(names, ["other", "main"]);
         assert!(gh.current_repo_labels().contains(&other));
         Ok(())
     }
@@ -749,8 +728,8 @@ mod tests {
         wrong.color = "ffffff".to_owned();
         let gh = FakeGitHub::new().with_repo_labels(&[wrong]);
         let live = Live::read(&gh, &desired)?;
-        // Both rulesets, the spelling and the colour of the one label, and the three it lacks.
-        assert_eq!(differences(&desired, &live).len(), 7, "{live:?}");
+        // The ruleset, the spelling and the colour of the one label, and the one it lacks.
+        assert_eq!(differences(&desired, &live).len(), 4, "{live:?}");
         apply(&gh, root()?)?;
         let live = Live::read(&gh, &desired)?;
         assert_eq!(differences(&desired, &live), Vec::<String>::new());
@@ -773,11 +752,8 @@ mod tests {
             messages,
             [
                 "ruleset main: not on GitHub",
-                "ruleset tags: not on GitHub",
                 "label needs-jann: missing",
                 "label approved: missing",
-                "label windows: missing",
-                "label macos: missing",
             ]
         );
         // GitHub returned no settings at all, which is what a token without access does.
@@ -823,7 +799,7 @@ mod tests {
             [
                 "pass  github",
                 "  note: created ruleset main",
-                "  note: created ruleset tags"
+                "  note: patched 8 repo settings"
             ]
         );
         assert!(
@@ -858,7 +834,7 @@ mod tests {
             .into_iter()
             .map(|label| label.name)
             .collect();
-        assert_eq!(names, ["needs-jann", "approved", "windows", "macos"]);
+        assert_eq!(names, ["needs-jann", "approved"]);
         assert!(Desired::load(dir.path()).is_err(), "the ruleset is gone");
         Ok(())
     }
@@ -880,22 +856,11 @@ mod tests {
             ("{\"name\": \"SECRET\"}", "is not a ruleset"),
         ] {
             let dir = copy_of_settings()?;
-            rewrite(dir.path(), RULESET_FILES[1], |_| text.to_owned())?;
+            rewrite(dir.path(), RULESET_FILES[0], |_| text.to_owned())?;
             let message = message_of(Desired::load(dir.path()))?;
             assert!(message.starts_with(expected), "{message}");
             assert!(!message.contains("SECRET"), "{message}");
         }
-        Ok(())
-    }
-
-    #[test]
-    fn two_rulesets_with_one_name_are_refused() -> TestResult {
-        let dir = copy_of_settings()?;
-        rewrite(dir.path(), RULESET_FILES[1], |text| {
-            text.replace("\"name\": \"tags\"", "\"name\": \"main\"")
-        })?;
-        let message = message_of(Desired::load(dir.path()))?;
-        assert_eq!(message, "has the name of another ruleset");
         Ok(())
     }
 
@@ -929,16 +894,12 @@ mod tests {
             "label 2 has the name of an earlier label, whatever the case",
         )?;
         refused(
-            |text| text.replace("name = \"windows\"", "name = \" \""),
-            "label 3 has no name, or one with control characters",
+            |text| text.replace("name = \"approved\"", "name = \" \""),
+            "label 2 has no name, or one with control characters",
         )?;
         refused(
-            |text| text.replace("name = \"macos\"", "name = \"mac\""),
-            "has no label `macos`, which the gate works with",
-        )?;
-        refused(
-            |text| text.replace("name = \"windows\"", "name = \"win\""),
-            "has no label `windows`, which the gate works with",
+            |text| text.replace("name = \"approved\"", "name = \"ok\""),
+            "has no label `approved`, which the gate works with",
         )
     }
 
