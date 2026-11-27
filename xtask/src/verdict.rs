@@ -26,6 +26,8 @@ pub enum Check {
     AcTrace,
     /// Every commit of the PR is a Conventional Commit.
     CommitMsg,
+    /// No commit of the change holds a secret, scanned with gitleaks.
+    Secrets,
     /// The PR title is a Conventional Commit that matches the branch.
     PrTitle,
     /// The PR description has every section of the template.
@@ -39,7 +41,7 @@ pub enum Check {
 
 impl Check {
     /// Every check, in the order of the enum.
-    pub const ALL: [Check; 14] = [
+    pub const ALL: [Check; 15] = [
         Check::Tools,
         Check::Fmt,
         Check::Clippy,
@@ -50,6 +52,7 @@ impl Check {
         Check::Lints,
         Check::AcTrace,
         Check::CommitMsg,
+        Check::Secrets,
         Check::PrTitle,
         Check::PrBody,
         Check::Approval,
@@ -76,6 +79,7 @@ impl Check {
             Self::Lints => "lints",
             Self::AcTrace => "ac-trace",
             Self::CommitMsg => "commit-msg",
+            Self::Secrets => "secrets",
             Self::PrTitle => "pr-title",
             Self::PrBody => "pr-body",
             Self::Approval => "approval",
@@ -86,11 +90,12 @@ impl Check {
 
 /// The checks `cargo xtask gate` runs, in order: cheap and local ones first. `ac-trace` is last,
 /// because it reads the reports of `test`.
-pub const GATE_ORDER: [Check; 10] = [
+pub const GATE_ORDER: [Check; 11] = [
     Check::Tools,
     Check::Fmt,
     Check::Lints,
     Check::CommitMsg,
+    Check::Secrets,
     Check::Clippy,
     Check::Docs,
     Check::Deny,
@@ -198,7 +203,7 @@ impl Verdict {
 mod tests {
     use super::*;
 
-    const ALL: [Check; 14] = Check::ALL;
+    const ALL: [Check; 15] = Check::ALL;
 
     fn names(checks: &[Check]) -> Vec<&'static str> {
         checks.iter().map(|check| check.name()).collect()
@@ -247,6 +252,7 @@ mod tests {
                 "lints",
                 "ac-trace",
                 "commit-msg",
+                "secrets",
                 "pr-title",
                 "pr-body",
                 "approval",
@@ -264,6 +270,7 @@ mod tests {
                 "fmt",
                 "lints",
                 "commit-msg",
+                "secrets",
                 "clippy",
                 "docs",
                 "deny",

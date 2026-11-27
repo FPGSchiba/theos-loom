@@ -15,7 +15,9 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::checks::{ac_trace, cargo_cmds, commit_msg, coverage, lints, pr_body, pr_title};
+use crate::checks::{
+    ac_trace, cargo_cmds, commit_msg, coverage, lints, pr_body, pr_title, secrets,
+};
 use crate::ci::CiEvent;
 use crate::git::Git;
 use crate::verdict::{Check, Finding, GATE_ORDER, Verdict};
@@ -191,6 +193,7 @@ fn run_check(
         Check::Lints => lints::run(root, ci, shared, out),
         Check::AcTrace => ac_trace::run(root, ci, shared, out),
         Check::CommitMsg => commit_msg::run(root, ci, out),
+        Check::Secrets => secrets::run(root, ci, out),
         Check::Coverage => coverage::run(root, ci, out),
         Check::PrTitle | Check::PrBody | Check::Approval | Check::Github => Err(Error::Missing {
             what: format!(
@@ -286,6 +289,7 @@ mod tests {
         Lints => Gate,
         AcTrace => Gate,
         CommitMsg => Gate,
+        Secrets => Gate,
         PrTitle => PrOnly,
         PrBody => PrOnly,
         Approval => PrOnly,

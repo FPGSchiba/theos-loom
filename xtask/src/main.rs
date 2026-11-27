@@ -18,7 +18,7 @@ use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
 use xtask::branch::Phase;
 use xtask::checks::{
-    ac_trace, approval, cargo_cmds, commit_msg, coverage, lints, pr_body, pr_title,
+    ac_trace, approval, cargo_cmds, commit_msg, coverage, lints, pr_body, pr_title, secrets,
 };
 use xtask::gate;
 use xtask::git::Git;
@@ -93,6 +93,12 @@ enum Command {
         #[arg(long, value_name = "PNN")]
         phase: Option<Phase>,
     },
+    /// Scan the commits of the change for secrets with gitleaks.
+    ///
+    /// Scans the commits of the pull request or push, or the branch since its merge base with
+    /// `origin/main`; a detached `HEAD` and other events scan the whole history. Findings never
+    /// show the secret.
+    Secrets,
     /// Check that every commit of the branch is a Conventional Commit.
     ///
     /// Under GitHub Actions the commits and the branch come from the event. Any flag here
@@ -142,7 +148,7 @@ enum Command {
     Approval,
     /// Run every check that needs no pull request, in order, and print one verdict table.
     ///
-    /// Runs `tools`, `fmt`, `lints`, `commit-msg`, `clippy`, `docs`, `deny`, `test`, `coverage`
+    /// Runs `tools`, `fmt`, `lints`, `commit-msg`, `secrets`, `clippy`, `docs`, `deny`, `test`, `coverage`
     /// and `ac-trace` with the same code as their CI jobs, and goes on after a check fails. It
     /// leaves out `pr-title`, `pr-body` and `approval`. When a tool is not the pinned version,
     /// nothing but `tools` runs, because versions decide verdicts. `--only` and `--skip` run a
@@ -273,6 +279,7 @@ fn run(cli: &Cli) -> anyhow::Result<bool> {
             let known_acs = commit_msg::known_acs(&root)?;
             commit_msg::check(&git, &range, &branch, &known_acs)?
         }
+        Command::Secrets => secrets::run(&root, ci.as_ref(), &mut out)?,
         Command::PrTitle { title: None, .. } => pr_title::run(&root, ci.as_ref(), &mut out)?,
         Command::PrTitle {
             title: Some(title),

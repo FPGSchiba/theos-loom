@@ -91,6 +91,7 @@ pub fn needed_by(check: Check) -> &'static [Tool] {
         Check::Test => &[Tool::CargoNextest],
         Check::Coverage => &[Tool::CargoLlvmCov, Tool::CargoNextest],
         Check::Deny => &[Tool::CargoDeny],
+        Check::Secrets => &[Tool::Gitleaks],
         Check::Tools
         | Check::Fmt
         | Check::Clippy
