@@ -1,5 +1,5 @@
 //! `ac-trace` over fixture repositories (`tests/fixtures/ac-trace/<case>/`), each with an excerpt
-//! of the umbrella spec in the format of the real one: P90 is built in `theos-editor` and has the
+//! of the umbrella spec in the format of the real one: P90 is built in `theos-loom` and has the
 //! criteria TU-90.1 and TU-90.2, P91 is built in `FPGSchiba/bmad-method`.
 //!
 //! Each fixture is a one-crate workspace, copied to a temporary directory first, where `cargo
@@ -53,6 +53,35 @@ fn trace(name: &str, phase: Option<&str>) -> TestResult<(Verdict, String)> {
     let shared = Shared::with(ViewOptions::FIXTURE);
     let verdict = ac_trace::run_phase(dir.path(), phase, false, &shared, &mut out)?;
     Ok((verdict, String::from_utf8(out)?))
+}
+
+// AC: TU-00.4
+#[test]
+fn a_phase_spec_decides_which_criteria_the_phase_must_prove() -> TestResult {
+    let dir = copy_fixture("phase-ac-without-tag")?;
+    let specs = dir.path().join("docs").join("specs").join("phases");
+    fs::create_dir_all(&specs)?;
+    fs::write(
+        specs.join("P90-fixture.md"),
+        "# P90
+
+## 2. Acceptance criteria
+
+- TU-90.1 The first criterion.
+",
+    )?;
+    let phase = Some("P90".parse::<Phase>()?);
+    let shared = Shared::with(ViewOptions::FIXTURE);
+    let mut out = Vec::new();
+    let verdict = ac_trace::run_phase(dir.path(), phase, false, &shared, &mut out)?;
+    assert!(verdict.passed(), "{:?}", verdict.findings);
+    let table = String::from_utf8(out)?;
+    assert!(
+        table.contains("docs/specs/phases/P90-fixture.md"),
+        "{table}"
+    );
+    assert!(!table.contains("TU-90.2"), "{table}");
+    Ok(())
 }
 
 // AC: TU-00.4

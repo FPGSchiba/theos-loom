@@ -12,6 +12,7 @@
 //! fixed text and the text from sources has its control characters replaced.
 
 pub mod junit;
+pub mod phase_spec;
 pub mod rust_tags;
 pub mod ts_tags;
 
@@ -27,7 +28,9 @@ use crate::git::Git;
 use crate::umbrella::{self, Umbrella};
 use crate::verdict::{Check, Finding, Verdict};
 use crate::view::{Shared, View};
+
 use crate::{Error, Result};
+pub use phase_spec::Scope;
 
 /// A `// AC: <id>[, <id>]*` comment that is directly above a test.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -49,7 +52,8 @@ pub struct Tag {
 /// Compares the tags with the umbrella spec and writes the table of criteria to `out`.
 ///
 /// Every id of a tag must be in the umbrella. With a `phase` built in this repository every
-/// criterion of the phase also needs a tag that counts; a phase built in another repository
+/// criterion of the `scope` (the phase spec's list, or else the phase's in the umbrella) also
+/// needs a tag that counts; a phase built in another repository
 /// demands nothing, and without a phase only the rules for tags apply. When `junit` has the
 /// results of the last test run, the table gets a result column; it informs and decides
 /// nothing, because the `test` check fails for a failing test.
@@ -60,6 +64,7 @@ pub struct Tag {
 pub fn check(
     umbrella: &Umbrella,
     phase: Option<Phase>,
+    scope: &Scope,
     tags: &[Tag],
     junit: Option<&BTreeMap<String, bool>>,
     out: &mut dyn Write,
@@ -115,7 +120,11 @@ pub fn check(
                 (heading, Vec::new())
             }
             Some(info) => {
-                for id in info.acs.iter().filter(|id| !proven(tags, id)) {
+                let (acs, source) = match scope {
+                    Scope::Umbrella => (&info.acs, String::new()),
+                    Scope::PhaseSpec { file, acs } => (acs, format!(" from {file}")),
+                };
+                for id in acs.iter().filter(|id| !proven(tags, id)) {
                     verdict.findings.push(Finding::new(format!(
                         "{id} of {phase} has no test that counts: put `// AC: {id}` directly above \
                          a test that is not ignored and not behind a `cfg` other than the target \
@@ -123,12 +132,12 @@ pub fn check(
                     )));
                 }
                 let heading = format!(
-                    "{phase} {} ({}); criteria: {}",
+                    "{phase} {} ({}); criteria{source}: {}",
                     info.name,
                     info.repo,
-                    info.acs.len()
+                    acs.len()
                 );
-                (heading, info.acs.clone())
+                (heading, acs.clone())
             }
         },
     };
@@ -239,7 +248,7 @@ fn printable(text: &str) -> String {
 ///
 /// The branch is the head branch of a pull request event, or else the one that is checked out;
 /// only `phase/PNN-…` has a phase. The results are read from the report of the profile `ci`
-/// under GitHub Actions and `default` elsewhere, plus the report of `slow`. The Rust tests come from the workspace view of
+/// under GitHub Actions and `default` elsewhere. The Rust tests come from the workspace view of
 /// `shared`.
 ///
 /// # Errors
@@ -273,7 +282,8 @@ pub fn run(
 /// # Errors
 ///
 /// Fails when the umbrella spec or a source file cannot be read, the umbrella lists no criteria,
-/// the workspace view cannot be built, or the report exists and does not parse.
+/// the phase spec of the phase is wrong ([`phase_spec::scope`]), the workspace view cannot be
+/// built, or the report exists and does not parse.
 pub fn run_phase(
     root: &Path,
     phase: Option<Phase>,
@@ -284,7 +294,13 @@ pub fn run_phase(
     let umbrella = umbrella::load(root)?;
     let (tags, mut findings) = scan_files(root, shared.view(root)?)?;
     let junit = read_junit(root, ci)?;
-    let mut verdict = check(&umbrella, phase, &tags, junit.as_ref(), out);
+    let scope = match phase.and_then(|phase| umbrella.phase(phase).map(|info| (phase, info))) {
+        Some((phase, info)) if info.repo == umbrella::OWN_REPO => {
+            phase_spec::scope(root, &umbrella, phase)?
+        }
+        _ => Scope::Umbrella,
+    };
+    let mut verdict = check(&umbrella, phase, &scope, &tags, junit.as_ref(), out);
     // The problems with tags come first, in file order, then the ones about ids and criteria.
     findings.append(&mut verdict.findings);
     verdict.findings = findings;
@@ -315,35 +331,22 @@ fn scan_files(root: &Path, view: &View) -> Result<(Vec<Tag>, Vec<Finding>)> {
     Ok((tags, findings))
 }
 
-/// Whether `path` (repo-relative, with `/`) is a TypeScript file that is read: `.ts`, except
+/// Whether `path` (repo-relative, with `/`) is a TypeScript file that is read: `.ts` or `.tsx`, except
 /// fixtures (`tests/fixtures/`) and anything under `target/` or `node_modules/`. Research
 /// folders are read like any other.
 fn is_typescript(path: &str) -> bool {
     let built = path
         .split('/')
         .any(|part| part == "target" || part == "node_modules");
-    extension(path) == Some("ts") && !is_fixture(path) && !built
+    matches!(extension(path), Some("ts" | "tsx")) && !is_fixture(path) && !built
 }
 
 /// The results of the last test runs, if nextest wrote a report.
 ///
-/// The report of the profile `ci` (under GitHub Actions) or `default`, and the report of the
-/// profile `slow`, which holds the tests the first one leaves out (`docs/gate.md` §1), are merged.
-/// A report that is missing adds nothing: a slow test whose run did not happen has no result, and
-/// without any report there is no result column.
+/// The report of the profile `ci` (under GitHub Actions) or `default`. Without a report there is
+/// no result column.
 fn read_junit(root: &Path, ci: bool) -> Result<Option<BTreeMap<String, bool>>> {
     let profile = if ci { "ci" } else { "default" };
-    let mut merged: Option<BTreeMap<String, bool>> = None;
-    for profile in [profile, "slow"] {
-        if let Some(results) = read_report(root, profile)? {
-            merged.get_or_insert_with(BTreeMap::new).extend(results);
-        }
-    }
-    Ok(merged)
-}
-
-/// The results of the report of one nextest profile, if it was written.
-fn read_report(root: &Path, profile: &str) -> Result<Option<BTreeMap<String, bool>>> {
     let path = root
         .join("target")
         .join("nextest")
@@ -466,7 +469,14 @@ mod tests {
         junit: Option<&BTreeMap<String, bool>>,
     ) -> TestResult<(Verdict, Vec<String>)> {
         let mut out = Vec::new();
-        let verdict = check(&umbrella::parse(UMBRELLA)?, phase, tags, junit, &mut out);
+        let verdict = check(
+            &umbrella::parse(UMBRELLA)?,
+            phase,
+            &Scope::Umbrella,
+            tags,
+            junit,
+            &mut out,
+        );
         let table = String::from_utf8(out)?.lines().map(str::to_owned).collect();
         Ok((verdict, table))
     }
@@ -543,6 +553,36 @@ mod tests {
             verdict.notes
         );
         assert_eq!(table.len(), 1, "{table:?}");
+        Ok(())
+    }
+
+    // AC: TU-00.4
+    #[test]
+    fn a_phase_spec_narrows_the_criteria_demanded() -> TestResult {
+        let p90 = Some(phase("P90")?);
+        let file = "docs/specs/phases/P90-x.md";
+        let scope = Scope::PhaseSpec {
+            file: file.to_owned(),
+            acs: vec!["TU-90.1".to_owned()],
+        };
+        let tags = [tag("src/a.rs", 3, &["TU-90.1"], Some("one"), true)];
+        let mut out = Vec::new();
+        let verdict = check(
+            &umbrella::parse(UMBRELLA)?,
+            p90,
+            &scope,
+            &tags,
+            None,
+            &mut out,
+        );
+        assert!(verdict.passed(), "{:?}", verdict.findings);
+        let table: Vec<String> = String::from_utf8(out)?.lines().map(str::to_owned).collect();
+        assert!(table[0].contains(file), "{table:?}");
+        assert_eq!(table.len(), 2, "{table:?}");
+
+        // The umbrella alone would also demand TU-90.2.
+        let (verdict, _) = run_check(p90, &tags, None)?;
+        assert!(!verdict.passed());
         Ok(())
     }
 
@@ -731,7 +771,14 @@ mod tests {
                 Ok(())
             }
         }
-        let verdict = check(&umbrella::parse(UMBRELLA)?, None, &[], None, &mut Closed);
+        let verdict = check(
+            &umbrella::parse(UMBRELLA)?,
+            None,
+            &Scope::Umbrella,
+            &[],
+            None,
+            &mut Closed,
+        );
         assert!(verdict.passed());
         assert!(
             verdict.notes.iter().any(|note| note.contains("closed")),
@@ -748,6 +795,7 @@ mod tests {
             "editor-ui/src/lib/store.test.ts",
             "research/prose/prototype.spec.ts",
             "crates/theos-content/tests/fixturesX/a.ts",
+            "web/src/App.test.tsx",
         ] {
             assert!(is_typescript(path), "{path}");
         }
@@ -756,13 +804,13 @@ mod tests {
             "src/lib.rs",
             "editor-ui/src/App.svelte",
             "editor-ui/src/main.js",
-            "editor-ui/src/main.tsx",
             "tests/fixtures/a.ts",
             "xtask/tests/fixtures/ac-trace/case/e2e/a.ts",
             "crates/theos-content/tests/fixtures/records/a.ts",
             "target/debug/build/x.ts",
             "crates/a/target/x.ts",
             "editor-ui/node_modules/pkg/index.ts",
+            "web/node_modules/x/a.tsx",
             "node_modules/pkg/index.ts",
         ] {
             assert!(!is_typescript(path), "{path}");
@@ -935,80 +983,6 @@ version = \"0.0.0\"
         )?;
         let result = run(path, None, &shared(), &mut Vec::new());
         assert!(matches!(result, Err(Error::Parse { .. })), "{result:?}");
-        Ok(())
-    }
-
-    /// Writes the nextest report of `profile` with one passed or failed test case.
-    fn write_report(root: &Path, profile: &str, case: &str, passed: bool) -> TestResult {
-        let folder = root.join("target").join("nextest").join(profile);
-        std::fs::create_dir_all(&folder)?;
-        let inside = if passed {
-            String::new()
-        } else {
-            "<failure message=\"x\"/>".to_owned()
-        };
-        std::fs::write(
-            folder.join("junit.xml"),
-            format!(
-                "<testsuites><testsuite name=\"x\"><testcase name=\"{case}\">{inside}</testcase></testsuite></testsuites>"
-            ),
-        )?;
-        Ok(())
-    }
-
-    /// The first row of the table for the fixture repository on the profiles `ci` and `slow`.
-    fn first_row_of_run(path: &Path) -> TestResult<String> {
-        let mut out = Vec::new();
-        run_phase(path, Some(phase("P90")?), true, &shared(), &mut out)?;
-        let text = String::from_utf8(out)?;
-        Ok(text.lines().nth(1).unwrap_or_default().to_owned())
-    }
-
-    // AC: TU-00.4
-    #[test]
-    fn a_slow_test_shows_the_result_of_the_slow_report() -> TestResult {
-        let dir = repository("phase/P90-fixture")?;
-        let path = dir.path();
-        std::fs::write(
-            path.join("src").join("lib.rs"),
-            "// AC: TU-90.1
-#[test]
-fn slow_proves_the_first() {}
-",
-        )?;
-        commit(path, "test: slow")?;
-        write_report(path, "ci", "lib::other", true)?;
-
-        // Without the slow report the slow test has no result.
-        assert_eq!(
-            first_row_of_run(path)?,
-            "TU-90.1   –     src/lib.rs:1 slow_proves_the_first"
-        );
-
-        write_report(path, "slow", "lib::slow_proves_the_first", true)?;
-        assert_eq!(
-            first_row_of_run(path)?,
-            "TU-90.1   pass  src/lib.rs:1 slow_proves_the_first"
-        );
-
-        write_report(path, "slow", "lib::slow_proves_the_first", false)?;
-        assert_eq!(
-            first_row_of_run(path)?,
-            "TU-90.1   FAIL  src/lib.rs:1 slow_proves_the_first"
-        );
-        Ok(())
-    }
-
-    // AC: TU-00.4
-    #[test]
-    fn a_slow_report_alone_does_not_hide_the_missing_default_report() -> TestResult {
-        let dir = repository("phase/P90-fixture")?;
-        let path = dir.path();
-        write_report(path, "slow", "lib::slow_other", true)?;
-        assert_eq!(
-            first_row_of_run(path)?,
-            "TU-90.1   –     src/lib.rs:1 proves_the_first"
-        );
         Ok(())
     }
 }
