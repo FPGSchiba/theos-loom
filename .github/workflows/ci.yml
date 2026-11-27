@@ -107,12 +107,21 @@ jobs:
         with:
           parts: coverage
           save-cache: ${{ github.ref == 'refs/heads/main' }}
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - name: Restore the coverage baseline
+        id: baseline
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: target/xtask/coverage/cache
           key: coverage-${{ github.event.pull_request.base.sha || github.sha }}-${{ hashFiles('rust-toolchain.toml', 'gate/tools.toml') }}
           restore-keys: coverage-
       - run: cargo xtask gate --only coverage
+      # Only `main` saves: a pull request restores the baseline and never writes a cache.
+      - name: Save the coverage baseline
+        if: github.ref == 'refs/heads/main' && steps.baseline.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: target/xtask/coverage/cache
+          key: ${{ steps.baseline.outputs.cache-primary-key }}
 
   # The web app. It builds no Rust of its own: pnpm comes from the `packageManager` of the app, Node
   # from `web/.nvmrc`, and xtask from the cache the `gate` job saved on `main`.
@@ -131,8 +140,24 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: web/.nvmrc
-          cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
+      # The pnpm store is restored here and saved on `main` only: `cache: pnpm` of setup-node
+      # would save it on pull requests too.
+      - name: Find the pnpm store
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - name: Restore the pnpm store
+        id: pnpm-store
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
       - uses: ./.github/actions/xtask
         with:
           args: gate --only ui
+      - name: Save the pnpm store
+        if: github.ref == 'refs/heads/main' && steps.pnpm-store.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: ${{ steps.pnpm-store.outputs.cache-primary-key }}

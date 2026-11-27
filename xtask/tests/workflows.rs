@@ -119,11 +119,13 @@ impl Job {
     }
 
     /// The command the job's last step runs, as `cargo xtask <args>`: the step's `run:`, or the
-    /// arguments of the cached xtask action after `cargo xtask `.
+    /// arguments of the cached xtask action after `cargo xtask `. Cache saves that follow the
+    /// command (they store what it wrote, on `main`) are not counted.
     fn last_command(&self) -> TestResult<String> {
         let last = self
             .steps()?
-            .last()
+            .iter()
+            .rfind(|step| step_kind(step).is_ok_and(|kind| kind != "cache-save"))
             .ok_or_else(|| format!("job {} has no steps", self.id))?;
         if let Some(command) = last["run"].as_str() {
             return Ok(command.trim().to_owned());
@@ -285,7 +287,12 @@ fn step_kind(step: &Yaml) -> TestResult<&'static str> {
             Ok("setup")
         } else if uses == XTASK_USES {
             Ok("xtask")
+        } else if uses.starts_with("actions/cache/restore@") {
+            Ok("cache-restore")
+        } else if uses.starts_with("actions/cache/save@") {
+            Ok("cache-save")
         } else if uses.starts_with("actions/cache@") {
+            // Restores and saves in one step, so it saves on pull requests too.
             Ok("cache")
         } else if uses.starts_with("pnpm/action-setup@") {
             Ok("pnpm")
@@ -523,15 +530,16 @@ const JOB_KEYS: [&str; 7] = [
 
 /// What a step of a job may spell. `env` is the token of the two steps that call GitHub, which
 /// `token_reaches_only_the_steps_that_call_github` pins. Left out on purpose:
-/// `continue-on-error`, `working-directory`, `shell`, `timeout-minutes` and `id`.
-const STEP_KEYS: [&str; 5] = ["uses", "with", "run", "if", "env"];
+/// `continue-on-error`, `working-directory`, `shell` and `timeout-minutes`.
+const STEP_KEYS: [&str; 7] = ["name", "id", "uses", "with", "run", "if", "env"];
 
 /// What a step of the two actions may spell. `if` and `env` pass a value to a step, and the
 /// shape tests below pin where they are used.
 const ACTION_STEP_KEYS: [&str; 8] = ["name", "id", "uses", "with", "run", "shell", "if", "env"];
 
-/// The expression of the one step of the workflows that has an `if:`: the checkout of the head of
-/// the pull request, which runs only while the base commit has no xtask.
+/// The steps of the workflows that have an `if:`: a cache save, on `main` only, and the checkout
+/// of the head of the pull request, which runs only while the base commit has no xtask. This is
+/// the expression of the latter.
 const APPROVAL_FALLBACK_IF: &str = "hashFiles('xtask/Cargo.toml') == ''";
 
 /// The keys of a mapping that are not in `allowed`.
@@ -568,12 +576,18 @@ fn no_key_lets_a_job_pass_while_xtask_fails() -> TestResult {
                      xtask fails, or run it somewhere else than the root of the repository"
                 );
                 let fallback = file == "approval.yml" && name == "approval" && position == 1;
-                assert_eq!(
-                    step["if"].as_str(),
-                    fallback.then_some(APPROVAL_FALLBACK_IF),
-                    "{file}: job {name}, step {position}: only the head checkout of approval has \
-                     an `if:`"
-                );
+                let saves = step_kind(step)? == "cache-save";
+                match step["if"].as_str() {
+                    None => assert!(!saves && !fallback, "{file}: job {name}, step {position}"),
+                    Some(condition) if saves => assert!(
+                        condition.starts_with("github.ref == 'refs/heads/main'"),
+                        "{file}: job {name}, step {position}: saves a cache outside main"
+                    ),
+                    Some(condition) => assert!(
+                        fallback && condition == APPROVAL_FALLBACK_IF,
+                        "{file}: job {name}, step {position}: only the head checkout of approval and a cache save on main have an `if:`"
+                    ),
+                }
             }
         }
     }
@@ -943,11 +957,23 @@ fn coverage_restores_and_saves_the_baseline_cache() -> TestResult {
     let cache = coverage
         .steps()?
         .iter()
-        .find(|step| step_kind(step).is_ok_and(|kind| kind == "cache"))
-        .ok_or("coverage has no cache step")?;
+        .find(|step| step_kind(step).is_ok_and(|kind| kind == "cache-restore"))
+        .ok_or("coverage has no cache restore step")?;
+    let save = coverage
+        .steps()?
+        .iter()
+        .find(|step| step_kind(step).is_ok_and(|kind| kind == "cache-save"))
+        .ok_or("coverage has no cache save step")?;
     assert_eq!(
         cache["with"]["path"].as_str(),
         Some("target/xtask/coverage/cache")
+    );
+    assert_eq!(save["with"]["path"], cache["with"]["path"]);
+    assert!(
+        save["if"]
+            .as_str()
+            .is_some_and(|condition| condition.starts_with("github.ref == 'refs/heads/main'")),
+        "the baseline is saved on main only"
     );
     assert_eq!(
         cache["with"]["key"].as_str(),
@@ -959,6 +985,12 @@ fn coverage_restores_and_saves_the_baseline_cache() -> TestResult {
     assert_eq!(
         cache["with"]["restore-keys"].as_str().map(str::trim),
         Some("coverage-")
+    );
+    assert!(
+        save["with"]["key"]
+            .as_str()
+            .is_some_and(|key| key.contains("cache-primary-key")),
+        "the baseline is saved under the key it was restored by"
     );
     Ok(())
 }
@@ -1204,6 +1236,29 @@ fn build_caches_are_saved_only_on_main() -> TestResult {
             ),
         }
     }
+    // No job saves a cache outside `main`: every save step is conditioned on it, and no step
+    // restores and saves in one (`actions/cache`).
+    for (file, job) in all_jobs()? {
+        for step in job.steps()? {
+            match step_kind(step)? {
+                "cache" => panic!("{file}: job {} has a plain cache step", job.name),
+                "cache-save" => assert!(
+                    step["if"].as_str().is_some_and(|condition| {
+                        condition.starts_with("github.ref == 'refs/heads/main'")
+                    }),
+                    "{file}: job {} saves a cache outside main",
+                    job.name
+                ),
+                "node" => assert_eq!(
+                    step["with"]["cache"],
+                    Yaml::BadValue,
+                    "{file}: job {} saves a cache through setup-node",
+                    job.name
+                ),
+                _ => {}
+            }
+        }
+    }
     // The cached xtask builds without a Rust build cache.
     assert!(!read(XTASK_ACTION)?.contains("rust-cache"));
     Ok(())
@@ -1386,22 +1441,31 @@ fn only_the_ui_job_sets_up_node() -> TestResult {
         if (file, job.name.as_str()) == ("ci.yml", "ui") {
             assert_eq!(
                 kinds,
-                ["checkout", "pnpm", "node", "xtask"],
+                [
+                    "checkout",
+                    "pnpm",
+                    "node",
+                    "run",
+                    "cache-restore",
+                    "xtask",
+                    "cache-save"
+                ],
                 "the steps of job ui"
             );
             let steps = job.steps()?;
-            // pnpm first, from the `packageManager` of the app, so that `cache: pnpm` finds it.
+            // pnpm first, from the `packageManager` of the app, so that `pnpm store path` finds it.
             assert_eq!(
                 string_map(&steps[1]["with"])?,
                 map(&[("package_json_file", "web/package.json")])
             );
             assert_eq!(
                 string_map(&steps[2]["with"])?,
-                map(&[
-                    ("node-version-file", "web/.nvmrc"),
-                    ("cache", "pnpm"),
-                    ("cache-dependency-path", "web/pnpm-lock.yaml"),
-                ])
+                // No `cache: pnpm`: setup-node would save the store on pull requests.
+                map(&[("node-version-file", "web/.nvmrc")])
+            );
+            assert_eq!(
+                string_map(&steps[4]["with"])?["key"],
+                "pnpm-store-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}"
             );
         } else {
             assert!(
@@ -1420,8 +1484,24 @@ fn the_jobs_have_the_steps_their_checks_need() -> TestResult {
     let shapes: [(&str, &str, &[&str]); 6] = [
         ("ci.yml", "gate", &["checkout", "setup", "xtask", "run"]),
         ("ci.yml", "test", &["checkout", "setup", "run"]),
-        ("ci.yml", "coverage", &["checkout", "setup", "cache", "run"]),
-        ("ci.yml", "ui", &["checkout", "pnpm", "node", "xtask"]),
+        (
+            "ci.yml",
+            "coverage",
+            &["checkout", "setup", "cache-restore", "run", "cache-save"],
+        ),
+        (
+            "ci.yml",
+            "ui",
+            &[
+                "checkout",
+                "pnpm",
+                "node",
+                "run",
+                "cache-restore",
+                "xtask",
+                "cache-save",
+            ],
+        ),
         ("pr.yml", "pr", &["checkout", "xtask"]),
         ("settings.yml", "settings", &["checkout", "setup", "run"]),
     ];
