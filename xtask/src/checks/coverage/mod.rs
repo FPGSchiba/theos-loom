@@ -2,9 +2,8 @@
 //! (`docs/gate.md` §1 and §3).
 //!
 //! The check [`check`] runs `cargo llvm-cov nextest --workspace --locked --json` and reads the
-//! line coverage of every crate from its export ([`llvm_json`]). Nextest's profile `default`
-//! leaves out the slow tests (`gate/nextest.toml`), which take many times as long instrumented,
-//! so the coverage is that of the tests of the `test` check. A crate fails when
+//! line coverage of every crate from its export ([`llvm_json`]). It runs every test of the `test`
+//! check, so the coverage is that of that check's tests. A crate fails when
 //!
 //! - it is below the floor of its class in `gate/thresholds.toml`,
 //! - it has no class there (every workspace member needs one, so a new crate cannot escape the
