@@ -42,12 +42,20 @@ struct Cli {
 enum Command {
     /// Check that the installed tools have the versions pinned in `gate/tools.toml`.
     Tools {
-        /// Install the pinned tools that are missing or at another version (takes minutes and
-        /// needs the network), then check them.
+        /// Check only the tools these gate parts need (comma-separated), as a gate run that
+        /// runs them would. Without it, every pin is checked.
+        #[arg(
+            long = "for",
+            value_delimiter = ',',
+            conflicts_with = "print_install_spec"
+        )]
+        parts: Vec<String>,
+        /// Install the pinned cargo tools that are missing or at another version (takes minutes
+        /// and needs the network), and print how to install Node, pnpm and gitleaks; then check.
         #[arg(long, conflicts_with = "print_install_spec")]
         install: bool,
-        /// Print the pins as `name@version,…`, the form the setup action takes, and nothing
-        /// else.
+        /// Print the pins of the cargo tools as `name@version,…`, the form the setup action
+        /// takes, and nothing else.
         #[arg(long)]
         print_install_spec: bool,
     },
@@ -237,11 +245,8 @@ fn run(cli: &Cli) -> anyhow::Result<bool> {
             writeln!(out, "{}", tools::install_spec(&pins))?;
             return Ok(true);
         }
-        Command::Tools { install, .. } => {
-            if *install {
-                tools::install_missing(&root)?;
-            }
-            tools::run(&root, ci.as_ref(), &mut out)?
+        Command::Tools { install, parts, .. } => {
+            tools_verdict(&root, ci.as_ref(), *install, parts, &mut out)?
         }
         Command::Fmt => cargo_cmds::run(Check::Fmt, &root, ci.as_ref(), &mut out)?,
         Command::Clippy => cargo_cmds::run(Check::Clippy, &root, ci.as_ref(), &mut out)?,
@@ -320,6 +325,28 @@ fn run(cli: &Cli) -> anyhow::Result<bool> {
 }
 
 /// The workspace root: the parent of the directory this xtask was built from.
+/// The verdict of `tools`: every pin, or with `--for` only the tools of those gate parts.
+fn tools_verdict(
+    root: &Path,
+    ci: Option<&ci::CiEvent>,
+    install: bool,
+    parts: &[String],
+    out: &mut dyn Write,
+) -> Result<Verdict, Error> {
+    if install {
+        tools::install_missing(root, out)?;
+    }
+    if parts.is_empty() {
+        return tools::run(root, ci, out);
+    }
+    match gate::selection(parts, &[])? {
+        gate::Selection::Only(checks) => tools::run_for(root, &checks, out),
+        gate::Selection::All | gate::Selection::Skip(_) => Err(Error::Usage {
+            message: "`--for` needs the names of gate parts".to_owned(),
+        }),
+    }
+}
+
 fn default_root() -> PathBuf {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     manifest_dir

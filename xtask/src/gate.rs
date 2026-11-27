@@ -9,7 +9,8 @@
 //! same runner ([`run_pr`]).
 //!
 //! Versions decide verdicts, so a gate whose tools are not the pinned ones would give verdicts
-//! that CI does not. When the `tools` check fails, nothing else runs.
+//! that CI does not. `tools` checks the tools of the parts that will run, and when it fails,
+//! nothing else runs.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -107,11 +108,12 @@ pub fn run(
 ) -> Result<Vec<Verdict>> {
     // The checks that read code share one view, built when the first of them asks for it.
     let shared = Shared::new();
+    let order = selected(selection);
     run_checks(
-        &selected(selection),
+        &order,
         "gate",
         ci.is_some(),
-        |check, out| run_check(check, root, ci, &shared, out),
+        |check, out| run_check(check, root, ci, &order, &shared, out),
         out,
     )
 }
@@ -169,18 +171,20 @@ pub fn run_pr(
     )
 }
 
-/// The runner of one gate check: the function its subcommand calls.
+/// The runner of one gate check: the function its subcommand calls. `parts` are the checks that
+/// will run, which `tools` needs to know which tools to ask for.
 ///
 /// There is no wildcard arm, so a new [`Check`] does not compile until it is decided here.
 fn run_check(
     check: Check,
     root: &Path,
     ci: Option<&CiEvent>,
+    parts: &[Check],
     shared: &Shared,
     out: &mut dyn Write,
 ) -> Result<Verdict> {
     match check {
-        Check::Tools => tools::run(root, ci, out),
+        Check::Tools => tools::run_for(root, parts, out),
         Check::Fmt | Check::Clippy | Check::Test | Check::Docs | Check::Deny => {
             cargo_cmds::run(check, root, ci, out)
         }
@@ -498,7 +502,7 @@ mod tests {
     fn a_check_that_needs_a_pull_request_is_not_run_by_the_gate() {
         let mut out = Vec::new();
         for check in PR_ONLY.into_iter().chain([Check::Github]) {
-            let result = run_check(check, Path::new("."), None, &Shared::new(), &mut out);
+            let result = run_check(check, Path::new("."), None, &[], &Shared::new(), &mut out);
             assert!(
                 matches!(result, Err(Error::Missing { .. })),
                 "{check:?}: {result:?}"

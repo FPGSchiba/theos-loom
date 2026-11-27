@@ -191,7 +191,11 @@ pub fn rustc_program(cargo: Option<&OsStr>, rustc_env: Option<&OsStr>) -> OsStri
     beside.map_or_else(|| OsString::from("rustc"), PathBuf::into_os_string)
 }
 
-fn capture_program(program: &OsStr, root: &Path, cmd: &CargoCommand) -> Result<Option<String>> {
+pub(crate) fn capture_program(
+    program: &OsStr,
+    root: &Path,
+    cmd: &CargoCommand,
+) -> Result<Option<String>> {
     tracing::debug!(
         program = %program.to_string_lossy(),
         args = ?cmd.args,

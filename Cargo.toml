@@ -56,6 +56,7 @@ thiserror = "2.0"
 toml = "1.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+which = "8.0"
 yaml-rust2 = "0.13"
 
 # Third-party crates are optimised also in the dev profile, which `cargo test`, nextest and the
