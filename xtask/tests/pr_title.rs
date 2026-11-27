@@ -125,8 +125,9 @@ fn under_github_actions_the_event_gives_the_title_and_the_branch() -> TestResult
     let pass = run_on_event("feat(core): records and grammars (P02)", "phase/P02-x")?;
     assert_eq!(pass.status.code(), Some(0), "{pass:?}");
 
+    // A release branch has no rule in Loom, so its title cannot pass.
     let release = run_on_event("chore(release): v0.1.0", "release-plz-2026-11-01")?;
-    assert_eq!(release.status.code(), Some(0), "{release:?}");
+    assert_eq!(release.status.code(), Some(1), "{release:?}");
 
     let fail = run_on_event("records and grammars", "phase/P02-x")?;
     assert_eq!(fail.status.code(), Some(1), "{fail:?}");

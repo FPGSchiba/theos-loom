@@ -21,10 +21,8 @@ use crate::{Error, Result};
 /// Checks the pull request title `title`, of a pull request from `branch`, against the rules of
 /// `CONTRIBUTING.md` §3.
 ///
-/// A title on `release-plz-*` is a release title, `chore(release): vX.Y.Z` or
-/// `chore(release): vX.Y.Z-rc.N`, and no other title is. Every other title is a Conventional Commit
-/// whose summary ends with ` (PNN)`, ` (gate)` or ` (docs)`, as the branch says: `phase/PNN-…` and
-/// `spec/PNN-…` end with ` (PNN)`, `gate/…` with ` (gate)`, `docs/…` with ` (docs)` and `fix/…`
+/// A title is a Conventional Commit whose summary ends with ` (PNN)`, ` (gate)` or ` (docs)`, as
+/// the branch says: `phase/PNN-…` and `spec/PNN-…` end with ` (PNN)`, `gate/…` with ` (gate)`, `docs/…` with ` (docs)` and `fix/…`
 /// with any of the three. A `spec/` title is also `docs(spec): …`. A branch that is `main` or has
 /// any other name fails, because there is nothing to match the title with.
 ///
@@ -63,7 +61,7 @@ pub fn run(_root: &Path, ci: Option<&CiEvent>, _out: &mut dyn Write) -> Result<V
     }
 }
 
-/// What a branch asks of a title that is not a release title.
+/// What a branch asks of a title.
 struct Rule {
     /// The number of the pull request, if it is known.
     number: Option<u64>,
@@ -95,7 +93,6 @@ impl fmt::Display for Suffix {
 
 /// Everything wrong with `title` on `branch`, one sentence for each problem.
 fn problems(title: &str, branch: &BranchKind, number: Option<u64>) -> Vec<String> {
-    let release = is_release_title(title);
     let titled_on = |name: String, suffix: Option<Suffix>, spec: bool| {
         titled(
             title,
@@ -108,20 +105,8 @@ fn problems(title: &str, branch: &BranchKind, number: Option<u64>) -> Vec<String
         )
     };
     match branch {
-        BranchKind::Release if release => Vec::new(),
-        BranchKind::Release => vec![
-            "a pull request from a `release-plz-*` branch has a release title, \
-             `chore(release): vX.Y.Z` or `chore(release): vX.Y.Z-rc.N`"
-                .to_owned(),
-        ],
         BranchKind::Main => vec![unknown_branch("main")],
         BranchKind::Other(name) => vec![unknown_branch(name)],
-        _ if release => vec![
-            "a release title is only for the pull requests of the release pipeline, from \
-             `release-plz-*` branches; end this title with ` (PNN)`, ` (gate)` or ` (docs)` \
-             (CONTRIBUTING.md §3)"
-                .to_owned(),
-        ],
         BranchKind::Phase(phase) => titled_on(
             format!("a `phase/{phase}-…` branch"),
             Some(Suffix::Phase(*phase)),
@@ -142,12 +127,12 @@ fn problems(title: &str, branch: &BranchKind, number: Option<u64>) -> Vec<String
 fn unknown_branch(name: &str) -> String {
     format!(
         "the branch `{name}` is not named as CONTRIBUTING.md §1 requires (`spec/PNN-<slug>`, \
-         `phase/PNN-<slug>`, `gate/<slug>`, `docs/<slug>`, `fix/<slug>` or `release-plz-*`), so \
+         `phase/PNN-<slug>`, `gate/<slug>`, `docs/<slug>`, `fix/<slug>`), so \
          the title cannot be matched to it; rename the branch"
     )
 }
 
-/// The problems of a title that is not a release title, on a branch with a rule.
+/// The problems of a title on a branch with a rule.
 fn titled(title: &str, rule: &Rule) -> Vec<String> {
     let header = match parse_header(title) {
         Ok(header) => header,
@@ -208,20 +193,6 @@ fn split_suffix(summary: &str) -> Option<(&str, Suffix)> {
         _ => Suffix::Phase(word.parse().ok()?),
     };
     Some((words, suffix))
-}
-
-/// `chore(release): vX.Y.Z` or `chore(release): vX.Y.Z-rc.N`, with numbers of ASCII digits.
-fn is_release_title(title: &str) -> bool {
-    let digits = |text: &str| !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit());
-    let Some(version) = title.strip_prefix("chore(release): v") else {
-        return false;
-    };
-    let (numbers, candidate) = match version.split_once("-rc.") {
-        Some((numbers, candidate)) => (numbers, Some(candidate)),
-        None => (version, None),
-    };
-    let parts: Vec<&str> = numbers.split('.').collect();
-    parts.len() == 3 && parts.iter().all(|part| digits(part)) && candidate.is_none_or(digits)
 }
 
 #[cfg(test)]
@@ -352,63 +323,20 @@ mod tests {
 
     // AC: TU-00.4
     #[test]
-    fn release_titles_pass() {
-        for title in [
-            "chore(release): v0.1.0",
-            "chore(release): v0.2.0-rc.1",
-            "chore(release): v10.20.30",
-            "chore(release): v1.0.0-rc.12",
-        ] {
-            assert_passes(title, "release-plz-2026-11-01");
-        }
-    }
-
-    // AC: TU-00.4
-    #[test]
-    fn a_release_branch_needs_a_release_title() {
+    fn a_release_title_is_no_title_here() {
+        // Loom has no release pipeline: a release title is an ordinary title that lacks its
+        // suffix, and a `release-plz-*` branch is a branch without a rule.
+        assert_fails("chore(release): v0.1.0", "phase/P01-x", "(P01)");
         assert_fails(
-            "feat(core): records (P02)",
+            "chore(release): v0.1.0",
             "release-plz-2026-11-01",
-            "release title",
+            "is not named as CONTRIBUTING.md",
         );
-        for title in [
-            "chore(release): v1.0",
-            "chore(release): v1.0.0.0",
-            "chore(release): v1.0.0-rc",
-            "chore(release): v1.0.0-rc.",
-            "chore(release): v1.0.0-rc.x",
-            "chore(release): v1.0.0-rc.1.2",
-            "chore(release): v1.0.0-beta.1",
-            "chore(release): v1..0",
-            "chore(release): 1.0.0",
-            "chore(release): V1.0.0",
-            "chore(release): v1.0.0 ",
-            "chore(release): v1.0.0 (gate)",
-            "chore(release):v1.0.0",
-            "chore(release)!: v1.0.0",
-            "chore: v1.0.0",
-            "chore(release): v\u{661}.0.0",
-            "chore(release): v1.0.0\n",
-            "",
-        ] {
-            assert_fails(title, "release-plz-2026-11-01", "release title");
-        }
-    }
-
-    // AC: TU-00.4
-    #[test]
-    fn a_release_title_is_only_for_a_release_branch() {
-        for branch in [
-            "phase/P02-x",
-            "spec/P02-x",
-            "gate/x",
-            "docs/x",
-            "fix/x",
+        assert_fails(
+            "chore(release): v0.1.0",
             "main",
-            "feature/x",
-        ] {
-            assert_fails("chore(release): v0.1.0", branch, "release-plz-");
-        }
+            "is not named as CONTRIBUTING.md",
+        );
     }
 
     // AC: TU-00.4
@@ -570,7 +498,7 @@ mod tests {
         let wrong_phase = pull_request("feat(core): records (P02)", "phase/P03-x");
         assert!(!run_with(Some(&wrong_phase))?.passed());
         let release = pull_request("chore(release): v0.1.0", "release-plz-2026-11-01");
-        assert!(run_with(Some(&release))?.passed());
+        assert!(!run_with(Some(&release))?.passed());
         let bad_title = pull_request("records", "fix/x");
         assert!(!run_with(Some(&bad_title))?.passed());
         Ok(())

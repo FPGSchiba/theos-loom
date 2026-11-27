@@ -4,23 +4,23 @@
   "label": {
     "id": 9876543210,
     "node_id": "LA_kwDOKexample",
-    "url": "https://api.github.com/repos/FPGSchiba/theos-editor/labels/approved",
+    "url": "https://api.github.com/repos/jann-erhardt/theos-loom/labels/approved",
     "name": "approved",
     "color": "0e8a16",
     "default": false,
     "description": "A maintainer approved a change to a protected path"
   },
   "pull_request": {
-    "url": "https://api.github.com/repos/FPGSchiba/theos-editor/pulls/7",
+    "url": "https://api.github.com/repos/jann-erhardt/theos-loom/pulls/7",
     "id": 1928374650,
     "node_id": "PR_kwDOKexample",
-    "html_url": "https://github.com/FPGSchiba/theos-editor/pull/7",
+    "html_url": "https://github.com/jann-erhardt/theos-loom/pull/7",
     "number": 7,
     "state": "open",
     "locked": false,
     "title": "feat(xtask): add the verdict, report, ci, branch and git core (P00)",
     "user": {
-      "login": "FPGSchiba",
+      "login": "jann-erhardt",
       "id": 1234567,
       "type": "User"
     },
@@ -43,22 +43,22 @@
       }
     ],
     "base": {
-      "label": "FPGSchiba:main",
+      "label": "jann-erhardt:main",
       "ref": "main",
       "sha": "60a2dac1f0b5e3a8c9d47e6b2a1f08d3c5b79e41",
       "repo": {
         "id": 424242424,
-        "full_name": "FPGSchiba/theos-editor",
+        "full_name": "jann-erhardt/theos-loom",
         "default_branch": "main"
       }
     },
     "head": {
-      "label": "FPGSchiba:phase/P00-foundation-and-gate",
+      "label": "jann-erhardt:phase/P00-foundation-and-gate",
       "ref": "phase/P00-foundation-and-gate",
       "sha": "7d646e6b3c1a90f2e48d5b7a6c0e1f39a2d84b57",
       "repo": {
         "id": 424242424,
-        "full_name": "FPGSchiba/theos-editor",
+        "full_name": "jann-erhardt/theos-loom",
         "default_branch": "main"
       }
     },
@@ -71,13 +71,13 @@
   },
   "repository": {
     "id": 424242424,
-    "name": "theos-editor",
-    "full_name": "FPGSchiba/theos-editor",
+    "name": "theos-loom",
+    "full_name": "jann-erhardt/theos-loom",
     "private": false,
     "default_branch": "main"
   },
   "sender": {
-    "login": "FPGSchiba",
+    "login": "jann-erhardt",
     "id": 1234567,
     "type": "User"
   }

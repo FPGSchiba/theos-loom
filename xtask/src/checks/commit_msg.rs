@@ -222,7 +222,7 @@ mod tests {
         std::fs::create_dir_all(&specs)?;
         std::fs::write(
             specs.join("00-umbrella.md"),
-            "| Phase | Name | Repo |\n|---|---|---|\n| P00 | Foundation | theos-editor |\n\n\
+            "| Phase | Name | Repo |\n|---|---|---|\n| P00 | Foundation | theos-loom |\n\n\
              ### P00 · Foundation\n- TU-00.10 First.\n",
         )?;
         Ok(dir)
@@ -416,7 +416,7 @@ mod tests {
     fn known_acs_are_the_ids_of_the_umbrella_spec() -> TestResult {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
         let known = known_acs(&root)?;
-        for id in ["TU-00.1", "TU-00.4", "TU-01.1", "TU-06.1"] {
+        for id in ["TU-00.1", "TU-08.2"] {
             assert!(known.contains(id), "{id}");
         }
         assert!(!known.contains("TU-99.9"));
@@ -435,7 +435,7 @@ mod tests {
         std::fs::create_dir_all(&specs)?;
         std::fs::write(
             specs.join("00-umbrella.md"),
-            "| Phase | Name | Repo |\n|---|---|---|\n| P00 | A | theos-editor |\n",
+            "| Phase | Name | Repo |\n|---|---|---|\n| P00 | A | theos-loom |\n",
         )?;
         let result = known_acs(dir.path());
         assert!(matches!(result, Err(Error::Config { .. })), "{result:?}");

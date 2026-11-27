@@ -1,7 +1,7 @@
 //! Branch names, as `CONTRIBUTING.md` §1 defines them, and the phase a branch belongs to.
 //!
 //! `phase/PNN-<slug>` and `spec/PNN-<slug>` carry a phase; `gate/<slug>`, `docs/<slug>` and
-//! `fix/<slug>` do not; `release-plz-*` is the release pipeline and `main` is the trunk. The
+//! `fix/<slug>` do not; `main` is the trunk. The
 //! slug is lower-case letters, digits and hyphens, starting with a letter or a digit. Anything
 //! else is [`BranchKind::Other`], and a check that needs a known kind says so.
 
@@ -50,8 +50,6 @@ pub enum BranchKind {
     Docs,
     /// `fix/<slug>`: a fix.
     Fix,
-    /// `release-plz-*`: a release pull request from the pipeline.
-    Release,
     /// `main`.
     Main,
     /// Any other name.
@@ -63,8 +61,6 @@ pub enum BranchKind {
 pub fn parse_branch(name: &str) -> BranchKind {
     let kind = if name == "main" {
         Some(BranchKind::Main)
-    } else if name.starts_with("release-plz-") {
-        Some(BranchKind::Release)
     } else if let Some(rest) = name.strip_prefix("phase/") {
         phase_and_slug(rest).map(BranchKind::Phase)
     } else if let Some(rest) = name.strip_prefix("spec/") {
@@ -123,9 +119,13 @@ mod tests {
         assert_eq!(parse_branch("gate/x"), BranchKind::Gate);
         assert_eq!(parse_branch("docs/x"), BranchKind::Docs);
         assert_eq!(parse_branch("fix/x"), BranchKind::Fix);
-        assert_eq!(parse_branch("release-plz-2026-10-31"), BranchKind::Release);
         assert_eq!(parse_branch("main"), BranchKind::Main);
-        for other in ["feature/x", "phase/P2-x", "phase/P02"] {
+        for other in [
+            "feature/x",
+            "phase/P2-x",
+            "phase/P02",
+            "release-plz-2026-10-31",
+        ] {
             assert_eq!(
                 parse_branch(other),
                 BranchKind::Other(other.to_owned()),

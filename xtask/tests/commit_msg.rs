@@ -217,11 +217,26 @@ fn unknown_ref_fails() -> TestResult {
     assert_eq!(verdict.findings.len(), 1, "{:?}", verdict.findings);
     assert!(messages(&verdict).contains("TU-99.1"));
 
+    // An id of the editor's spec is unknown here.
+    let editor_ref = commit(
+        dir.path(),
+        "feat(xtask): parse commit messages
+
+Refs: CE-08.1
+Phase: P00",
+    )?;
+    let verdict = run_check(dir.path(), &head, &editor_ref, "phase/P00-x")?;
+    assert!(
+        messages(&verdict).contains("CE-08.1"),
+        "{:?}",
+        verdict.findings
+    );
+
     let known_ref = commit(
         dir.path(),
         "feat(xtask): parse commit messages\n\nRefs: TU-00.1\nPhase: P00",
     )?;
-    assert!(run_check(dir.path(), &head, &known_ref, "phase/P00-x")?.passed());
+    assert!(run_check(dir.path(), &editor_ref, &known_ref, "phase/P00-x")?.passed());
     Ok(())
 }
 
@@ -331,7 +346,7 @@ fn add_umbrella(dir: &Path) -> TestResult {
     std::fs::create_dir_all(&specs)?;
     std::fs::write(
         specs.join("00-umbrella.md"),
-        "| Phase | Name | Repo |\n|---|---|---|\n| P00 | Foundation | theos-editor |\n\n\
+        "| Phase | Name | Repo |\n|---|---|---|\n| P00 | Foundation | theos-loom |\n\n\
          ### P00 · Foundation\n- TU-00.1 First.\n",
     )?;
     Ok(())
