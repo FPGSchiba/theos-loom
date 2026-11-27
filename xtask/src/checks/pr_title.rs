@@ -22,9 +22,10 @@ use crate::{Error, Result};
 /// `CONTRIBUTING.md` §3.
 ///
 /// A title is a Conventional Commit whose summary ends with ` (PNN)`, ` (gate)` or ` (docs)`, as
-/// the branch says: `phase/PNN-…` and `spec/PNN-…` end with ` (PNN)`, `gate/…` with ` (gate)`, `docs/…` with ` (docs)` and `fix/…`
-/// with any of the three. A `spec/` title is also `docs(spec): …`. A branch that is `main` or has
-/// any other name fails, because there is nothing to match the title with.
+/// the branch says: `phase/PNN-…` and `spec/PNN-…` end with ` (PNN)`, `gate/…` with ` (gate)`,
+/// `docs/…` with ` (docs)` and `fix/…` with any of the three. A `spec/` title is also `docs(spec):
+/// …`. A branch that is `main` or has any other name fails, because there is nothing to match the
+/// title with.
 ///
 /// `number` is the number of the pull request, when it is known: GitHub appends ` (#N)` to the
 /// summary of the squash commit, so the limit of the summary is held to the summary and that

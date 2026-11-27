@@ -4,8 +4,9 @@
 //! check gives the same verdict here as in its CI job (TU-00.3); only where the inputs come from
 //! differs (the repository instead of the event payload). Before any part runs, the runner asks
 //! [`need::decide`], from the changed paths, which of the selected parts are needed; the others
-//! report *not needed*, a passing verdict with its reason (`gate/code-paths.toml`). It leaves out the checks that need a
-//! pull request (`pr-title`, `pr-body`, `approval`) and the settings check, which needs GitHub.
+//! report *not needed*, a passing verdict with its reason (`gate/code-paths.toml`). It leaves out
+//! the checks that need a pull request (`pr-title`, `pr-body`, `approval`) and the settings check,
+//! which needs GitHub.
 //! A [`Selection`] runs a part of it (`--only`, `--skip`): a filter over [`GATE_ORDER`] that
 //! never removes `tools`. `cargo xtask pr` runs the two checks of a pull request through the
 //! same runner ([`run_pr`]).

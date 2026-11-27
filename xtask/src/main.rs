@@ -152,11 +152,11 @@ enum Command {
     Approval,
     /// Run every check that needs no pull request, in order, and print one verdict table.
     ///
-    /// Runs `tools`, `fmt`, `lints`, `commit-msg`, `secrets`, `clippy`, `docs`, `deny`, `test`, `coverage`,
-    /// `ui` and `ac-trace` with the same code as their CI jobs, and goes on after a check fails. It
-    /// leaves out `pr-title`, `pr-body` and `approval`. When a tool is not the pinned version,
-    /// nothing but `tools` runs, because versions decide verdicts. `--only` and `--skip` run a
-    /// part of it; `tools` always runs first. Exit code 1 when any check failed.
+    /// Runs `tools`, `fmt`, `lints`, `commit-msg`, `secrets`, `clippy`, `docs`, `deny`, `test`,
+    /// `coverage`, `ui` and `ac-trace` with the same code as their CI jobs, and goes on after a
+    /// check fails. It leaves out `pr-title`, `pr-body` and `approval`. When a tool is not the
+    /// pinned version, nothing but `tools` runs, because versions decide verdicts. `--only` and
+    /// `--skip` run a part of it; `tools` always runs first. Exit code 1 when any check failed.
     Gate {
         /// Run only these checks (comma-separated), after `tools`.
         #[arg(
