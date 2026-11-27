@@ -900,20 +900,20 @@ mod tests {
     #[test]
     fn remotes_of_github_in_every_form_name_the_repository() {
         for url in [
-            "https://github.com/FPGSchiba/theos-editor.git",
-            "https://github.com/FPGSchiba/theos-editor",
-            "https://github.com/FPGSchiba/theos-editor/",
-            "https://user:secret@github.com/FPGSchiba/theos-editor.git\n",
-            "http://GitHub.com/FPGSchiba/theos-editor.git",
-            "ssh://git@github.com/FPGSchiba/theos-editor.git",
-            "ssh://git@github.com:22/FPGSchiba/theos-editor.git",
-            "git://github.com/FPGSchiba/theos-editor.git",
-            "git@github.com:FPGSchiba/theos-editor.git",
-            "github.com:FPGSchiba/theos-editor",
+            "https://github.com/FPGSchiba/theos-loom.git",
+            "https://github.com/FPGSchiba/theos-loom",
+            "https://github.com/FPGSchiba/theos-loom/",
+            "https://user:secret@github.com/FPGSchiba/theos-loom.git\n",
+            "http://GitHub.com/FPGSchiba/theos-loom.git",
+            "ssh://git@github.com/FPGSchiba/theos-loom.git",
+            "ssh://git@github.com:22/FPGSchiba/theos-loom.git",
+            "git://github.com/FPGSchiba/theos-loom.git",
+            "git@github.com:FPGSchiba/theos-loom.git",
+            "github.com:FPGSchiba/theos-loom",
         ] {
             assert_eq!(
                 repo_of_remote(url).as_deref(),
-                Some("FPGSchiba/theos-editor"),
+                Some("FPGSchiba/theos-loom"),
                 "{url}"
             );
         }
