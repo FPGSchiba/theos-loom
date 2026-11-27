@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>10 · Decision inbox — Loom cockpit reference</title>
+<!--
+  Reference screen 10 of the Loom cockpit, exported from the design canvas on 2026-11-27.
+  Built only from web/design/theos-ui (tokens.css, components/bundle.css) plus the page styles below.
+  Theme: change data-theme on the first element to "grid-light" to see Grid Light.
+  Sample content is illustrative; docs/specs/00-umbrella.md wins where they disagree.
+-->
+<link rel="stylesheet" href="../../../web/design/theos-ui/tokens.css">
+<link rel="stylesheet" href="../../../web/design/theos-ui/components/bundle.css">
+<style>
+body{margin:0}
+a{color:inherit}
+.lm-rail a{text-decoration:none}
+.lm-item{display:flex;flex-direction:column;gap:5px;width:100%;padding:10px 12px;margin:0;border:0;border-bottom:1px solid var(--border);border-left:2px solid transparent;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:default}
+.lm-item:hover{background:color-mix(in srgb,var(--panel2) 60%,transparent)}
+.lm-item.is-sel{background:color-mix(in srgb,var(--sig-attention) 8%,transparent);border-left-color:var(--sig-attention)}
+.lm-item.is-sel-done{background:var(--panel2);border-left-color:var(--borderHi)}
+.lm-item:focus-visible{outline:1px solid var(--sig-attention);outline-offset:-1px}
+.lm-h{margin:0;font:700 10px/14px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;color:var(--textDim)}
+.lm-opt{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;padding:12px 14px;background:var(--panel);border:1px solid var(--border);cursor:default}
+.lm-opt.is-picked{border-color:var(--sig-attention)}
+.lm-opt.is-chosen{border-color:var(--sig-approve)}
+.lm-opt.is-other{opacity:1;background:var(--panel2)}
+.lm-opt input{margin:2px 0 0;accent-color:var(--sig-attention)}
+.lm-gc{display:grid;grid-template-columns:52px minmax(0,1fr);gap:4px 8px;font-size:11.5px;line-height:16px}
+textarea.lm-ta{width:100%;box-sizing:border-box;min-height:64px;resize:vertical;padding:8px 10px;background:var(--bg);color:var(--text);border:1px solid var(--border);font:400 12px/18px var(--font-ui)}
+textarea.lm-ta:focus{outline:1px solid var(--sig-attention);outline-offset:-1px}
+details summary{cursor:default}
+</style>
+</head>
+<body>
+<div data-theme="grid-noir" style="width: 1920px; height: 1080px; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 12px; line-height: 16px">
+
+<header class="tu-titlebar">
+<span class="tu-titlebar__brand"><span class="tu-mark"></span>LOOM</span>
+<span class="tu-titlebar__sep">▸</span><span>Theos</span>
+<span class="tu-titlebar__sep">▸</span><span class="tu-titlebar__preset">Decision inbox</span>
+<span class="tu-spacer"></span>
+<span class="tu-statuspip"><span class="tu-pip tu-pip--glow is-info"></span>3 runs</span>
+<span class="tu-statuspip"><span class="tu-pip is-approve"></span>night window · until 07:00</span>
+</header>
+
+<div style="flex: 1; display: flex; min-height: 0">
+<nav class="tu-rail lm-rail" aria-label="Sections">
+<a href="Main.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">▦</span><span class="tu-rail__label">Board</span></a>
+<a href="Activity.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">≋</span><span class="tu-rail__label">Activity</span></a>
+<a href="Inbox.dc.html" class="tu-rail__item is-active"><span class="tu-rail__glyph">◴</span><span class="tu-rail__label">Inbox</span><span class="tu-rail__badge">2</span></a>
+<a href="Review.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">✓</span><span class="tu-rail__label">Review</span><span class="tu-rail__badge is-neutral">5</span></a>
+<a href="Spend.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">¤</span><span class="tu-rail__label">Spend</span></a>
+<span class="tu-rail__spacer"></span>
+<a href="Controls.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">⚙</span><span class="tu-rail__label">Controls</span></a>
+</nav>
+
+<main style="flex: 1; min-width: 0; min-height: 0; padding: 4px; display: flex; gap: 4px">
+
+<section class="tu-window" style="flex: 0 0 460px; min-width: 0">
+<div class="tu-tabbar"><div class="tu-tabbar__tabs" role="tablist">
+<button type="button" role="tab" aria-selected="true" class="tu-tab is-active">Open <span class="tu-badge">2</span></button><button type="button" role="tab" aria-selected="false" class="tu-tab">Answered <span class="tu-badge is-neutral">41</span></button>
+</div><div class="tu-tabbar__ctrls"><span>⋯</span></div></div>
+<div class="tu-window__bar"><label class="tu-input" style="flex: 1"><span class="tu-input__icon">⌕</span><input aria-label="Search decisions" placeholder="Search questions and answers" value=""></label></div>
+<div class="tu-window__body">
+
+<button type="button" class="lm-item is-sel" aria-current="true">
+<span style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap"><span class="tu-chip tu-chip--solid is-attention">Waiting 2 h</span><span class="tu-mono tu-dim" style="font-size: 10px">Editor · Map places</span></span>
+<span style="font-weight: 600">Can a map pin hold quest steps, or only point to a quest?</span>
+<span class="tu-dim" style="font-size: 11px">Holds the data part of a refinement. The camera part goes on.</span>
+</button>
+
+<button type="button" class="lm-item" aria-current="false">
+<span style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap"><span class="tu-chip is-attention">Waiting 9 h</span><span class="tu-mono tu-dim" style="font-size: 10px">Loom · Story loop</span></span>
+<span style="font-weight: 600">May the workflow kit drop a BMad step that always asks a person?</span>
+<span class="tu-dim" style="font-size: 11px">Holds one story. Nothing else waits on it.</span>
+</button>
+
+
+</div>
+</section>
+
+<section class="tu-window is-hot" style="flex: 1 1 0; min-width: 0">
+<div class="tu-tabbar"><div class="tu-tabbar__title">Question for you</div><div class="tu-tabbar__ctrls"><span>⋯</span></div></div>
+<div class="tu-window__body"><div style="padding: 22px 32px 32px; display: flex; flex-direction: column; gap: 22px; max-width: 980px">
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span class="tu-mono tu-dim" style="font-size: 10px">Editor · Map places · from the refinement of “Map pins, cameras and frames” · asked Tue 11:41</span>
+<h1 style="margin: 0; font: 600 24px/30px var(--font-ui); letter-spacing: -0.3px; text-wrap: balance">Can a map pin hold quest steps, or only point to a quest?</h1>
+
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 class="lm-h">What's going on</h2>
+<p class="tu-prose" style="margin: 0">The editor is getting pins on maps: a place with a kind, a position and a label. While planning it, the refiner hit a choice the directives don’t settle. Quests need places to happen at, and a pin is the obvious anchor. Either the pin only points to a quest record that lives elsewhere, or the pin also stores the quest steps that happen there. The first keeps quests in one place; the second is quicker to author on the map.</p>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 class="lm-h">Why the decider didn't decide alone</h2>
+<p class="tu-prose" style="margin: 0">No directive and no earlier decision covers where quest data lives. It also shapes how you will write quests later, which is your design work, not engineering. Its confidence was 0.62, under the 0.85 it needs.</p>
+</div>
+
+<fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+<legend class="lm-h" style="margin-bottom: 8px">Options</legend>
+
+<label class="lm-opt is-picked">
+<input type="radio" name="opt" checked>
+<span style="display: flex; flex-direction: column; gap: 8px">
+<span style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap"><span style="font-weight: 700; font-size: 13px">Pins only point to a quest</span>
+<span class="tu-ai">AI</span><span class="tu-mono" style="font-size: 10px; color: var(--sig-ai)">recommended</span>
+
+</span>
+<span class="lm-gc"><span class="tu-label tu-label--xs" style="color: var(--sig-approve)">Gives</span><span>Quests stay in one record each, so the reveal ledger and links keep working. Maps stay small and regenerate cleanly.</span><span class="tu-label tu-label--xs" style="color: var(--sig-reject)">Costs</span><span>Authoring a quest means two places: the quest record and the pins it uses.</span></span>
+</span>
+</label>
+
+<label class="lm-opt">
+<input type="radio" name="opt">
+<span style="display: flex; flex-direction: column; gap: 8px">
+<span style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap"><span style="font-weight: 700; font-size: 13px">Pins hold the quest steps</span>
+
+
+</span>
+<span class="lm-gc"><span class="tu-label tu-label--xs" style="color: var(--sig-approve)">Gives</span><span>You write a quest straight on the map, step by step, where it happens.</span><span class="tu-label tu-label--xs" style="color: var(--sig-reject)">Costs</span><span>Quest text ends up spread over maps. A regenerated map has to carry it across, and the codex can’t see it.</span></span>
+</span>
+</label>
+
+<label class="lm-opt">
+<input type="radio" name="opt">
+<span style="display: flex; flex-direction: column; gap: 8px">
+<span style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap"><span style="font-weight: 700; font-size: 13px">Pins point to a quest and may carry a short hint</span>
+
+
+</span>
+<span class="lm-gc"><span class="tu-label tu-label--xs" style="color: var(--sig-approve)">Gives</span><span>One record per quest, plus a line of context visible on the map.</span><span class="tu-label tu-label--xs" style="color: var(--sig-reject)">Costs</span><span>A hint can drift from its quest. Adds one field and one check.</span></span>
+</span>
+</label>
+
+</fieldset>
+
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; background: var(--panel2); border: 1px solid var(--border)">
+<h2 class="lm-h" style="display: flex; gap: 8px; align-items: center"><span class="tu-ai">AI</span>Recommendation</h2>
+<p style="margin: 0; font-size: 13px; line-height: 20px">Pins only point to a quest. Your canon rules keep every record in one file and treat views as lenses, never copies; quest steps on pins would be a copy. If authoring on the map feels slow later, a map view that edits the quest record is cheap to add.</p>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<div style="flex: 1 1 260px; padding: 12px 14px; border: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; gap: 4px">
+<h2 class="lm-h" style="color: var(--sig-reject)">Blocked meanwhile</h2>
+<span>The data part of “Map pins, cameras and frames”: the pin fields and how they are saved.</span>
+</div>
+<div style="flex: 1 1 260px; padding: 12px 14px; border: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; gap: 4px">
+<h2 class="lm-h" style="color: var(--sig-approve)">Continues</h2>
+<span>The camera and frame part of the same story, and every other story on the board.</span>
+</div>
+</div>
+
+<details style="border-top: 1px solid var(--border); padding-top: 12px">
+<summary class="lm-h">Details</summary>
+<div class="tu-mono tu-dim" style="font-size: 10px; line-height: 16px; margin-top: 8px; white-space: pre-line">theos-editor · refine run started Tue 11:20 · question 3 of 3
+sources read: components/editor/directives/engineering.md
+components/game/directives/design.md · decisions/0004-map-amendments.md</div>
+</details>
+
+
+<div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 16px">
+<label for="cm" class="lm-h">Comment (optional)</label>
+<textarea id="cm" class="lm-ta" placeholder="Anything the decider should keep in mind next time"></textarea>
+<div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
+<button type="button" class="tu-btn tu-btn--primary tu-btn--lg">Answer: pins only point to a quest</button>
+<button type="button" class="tu-btn tu-btn--secondary tu-btn--lg">Ask a follow-up</button>
+<span class="tu-dim" style="font-size: 11px">Your answer is saved as a decision and becomes a precedent.</span>
+</div>
+</div>
+
+
+
+
+</div></div>
+</section>
+</main>
+</div>
+
+<footer class="tu-statusbar">
+<span class="tu-statusbar__brand">LOOM</span>
+<span>decider · strict 0.85</span>
+<span>2 open · 41 answered</span>
+<span class="tu-spacer"></span>
+<span>planning repo synced 2 min ago</span>
+</footer>
+</div>
+</body>
+</html>

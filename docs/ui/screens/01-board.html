@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>01 · Board — Loom cockpit reference</title>
+<!--
+  Reference screen 01 of the Loom cockpit, exported from the design canvas on 2026-11-27.
+  Built only from web/design/theos-ui (tokens.css, components/bundle.css) plus the page styles below.
+  Theme: change data-theme on the first element to "grid-light" to see Grid Light.
+  Sample content is illustrative; docs/specs/00-umbrella.md wins where they disagree.
+-->
+<link rel="stylesheet" href="../../../web/design/theos-ui/tokens.css">
+<link rel="stylesheet" href="../../../web/design/theos-ui/components/bundle.css">
+<style>
+body{margin:0}
+a{color:inherit}
+.lm-card{display:flex;flex-direction:column;gap:6px;padding:8px 9px;background:var(--panel);border:1px solid var(--border);text-decoration:none;color:var(--text)}
+.lm-card:hover{border-color:var(--borderHi)}
+.lm-card:focus-visible{outline:1px solid var(--sig-attention);outline-offset:-1px}
+.lm-rail a{text-decoration:none}
+.lm-tag{align-self:flex-start;max-width:100%;display:inline-flex;gap:5px;align-items:center;padding:1px 6px;border:1px solid var(--border);background:var(--panel2);color:var(--textDim);font:500 9.5px/13px var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+<div data-theme="grid-noir" style="width: 1920px; height: 1080px; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 12px; line-height: 16px">
+
+<header class="tu-titlebar">
+<span class="tu-titlebar__brand"><span class="tu-mark"></span>LOOM</span>
+<span class="tu-titlebar__sep">▸</span><span>Theos</span>
+<span class="tu-titlebar__sep">▸</span><span class="tu-titlebar__preset">Board</span>
+<span class="tu-spacer"></span>
+<span class="tu-statuspip"><span class="tu-pip tu-pip--glow is-info"></span>3 runs</span>
+<span class="tu-statuspip"><span class="tu-pip is-approve"></span>night window · until 07:00</span>
+<span class="tu-statuspip"><span class="tu-pip is-approve"></span>main green · 4 repos</span>
+</header>
+
+<div class="tu-toolbar" style="height: auto; min-height: 42px; flex-wrap: wrap; padding: 7px 10px; gap: 8px">
+<span class="tu-label tu-label--sm">Project</span>
+<span class="tu-select">Theos</span>
+<span class="tu-label tu-label--sm" style="margin-left: 6px">Lanes</span>
+<span class="tu-seg"><button type="button" class="tu-seg__opt is-active" aria-pressed="true">Component</button><button type="button" class="tu-seg__opt" aria-pressed="false">Epic</button></span>
+<span class="tu-spacer"></span>
+<label class="tu-input" style="width: 380px; max-width: 100%"><span class="tu-input__icon">›</span><input aria-label="Command for Loom" placeholder="Tell Loom… e.g. pause the engine until Monday"><a href="Command.dc.html" class="tu-kbd" style="text-decoration: none">Ctrl K</a></label>
+<button type="button" class="tu-btn tu-btn--secondary"><span class="tu-btn__icon">⏸</span>Pause all</button>
+</div>
+
+<div role="search" aria-label="Filter the board" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 7px 10px; background: var(--panel2); border-bottom: 1px solid var(--border)">
+<span class="tu-label tu-label--sm tu-label--strong">Filter</span>
+<span class="tu-label tu-label--xs">Component</span>
+<span class="tu-seg"><button type="button" class="tu-seg__opt is-active" aria-pressed="true">All</button><button type="button" class="tu-seg__opt" aria-pressed="false">Loom</button><button type="button" class="tu-seg__opt" aria-pressed="false">Editor</button><button type="button" class="tu-seg__opt" aria-pressed="false">Engine</button><button type="button" class="tu-seg__opt" aria-pressed="false">Game</button></span>
+<label class="tu-label tu-label--xs" for="ep">Epic</label>
+<select id="ep" class="tu-select" style="min-width: 170px">
+<option value="All" selected>All epics</option><option value="Deciding">Deciding</option><option value="Story loop">Story loop</option><option value="Foundation">Foundation</option><option value="Map places">Map places</option><option value="Map kinds">Map kinds</option><option value="Codex">Codex</option><option value="Agentic layer">Agentic layer</option><option value="Local LLM">Local LLM</option>
+</select>
+<span class="tu-label tu-label--xs">Only</span>
+<button type="button" class="tu-filter is-off" aria-pressed="false">NEEDS YOU 2</button><button type="button" class="tu-filter is-off" aria-pressed="false">BLOCKED 1</button><button type="button" class="tu-filter is-off" aria-pressed="false">RUNNING 4</button>
+
+<span class="tu-spacer"></span>
+<span class="tu-mono tu-dim" style="font-size: 10px">17 of 17 stories</span>
+</div>
+
+<div style="flex: 1; display: flex; min-height: 0">
+<nav class="tu-rail lm-rail" aria-label="Sections">
+<a href="Main.dc.html" class="tu-rail__item is-active"><span class="tu-rail__glyph">▦</span><span class="tu-rail__label">Board</span></a>
+<a href="Activity.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">≋</span><span class="tu-rail__label">Activity</span></a>
+<a href="Inbox.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">◴</span><span class="tu-rail__label">Inbox</span><span class="tu-rail__badge">2</span></a>
+<a href="Review.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">✓</span><span class="tu-rail__label">Review</span><span class="tu-rail__badge is-neutral">5</span></a>
+<a href="Spend.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">¤</span><span class="tu-rail__label">Spend</span></a>
+<span class="tu-rail__spacer"></span>
+<a href="Controls.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">⚙</span><span class="tu-rail__label">Controls</span></a>
+</nav>
+
+<main style="flex: 1; min-width: 0; min-height: 0; padding: 4px; display: flex">
+<section class="tu-window" style="flex: 1">
+<div class="tu-tabbar"><div class="tu-tabbar__title">Board <span class="tu-mono tu-dim" style="font-size: 10px; font-weight: 400; letter-spacing: 0">lanes by component</span></div><div class="tu-tabbar__ctrls"><span>⋯</span></div></div>
+<div style="flex: 1; min-height: 0; overflow: auto">
+<div style="min-width: 1240px">
+
+<div style="display: grid; grid-template-columns: 112px repeat(8, minmax(132px, 1fr)) 40px; border-bottom: 1px solid var(--border); background: var(--panel2)">
+<div style="padding: 8px 10px" class="tu-label tu-label--xs">Component</div>
+
+<div style="padding: 7px 8px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; gap: 6px; align-items: baseline"><span class="tu-label tu-label--xs tu-label--strong">Draft</span><span class="tu-mono tu-dim" style="font-size: 10px">3</span></span>
+<span class="tu-mono tu-dim" style="font-size: 9px; line-height: 12px">set by you</span>
+</div>
+
+<div style="padding: 7px 8px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; gap: 6px; align-items: baseline"><span class="tu-label tu-label--xs tu-label--strong">Ready</span><span class="tu-mono tu-dim" style="font-size: 10px">1</span></span>
+<span class="tu-mono tu-dim" style="font-size: 9px; line-height: 12px">set by you</span>
+</div>
+
+<div style="padding: 7px 8px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; gap: 6px; align-items: baseline"><span class="tu-label tu-label--xs tu-label--strong">Slicing</span><span class="tu-mono tu-dim" style="font-size: 10px">1</span></span>
+<span class="tu-mono tu-dim" style="font-size: 9px; line-height: 12px">Loom</span>
+</div>
+
+<div style="padding: 7px 8px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; gap: 6px; align-items: baseline"><span class="tu-label tu-label--xs tu-label--strong">Queued</span><span class="tu-mono tu-dim" style="font-size: 10px">2</span></span>
+<span class="tu-mono tu-dim" style="font-size: 9px; line-height: 12px">Loom</span>
+</div>
+
+<div style="padding: 7px 8px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; gap: 6px; align-items: baseline"><span class="tu-label tu-label--xs tu-label--strong">Refining</span><span class="tu-mono tu-dim" style="font-size: 10px">3</span></span>
+<span class="tu-mono tu-dim" style="font-size: 9px; line-height: 12px">Loom</span>
+</div>
+
+<div style="padding: 7px 8px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; gap: 6px; align-items: baseline"><span class="tu-label tu-label--xs tu-label--strong">Implementing</span><span class="tu-mono tu-dim" style="font-size: 10px">2</span></span>
+<span class="tu-mono tu-dim" style="font-size: 9px; line-height: 12px">Loom</span>
+</div>
+
+<div style="padding: 7px 8px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; gap: 6px; align-items: baseline"><span class="tu-label tu-label--xs tu-label--strong">In review</span><span class="tu-mono tu-dim" style="font-size: 10px">2</span></span>
+<span class="tu-mono tu-dim" style="font-size: 9px; line-height: 12px">Loom</span>
+</div>
+
+<div style="padding: 7px 8px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; gap: 6px; align-items: baseline"><span class="tu-label tu-label--xs tu-label--strong">Merged</span><span class="tu-mono tu-dim" style="font-size: 10px">3</span></span>
+<span class="tu-mono tu-dim" style="font-size: 9px; line-height: 12px">Loom</span>
+</div>
+
+<div style="border-left: 1px solid var(--border)"></div>
+</div>
+
+
+<div style="display: grid; grid-template-columns: 112px repeat(8, minmax(132px, 1fr)) 40px; border-bottom: 1px solid var(--border); min-height: 120px">
+<div style="padding: 10px; display: flex; flex-direction: column; gap: 6px; background: var(--panel)">
+<span class="tu-label tu-label--strong">Loom</span>
+<span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-info"></span>running 2</span>
+<span class="tu-mono tu-dim" style="font-size: 9px; line-height: 12px">7 stories</span>
+</div>
+
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Deciding</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Context service</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Briefing and retrieval for the decider</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">5 ACs</span>
+
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Story loop</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Story loop end to end</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">One story from Ready to Merged, unattended</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">5 ACs</span>
+
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Story loop</span>
+
+<span style="display: flex; gap: 4px; flex-wrap: wrap">
+<span class="tu-chip tu-chip--solid is-attention">Needs you</span>
+
+<span class="tu-statuspip" style="color: var(--sig-info)"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>refining · 1 agent</span>
+</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Workflow kit</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">BMad fork with the unattended overlay</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">6 ACs</span>
+<span style="margin-left: auto; display: inline-flex; gap: 4px; align-items: center"><span class="tu-ai">AI</span><span class="tu-mono tu-dim" style="font-size: 9.5px">3 rulings</span></span>
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Foundation</span>
+
+<span style="display: flex; gap: 4px; flex-wrap: wrap">
+
+
+<span class="tu-statuspip" style="color: var(--sig-info)"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>implementing · 3 agents</span>
+</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Run runtime</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Claude Code in a sealed rootless container</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">6 ACs</span>
+<span style="margin-left: auto; display: inline-flex; gap: 4px; align-items: center"><span class="tu-ai">AI</span><span class="tu-mono tu-dim" style="font-size: 9.5px">1 ruling</span></span>
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="Story-Review.dc.html" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Foundation</span>
+
+<span style="display: flex; gap: 4px; flex-wrap: wrap">
+
+
+<span class="tu-statuspip" style="color: var(--sig-info)"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>review round 2 · 1 agent</span>
+</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Store and state machines</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Epic and story states, every transition logged</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">4 ACs</span>
+<span style="margin-left: auto; display: inline-flex; gap: 4px; align-items: center"><span class="tu-ai">AI</span><span class="tu-mono tu-dim" style="font-size: 9.5px">4 rulings</span></span>
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Foundation</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Planning repo model</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Reads and checks the planning repo</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">4 ACs · met</span>
+
+</span>
+</a>
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Foundation</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Foundation and gate</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Workspace, local gate and lean CI</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">4 ACs · met</span>
+
+</span>
+</a>
+
+</div>
+
+<div style="border-left: 1px solid var(--border); background: var(--panel2); display: flex; justify-content: center">
+
+<button type="button" class="tu-label tu-label--xs" aria-label="Show paused and dropped stories" style="writing-mode: vertical-rl; background: none; border: 0; padding: 12px 0; cursor: default; color: var(--textDim)">Paused 1 · Dropped 2 ▸</button>
+
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: 112px repeat(8, minmax(132px, 1fr)) 40px; border-bottom: 1px solid var(--border); min-height: 120px">
+<div style="padding: 10px; display: flex; flex-direction: column; gap: 6px; background: var(--panel)">
+<span class="tu-label tu-label--strong">Editor</span>
+<span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-info"></span>running 1</span>
+<span class="tu-mono tu-dim" style="font-size: 9px; line-height: 12px">7 stories</span>
+</div>
+
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Map places</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Guardian arenas</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Arena places with entry and exit</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">3 ACs</span>
+
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Map kinds</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Band blending at floor edges</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Mix two band styles near the rim</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">4 ACs</span>
+
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Map kinds</span>
+
+<span style="display: flex; gap: 4px; flex-wrap: wrap">
+
+
+<span class="tu-statuspip" style="color: var(--sig-info)"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>slicing · 6m</span>
+</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Cavern and tree maps</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">New map kinds for bands 3 and 4</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">ACs after slicing</span>
+
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="Story.dc.html" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Map places</span>
+
+<span style="display: flex; gap: 4px; flex-wrap: wrap">
+<span class="tu-chip tu-chip--solid is-attention">Needs you</span>
+
+
+</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Map pins, cameras and frames</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Places and views stored on the map</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">5 ACs</span>
+<span style="margin-left: auto; display: inline-flex; gap: 4px; align-items: center"><span class="tu-ai">AI</span><span class="tu-mono tu-dim" style="font-size: 9.5px">4 rulings</span></span>
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Map places</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Chime and gate places</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Teleport points and floor gates on every map</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">4 ACs</span>
+
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Codex</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Reveal ledger view</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Truths, beliefs and clues by reveal target</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">3 ACs</span>
+
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Codex</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Prose editor links</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Link records while writing</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">6 ACs · met</span>
+
+</span>
+</a>
+
+</div>
+
+<div style="border-left: 1px solid var(--border); background: var(--panel2); display: flex; justify-content: center">
+
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: 112px repeat(8, minmax(132px, 1fr)) 40px; border-bottom: 1px solid var(--border); min-height: 120px">
+<div style="padding: 10px; display: flex; flex-direction: column; gap: 6px; background: var(--panel)">
+<span class="tu-label tu-label--strong">Engine</span>
+<span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-warn"></span>1 blocked</span>
+<span class="tu-mono tu-dim" style="font-size: 9px; line-height: 12px">3 stories</span>
+</div>
+
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Agentic layer</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Two-tier RAG index</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Lore and state retrieval for the local model</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">4 ACs</span>
+
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Agentic layer</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Behaviour tree validator</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Reject unsafe trees before they run</span>
+
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">5 ACs</span>
+
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+<a href="#" class="lm-card">
+<span class="lm-tag" title="Epic"><span aria-hidden="true">◇</span>Local LLM</span>
+
+<span style="display: flex; gap: 4px; flex-wrap: wrap">
+
+<span class="tu-chip is-reject">✕ Blocked</span>
+
+</span>
+
+<span style="font-weight: 600; font-size: 12px; line-height: 16px">Prompt-injection tests</span>
+<span class="tu-dim" style="font-size: 11px; line-height: 15px">Attack dialogue and behaviour trees</span>
+<span style="font-size: 10.5px; line-height: 14px; color: var(--sig-reject)">Waits for the model bundle to land on main.</span>
+<span style="display: flex; align-items: center; gap: 6px">
+<span class="tu-mono tu-dim" style="font-size: 9.5px">4 ACs</span>
+
+</span>
+</a>
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+</div>
+
+<div style="padding: 6px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border)">
+
+</div>
+
+<div style="border-left: 1px solid var(--border); background: var(--panel2); display: flex; justify-content: center">
+
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: 112px repeat(8, minmax(132px, 1fr)) 40px; border-bottom: 1px solid var(--border); min-height: 120px">
+<div style="padding: 10px; display: flex; flex-direction: column; gap: 6px; background: var(--panel)">
+<span class="tu-label tu-label--strong">Game</span>
+<span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-neutral"></span>idle</span>
+<span class="tu-mono tu-dim" style="font-size: 9px; line-height: 12px">design first</span>
+</div>
+
+<div style="grid-column: span 8; display: flex; align-items: center; gap: 10px; padding: 14px; border-left: 1px solid var(--border); background: var(--panel3)">
+<span class="tu-empty__mark" style="width: 28px; height: 28px; font-size: 14px">◇</span>
+<span class="tu-dim">Nothing to build yet. Game stories start once their designs are approved.</span>
+</div>
+
+
+<div style="border-left: 1px solid var(--border); background: var(--panel2); display: flex; justify-content: center">
+
+</div>
+</div>
+
+
+</div>
+</div>
+</section>
+</main>
+</div>
+
+<footer class="tu-statusbar">
+<span class="tu-statusbar__brand">LOOM</span>
+<span>decider · strict 0.85</span>
+<span style="display: inline-flex; gap: 6px; align-items: center">week budget <span class="tu-meter is-info" style="width: 60px"><span class="tu-meter__fill" style="width: 61%"></span></span> 61%</span>
+<span>rate limit ok</span>
+<span class="tu-spacer"></span>
+<span>planning repo synced 2 min ago</span>
+</footer>
+</div>
+</body>
+</html>
