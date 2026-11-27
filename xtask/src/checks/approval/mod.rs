@@ -6,8 +6,8 @@
 //! `.loom/protected.toml` and `gate/repo-settings.toml`, so a pull request cannot change
 //! the rules it is judged by. It reads the pull request's side only as git objects. The steps are:
 //!
-//! 1. [`protected::touched_in`]: the protected paths and tables the pull request changes. None: pass,
-//!    and nothing is read from or written to GitHub.
+//! 1. [`protected::touched_in`]: the protected paths and tables the pull request changes. None:
+//!    pass, and nothing is read from or written to GitHub.
 //!    Then the head of the pull request as GitHub has it: an event for an earlier commit fails and
 //!    changes nothing.
 //! 2. [`fingerprint::compute`]: the fingerprint of its changes.

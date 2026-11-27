@@ -478,8 +478,8 @@ fn approval_runs_the_approval_command() -> TestResult {
         ["checkout", "checkout", "xtask"],
         "the steps of job approval"
     );
-    // The two checkouts of `approval` (`docs/gate.md` §5): the base commit with its history, and, only while
-    // the base has no xtask, the head of the pull request.
+    // The two checkouts of `approval` (`docs/gate.md` §5): the base commit with its history, and,
+    // only while the base has no xtask, the head of the pull request.
     let steps = job.steps()?;
     let base = &steps[0]["with"];
     assert_eq!(

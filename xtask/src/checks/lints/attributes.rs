@@ -21,8 +21,8 @@
 //!   that names one of the lints that guard the others (`unexpected_cfgs`,
 //!   `clippy::allow_attributes`, `clippy::allow_attributes_without_reason`,
 //!   `clippy::ignore_without_reason`) or one of the groups that contain them
-//!   (`clippy::pedantic`, `clippy::restriction`) is a finding (`docs/gate.md` §2): `forbid` on a lint
-//!   stops rustc from honouring such an attribute, but clippy's guard lints are only `deny`.
+//!   (`clippy::pedantic`, `clippy::restriction`) is a finding (`docs/gate.md` §2): `forbid` on a
+//!   lint stops rustc from honouring such an attribute, but clippy's guard lints are only `deny`.
 //!
 //! A string or a comment is one token that is never an attribute. An attribute that a macro
 //! forwards through a metavariable is judged where the invocation writes it.
