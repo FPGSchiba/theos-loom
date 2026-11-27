@@ -11,3 +11,5 @@ its precedents the same way (umbrella §5.4).
 | 2026-11-27 | A Loom GitHub App is the only identity that posts the review, contract and approval checks; commits stay under Jann's identity. |
 | 2026-11-27 | The store is PostgreSQL on Jann's dedicated database VM; tests use a throwaway database. |
 | 2026-11-27 | The workflow kit is a BMad fork from v6.12.0 with superpowers replacing BMad's implementation phase. |
+| 2026-11-27 | CI on GitHub-hosted runners; theos-loom, theos-editor and Theos-Engine go public: [0001](0001-hosted-runners-and-public-repos.md). |
+| 2026-11-27 | MIT licence for theos-loom, theos-editor and Theos-Engine: [0002](0002-mit-licence.md). |
