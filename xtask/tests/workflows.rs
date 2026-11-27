@@ -557,7 +557,6 @@ fn gate_list_equals_ci_jobs_minus_pr_only() -> TestResult {
     Ok(())
 }
 
-// AC: TU-08.12
 #[test]
 fn platforms_runs_weekly_on_demand_and_by_label() -> TestResult {
     let platforms = workflow("platforms.yml")?;
