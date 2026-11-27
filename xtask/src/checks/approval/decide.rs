@@ -323,7 +323,7 @@ mod tests {
     // AC: TU-00.4
     #[test]
     fn approved_with_same_fingerprint_passes() {
-        for event in [Event::Other, labeled("macos")] {
+        for event in [Event::Other, labeled("documentation")] {
             let (verdict, actions) = decide(
                 &touched(),
                 &event,
@@ -481,8 +481,8 @@ mod tests {
             labeled("approved")
         );
         assert_eq!(
-            Event::from_pull_request(&pr("labeled", Some("macos"))),
-            labeled("macos")
+            Event::from_pull_request(&pr("labeled", Some("documentation"))),
+            labeled("documentation")
         );
         assert_eq!(Event::from_pull_request(&pr("labeled", None)), Event::Other);
         assert_eq!(
