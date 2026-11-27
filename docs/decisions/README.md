@@ -16,3 +16,5 @@ its precedents the same way (umbrella §5.4).
 | 2026-11-27 | A check is a required status check; TU-00.2 holds as written: [0003](0003-a-check-is-a-required-status-check.md). |
 | 2026-11-27 | The local gate runs on Windows and Linux; CI on Linux only: [0004](0004-local-gate-on-windows-and-linux.md). |
 | 2026-11-27 | The toolchain's default linker (`rust-lld`) instead of `mold` with `clang`: [0005](0005-default-linker.md). |
+| 2026-11-27 | Every config that can switch off `ui` is protected; `lints` refuses a nested ESLint config: [0006](0006-protect-every-web-tool-config.md). |
+| 2026-11-27 | No inline suppressions in `secrets` (`gitleaks:allow`) and `ui` (`eslint-disable`): [0007](0007-no-inline-suppressions-in-secrets-and-ui.md). |
