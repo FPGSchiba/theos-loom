@@ -42,9 +42,18 @@ const ON_MAIN: &str = "${{ github.ref == 'refs/heads/main' }}";
 /// The URL of the throwaway database of `test` and `coverage` (umbrella T4b).
 const DATABASE_URL: &str = "postgres://postgres@localhost:5432/loom_test";
 
-/// The minutes a job may run before GitHub cancels it. The default is six hours. Task 16
-/// measures the cold runs and sets one timeout per job.
-const TIMEOUT_MINUTES: i64 = 30;
+/// The minutes each job may run before GitHub cancels it, as (file, job id, minutes). The default
+/// is six hours. Each value is three times the job's cold run in P00's pull request (7547d98),
+/// rounded up to 5 minutes and at least 10; `settings` has not run yet and takes `gate`'s value.
+const TIMEOUT_MINUTES: [(&str, &str, i64); 7] = [
+    ("ci.yml", "gate", 10),
+    ("ci.yml", "test", 10),
+    ("ci.yml", "coverage", 15),
+    ("ci.yml", "ui", 10),
+    ("pr.yml", "pr", 10),
+    ("approval.yml", "approval", 10),
+    ("settings.yml", "settings", 10),
+];
 
 fn root() -> TestResult<PathBuf> {
     Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -606,12 +615,26 @@ fn no_key_lets_a_step_of_the_setup_action_fail_silently() -> TestResult {
 // AC: TU-00.2, TU-00.3
 #[test]
 fn every_job_has_a_timeout() -> TestResult {
-    for (file, job) in all_jobs()? {
+    let jobs = all_jobs()?;
+    if jobs.len() != TIMEOUT_MINUTES.len() {
+        return Err(format!(
+            "{} jobs exist but TIMEOUT_MINUTES lists {}; every job needs its own entry",
+            jobs.len(),
+            TIMEOUT_MINUTES.len()
+        )
+        .into());
+    }
+    for (file, job) in jobs {
+        let Some(&(_, _, minutes)) = TIMEOUT_MINUTES
+            .iter()
+            .find(|(listed, id, _)| *listed == file && *id == job.id)
+        else {
+            return Err(format!("{file}: job {} is not listed in TIMEOUT_MINUTES", job.id).into());
+        };
         assert_eq!(
             job.node["timeout-minutes"].as_i64(),
-            Some(TIMEOUT_MINUTES),
-            "{file}: job {} has no `timeout-minutes` of {TIMEOUT_MINUTES}, and a hung job runs \
-             for six hours",
+            Some(minutes),
+            "{file}: job {} has no `timeout-minutes` of {minutes}, and a hung job runs for six hours",
             job.name
         );
     }

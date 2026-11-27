@@ -28,7 +28,7 @@ jobs:
   gate:
     name: gate
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,7 +46,7 @@ jobs:
   test:
     name: test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     env:
       LOOM_TEST_DATABASE_URL: postgres://postgres@localhost:5432/loom_test
     # A throwaway PostgreSQL (umbrella T4b), reachable from this job only. `trust` means no
@@ -80,7 +80,7 @@ jobs:
   coverage:
     name: coverage
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     env:
       LOOM_TEST_DATABASE_URL: postgres://postgres@localhost:5432/loom_test
     # A throwaway PostgreSQL (umbrella T4b), reachable from this job only. `trust` means no
@@ -119,7 +119,7 @@ jobs:
   ui:
     name: ui
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
