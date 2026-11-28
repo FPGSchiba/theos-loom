@@ -1,0 +1,2 @@
+# Keep test images byte for byte.
+*.png binary

@@ -1,0 +1,11 @@
+[[epic]]
+id = 1
+slug = "epic-a"
+title = "Epic a"
+covers = ["R1"]
+
+[[epic]]
+id = 2
+slug = "epic-b"
+title = "Epic b"
+covers = ["R1"]

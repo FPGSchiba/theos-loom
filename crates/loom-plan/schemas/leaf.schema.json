@@ -1,0 +1,394 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LeafFront",
+  "description": "Front matter of a leaf file.",
+  "type": "object",
+  "properties": {
+    "after": {
+      "description": "Prerequisites.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/YamlAfterRef"
+      }
+    },
+    "assignee": {
+      "description": "A tracker's assignee.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "companions": {
+      "description": "Files read beside this ticket.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "covers": {
+      "description": "Epic ids it serves.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Scalar"
+      }
+    },
+    "estimate": {
+      "description": "Estimate, as the user gives it.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Scalar"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "hitl": {
+      "description": "True when a person does part of the work.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "id": {
+      "description": "The entry id of `tickets.toml`, or the folder's `next_id`.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TicketId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "key": {
+      "description": "(Loom) project-unique key.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Key"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "loom": {
+      "description": "(Loom) whether Loom may work on it.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LoomMark"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "needs": {
+      "description": "(Loom) cross-component prerequisites.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Key"
+      }
+    },
+    "origin": {
+      "description": "(Loom) set when slicing wrote the leaf.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Origin"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "parent": {
+      "description": "Folder name of the epic or initiative; none for a backlog leaf.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "refined": {
+      "description": "True once the criteria are approved.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "remote": {
+      "description": "Tracker url.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "risk": {
+      "description": "Risk.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Risk"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "severity": {
+      "description": "Bugs only.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Severity"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sources": {
+      "description": "Inputs the criteria were derived from.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "description": "Older files only; read when there is no plan.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlanStatus"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "description": "What works when done.",
+      "type": "string"
+    },
+    "tracker_id": {
+      "description": "Tracker id, written at publish.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tracker_status": {
+      "description": "Board state from a tracker sync.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TrackerStatus"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "description": "Story, spike or bug.",
+      "$ref": "#/$defs/LeafKind"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "title"
+  ],
+  "$defs": {
+    "Key": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[0-9]+$"
+    },
+    "LeafKind": {
+      "description": "The kind of a leaf: `type` of a leaf file or of a `tickets.toml` entry.",
+      "oneOf": [
+        {
+          "description": "A story.",
+          "type": "string",
+          "const": "story"
+        },
+        {
+          "description": "A spike.",
+          "type": "string",
+          "const": "spike"
+        },
+        {
+          "description": "A bug.",
+          "type": "string",
+          "const": "bug"
+        }
+      ]
+    },
+    "LoomMark": {
+      "description": "Whether Loom may work on an item (`loom` key).",
+      "oneOf": [
+        {
+          "description": "Loom may pick it up.",
+          "type": "string",
+          "const": "ready"
+        },
+        {
+          "description": "Loom leaves it alone.",
+          "type": "string",
+          "const": "paused"
+        }
+      ]
+    },
+    "Origin": {
+      "description": "Where a leaf came from (`origin` key).",
+      "oneOf": [
+        {
+          "description": "Written by Loom's slicing.",
+          "type": "string",
+          "const": "sliced"
+        }
+      ]
+    },
+    "PlanStatus": {
+      "description": "The PO's eight statuses of a leaf, as the plan file carries them.",
+      "oneOf": [
+        {
+          "description": "Being drafted.",
+          "type": "string",
+          "const": "draft"
+        },
+        {
+          "description": "Ready to build.",
+          "type": "string",
+          "const": "ready-for-dev"
+        },
+        {
+          "description": "Being built.",
+          "type": "string",
+          "const": "in-progress"
+        },
+        {
+          "description": "In review.",
+          "type": "string",
+          "const": "in-review"
+        },
+        {
+          "description": "Built, nobody called it done.",
+          "type": "string",
+          "const": "built"
+        },
+        {
+          "description": "Done.",
+          "type": "string",
+          "const": "done"
+        },
+        {
+          "description": "Halted with a reason.",
+          "type": "string",
+          "const": "blocked"
+        },
+        {
+          "description": "Given up.",
+          "type": "string",
+          "const": "dropped"
+        }
+      ]
+    },
+    "Risk": {
+      "description": "`risk`: a best guess for a container, a call for a leaf.",
+      "oneOf": [
+        {
+          "description": "Low risk.",
+          "type": "string",
+          "const": "low"
+        },
+        {
+          "description": "Medium risk.",
+          "type": "string",
+          "const": "medium"
+        },
+        {
+          "description": "High risk.",
+          "type": "string",
+          "const": "high"
+        }
+      ]
+    },
+    "Scalar": {
+      "type": [
+        "string",
+        "number"
+      ]
+    },
+    "Severity": {
+      "description": "`severity` of a bug.",
+      "oneOf": [
+        {
+          "description": "Outage, data loss, security exposure.",
+          "type": "string",
+          "const": "P0"
+        },
+        {
+          "description": "Core function broken, no workaround.",
+          "type": "string",
+          "const": "P1"
+        },
+        {
+          "description": "Impaired, a workaround exists.",
+          "type": "string",
+          "const": "P2"
+        },
+        {
+          "description": "Cosmetic.",
+          "type": "string",
+          "const": "P3"
+        }
+      ]
+    },
+    "TicketId": {
+      "type": [
+        "string",
+        "integer"
+      ],
+      "pattern": "^[0-9A-Za-z]+$"
+    },
+    "TrackerStatus": {
+      "description": "`tracker_status`: the board state a tracker sync writes.",
+      "oneOf": [
+        {
+          "description": "Not started.",
+          "type": "string",
+          "const": "backlog"
+        },
+        {
+          "description": "Being worked on.",
+          "type": "string",
+          "const": "in-progress"
+        },
+        {
+          "description": "Built, in review.",
+          "type": "string",
+          "const": "review"
+        },
+        {
+          "description": "Done.",
+          "type": "string",
+          "const": "done"
+        },
+        {
+          "description": "Dropped.",
+          "type": "string",
+          "const": "dropped"
+        }
+      ]
+    },
+    "YamlAfterRef": {
+      "type": [
+        "string",
+        "number"
+      ],
+      "minimum": 0,
+      "pattern": "^(?!epic-$)([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+|[^\\s.]+|[^\\s]+\\.md)$"
+    }
+  }
+}

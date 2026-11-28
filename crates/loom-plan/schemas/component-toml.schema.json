@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ComponentToml",
+  "description": "The contents of a `component.toml`.",
+  "type": "object",
+  "properties": {
+    "component": {
+      "description": "The component.",
+      "$ref": "#/$defs/ComponentSettings"
+    },
+    "format": {
+      "description": "Settings format; must be 1.",
+      "$ref": "#/$defs/Format"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "component"
+  ],
+  "$defs": {
+    "ComponentSettings": {
+      "description": "The `[component]` table.",
+      "type": "object",
+      "properties": {
+        "default_branch": {
+          "description": "Branch phases start from.",
+          "type": "string"
+        },
+        "forbidden_paths": {
+          "description": "Globs of paths agents may not change.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "id": {
+          "description": "Component id.",
+          "type": "string"
+        },
+        "kit_version": {
+          "description": "Version of the kit the component uses.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "Display name.",
+          "type": "string"
+        },
+        "plan_path": {
+          "description": "Where plans live, when not the default.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "repo": {
+          "description": "The component's repository.",
+          "type": "string"
+        },
+        "slicing": {
+          "description": "How epics are sliced.",
+          "$ref": "#/$defs/Slicing"
+        },
+        "spec_path": {
+          "description": "Where specs live, when not the default.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "repo",
+        "default_branch"
+      ]
+    },
+    "Format": {
+      "type": "integer",
+      "const": 1
+    },
+    "Slicing": {
+      "description": "How an epic is sliced into stories.",
+      "oneOf": [
+        {
+          "description": "Slice without asking.",
+          "type": "string",
+          "const": "auto"
+        },
+        {
+          "description": "A human reviews the slices.",
+          "type": "string",
+          "const": "review"
+        }
+      ]
+    }
+  }
+}

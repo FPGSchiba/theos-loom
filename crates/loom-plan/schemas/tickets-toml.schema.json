@@ -1,0 +1,438 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Breakdown",
+  "description": "A `tickets.toml`. One kind of table per file; [`Breakdown::kinds`] lets a check say so.",
+  "type": "object",
+  "properties": {
+    "entry": {
+      "description": "`[[entry]]` tables (in an epic's folder).",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/EntryRow"
+      }
+    },
+    "epic": {
+      "description": "`[[epic]]` tables (in an initiative's folder).",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/EpicRow"
+      }
+    },
+    "initiative": {
+      "description": "`[[initiative]]` tables (in a parent initiative's folder).",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/InitiativeRow"
+      }
+    },
+    "next_id": {
+      "description": "The folder's id counter.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "AfterRef": {
+      "type": [
+        "string",
+        "integer"
+      ],
+      "pattern": "^(?!epic-$)([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+|[^\\s.]+|[^\\s]+\\.md)$"
+    },
+    "EntryRow": {
+      "description": "One `[[entry]]` table: a planned story, spike or bug.",
+      "type": "object",
+      "properties": {
+        "after": {
+          "description": "Prerequisites.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/AfterRef"
+          }
+        },
+        "covers": {
+          "description": "Epic requirement ids.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Scalar"
+          }
+        },
+        "description": {
+          "description": "One sentence.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "done_checkpoint": {
+          "description": "Pause after it until a person says continue.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "estimate": {
+          "description": "Estimate, as the user gives it.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Scalar"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "hitl": {
+          "description": "True when a person does part of the work.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "id": {
+          "description": "Permanent id; the leaf file's `id`.",
+          "$ref": "#/$defs/TicketId"
+        },
+        "key": {
+          "description": "(Loom) project-unique key.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Key"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "loom": {
+          "description": "(Loom) whether Loom may work on it.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LoomMark"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "needs": {
+          "description": "(Loom) cross-component prerequisites.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Key"
+          }
+        },
+        "notes": {
+          "description": "The user's words, copied to Notes.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "plan_checkpoint": {
+          "description": "A person reviews the plan first.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "references": {
+          "description": "References beyond the epic's.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "refine": {
+          "description": "Refine to full criteria first.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "risk": {
+          "description": "Risk.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Risk"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "title": {
+          "description": "What works when done.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Story, spike or bug.",
+          "$ref": "#/$defs/LeafKind"
+        },
+        "unknown": {
+          "description": "A question that blocks the entry until removed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verify": {
+          "description": "How it will be checked.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "title"
+      ]
+    },
+    "EpicAfter": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AfterRef"
+        },
+        {
+          "$ref": "#/$defs/EpicNeeds"
+        }
+      ]
+    },
+    "EpicNeeds": {
+      "description": "`{ epic = 1, needs = \"the pricing contract\" }`.",
+      "type": "object",
+      "properties": {
+        "epic": {
+          "description": "The epic waited on: an `[[epic]]` id or slug (`tickets.py` looks the id up first).",
+          "$ref": "#/$defs/AfterRef"
+        },
+        "needs": {
+          "description": "What is needed from it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "epic"
+      ]
+    },
+    "EpicRow": {
+      "description": "One `[[epic]]` table.",
+      "type": "object",
+      "properties": {
+        "after": {
+          "description": "Epics it waits on.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EpicAfter"
+          }
+        },
+        "covers": {
+          "description": "Parent requirement ids.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Scalar"
+          }
+        },
+        "description": {
+          "description": "What is true when done.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "description": "Permanent id.",
+          "$ref": "#/$defs/TicketId"
+        },
+        "slug": {
+          "description": "The epic's folder name.",
+          "type": "string"
+        },
+        "title": {
+          "description": "The outcome.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "slug",
+        "title"
+      ]
+    },
+    "IdOrSlug": {
+      "type": [
+        "string",
+        "integer"
+      ],
+      "pattern": "^\\S+$"
+    },
+    "InitiativeAfter": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TicketId"
+        },
+        {
+          "$ref": "#/$defs/InitiativeNeeds"
+        }
+      ]
+    },
+    "InitiativeNeeds": {
+      "description": "`{ initiative = 1, needs = \"the order-paid event\" }`.",
+      "type": "object",
+      "properties": {
+        "initiative": {
+          "description": "The initiative waited on: an `[[initiative]]` id or slug (`tickets.py` looks the id up\nfirst).",
+          "$ref": "#/$defs/IdOrSlug"
+        },
+        "needs": {
+          "description": "What is needed from it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "initiative"
+      ]
+    },
+    "InitiativeRow": {
+      "description": "One `[[initiative]]` table: a child initiative of a parent.",
+      "type": "object",
+      "properties": {
+        "after": {
+          "description": "Initiatives it waits on.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InitiativeAfter"
+          }
+        },
+        "covers": {
+          "description": "Parent requirement ids.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Scalar"
+          }
+        },
+        "description": {
+          "description": "What is true when done.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "description": "Permanent id.",
+          "$ref": "#/$defs/TicketId"
+        },
+        "slug": {
+          "description": "The child's folder name.",
+          "type": "string"
+        },
+        "title": {
+          "description": "The outcome.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "slug",
+        "title"
+      ]
+    },
+    "Key": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[0-9]+$"
+    },
+    "LeafKind": {
+      "description": "The kind of a leaf: `type` of a leaf file or of a `tickets.toml` entry.",
+      "oneOf": [
+        {
+          "description": "A story.",
+          "type": "string",
+          "const": "story"
+        },
+        {
+          "description": "A spike.",
+          "type": "string",
+          "const": "spike"
+        },
+        {
+          "description": "A bug.",
+          "type": "string",
+          "const": "bug"
+        }
+      ]
+    },
+    "LoomMark": {
+      "description": "Whether Loom may work on an item (`loom` key).",
+      "oneOf": [
+        {
+          "description": "Loom may pick it up.",
+          "type": "string",
+          "const": "ready"
+        },
+        {
+          "description": "Loom leaves it alone.",
+          "type": "string",
+          "const": "paused"
+        }
+      ]
+    },
+    "Risk": {
+      "description": "`risk`: a best guess for a container, a call for a leaf.",
+      "oneOf": [
+        {
+          "description": "Low risk.",
+          "type": "string",
+          "const": "low"
+        },
+        {
+          "description": "Medium risk.",
+          "type": "string",
+          "const": "medium"
+        },
+        {
+          "description": "High risk.",
+          "type": "string",
+          "const": "high"
+        }
+      ]
+    },
+    "Scalar": {
+      "type": [
+        "string",
+        "number"
+      ]
+    },
+    "TicketId": {
+      "type": [
+        "string",
+        "integer"
+      ],
+      "pattern": "^[0-9A-Za-z]+$"
+    }
+  }
+}

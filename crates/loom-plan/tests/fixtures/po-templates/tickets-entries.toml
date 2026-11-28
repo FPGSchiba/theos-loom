@@ -1,0 +1,33 @@
+next_id = 3
+
+[[entry]]
+id = 1
+type = "story"
+title = "Cart service scaffold"
+description = "Stands up the cart service with one add-item path through UI, API, and store."
+verify = "A shopper adds one item on the deployed site and sees it in the cart."
+covers = ["R1"]
+after = []
+hitl = true
+risk = "low"
+estimate = 2
+references = ["architecture-checkout/architecture-checkout.md#ad-8"]
+notes = ["start with one product"]
+refine = true
+plan_checkpoint = true
+done_checkpoint = false
+key = "SHOP-2"
+loom = "ready"
+needs = ["PAY-4"]
+
+[[entry]]
+id = "2"
+type = "bug"
+title = "Apply and refuse discount codes"
+description = "Adds code validation to the pricing call and shows the refusal reason."
+verify = "A valid code lowers the total; an expired one is refused with its reason."
+covers = ["R2", "R3"]
+after = [1, "1.3", "epic-pricing-rules"]
+hitl = false
+risk = "medium"
+unknown = "Which codes are valid?"

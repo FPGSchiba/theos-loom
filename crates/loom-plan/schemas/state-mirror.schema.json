@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StateMirror",
+  "description": "The state of one epic and its stories, as P02 writes it.",
+  "type": "object",
+  "properties": {
+    "epic": {
+      "description": "The epic's state; absent in `backlog.toml`.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EpicState"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "format": {
+      "description": "Settings format; must be 1.",
+      "$ref": "#/$defs/Format"
+    },
+    "stories": {
+      "description": "Story key to story state.",
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "patternProperties": {
+        "^[A-Z][A-Z0-9]*-[0-9]+$": {
+          "$ref": "#/$defs/StoryState"
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "format"
+  ],
+  "$defs": {
+    "EpicState": {
+      "description": "Lifecycle state of an epic.",
+      "oneOf": [
+        {
+          "description": "Accepted, not yet sliced into stories.",
+          "type": "string",
+          "const": "intake"
+        },
+        {
+          "description": "Being sliced into stories.",
+          "type": "string",
+          "const": "slicing"
+        },
+        {
+          "description": "Its stories are being worked.",
+          "type": "string",
+          "const": "active"
+        },
+        {
+          "description": "Waiting on something outside the epic.",
+          "type": "string",
+          "const": "blocked"
+        },
+        {
+          "description": "All stories merged.",
+          "type": "string",
+          "const": "done"
+        }
+      ]
+    },
+    "Format": {
+      "type": "integer",
+      "const": 1
+    },
+    "StoryState": {
+      "description": "Lifecycle state of a story.",
+      "oneOf": [
+        {
+          "description": "Waiting for its turn.",
+          "type": "string",
+          "const": "queued"
+        },
+        {
+          "description": "Being refined into a spec.",
+          "type": "string",
+          "const": "refining"
+        },
+        {
+          "description": "Spec approved, ready to implement.",
+          "type": "string",
+          "const": "refined"
+        },
+        {
+          "description": "Being implemented.",
+          "type": "string",
+          "const": "implementing"
+        },
+        {
+          "description": "Implementation done, under review.",
+          "type": "string",
+          "const": "in-review"
+        },
+        {
+          "description": "Waiting on something outside the story.",
+          "type": "string",
+          "const": "blocked"
+        },
+        {
+          "description": "Merged into the base branch.",
+          "type": "string",
+          "const": "merged"
+        }
+      ]
+    }
+  }
+}

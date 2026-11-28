@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DocFront",
+  "description": "The front matter of `vision.md` and of directive files.",
+  "type": "object",
+  "properties": {
+    "status": {
+      "description": "`draft` while the document is not binding yet.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DocStatus"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "DocStatus": {
+      "description": "The status a vision or directive file may carry.",
+      "oneOf": [
+        {
+          "description": "Not binding yet.",
+          "type": "string",
+          "const": "draft"
+        }
+      ]
+    }
+  }
+}

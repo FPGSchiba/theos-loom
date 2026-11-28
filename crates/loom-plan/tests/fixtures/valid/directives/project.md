@@ -1,0 +1,10 @@
+# Project directives
+
+## Engineering
+
+1. **Small modules.** Every module has one job.
+2. **Tests first.** A change starts with a failing test.
+
+## Design
+
+1. **Plain language.** Labels say what a button does.

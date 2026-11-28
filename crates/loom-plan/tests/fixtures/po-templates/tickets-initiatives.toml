@@ -1,0 +1,14 @@
+[[initiative]]
+id = 1
+slug = "initiative-storefront"
+title = "Shoppers buy online"
+description = "A shopper finds, prices and pays for an order on the live site."
+covers = ["R1", "R2"]
+
+[[initiative]]
+id = 2
+slug = "initiative-fulfillment"
+title = "Orders ship themselves"
+description = "A paid order is picked, packed and tracked without manual steps."
+covers = ["R3"]
+after = [{ initiative = 1, needs = "the order-paid event" }, 1]
