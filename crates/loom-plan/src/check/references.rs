@@ -122,17 +122,20 @@ fn epic(cx: &Context<'_>, at: &EpicAt<'_>, out: &mut Vec<Finding>) {
         }
         let on = &prerequisite.on;
         if let Some(AfterTarget::Story(_)) = resolve_after(on, None, Some(initiative)) {
-            out.push(broken(
-                &path,
-                format!(
-                    "the [[epic]] table of {} has `after` naming `{on}`, which is a story; a                      table's `after` waits on epics only, so name an epic id or slug (a story                      goes in the epic file's `after`)",
-                    epic.slug
-                ),
-            ));
+            out.push(broken(&path, table_after_story_message(&epic.slug, on)));
         } else {
             out.extend(after(&path, on, None, Some(initiative)));
         }
     }
+}
+
+/// The message for an `[[epic]]` table whose `after` names a story.
+fn table_after_story_message(epic: &str, on: &impl std::fmt::Display) -> String {
+    format!(
+        "the [[epic]] table of {epic} has `after` naming `{on}`, which is a story; a table's\
+                     `after` waits on epics only, so name an epic id or slug (a story goes in the epic\
+                     file's `after`)"
+    )
 }
 
 /// A story's `parent`, and the `after`, `covers` and `needs` of its file and its entry.
@@ -378,5 +381,17 @@ fn state(cx: &Context<'_>, mirror: &StateMirrorFile, out: &mut Vec<Finding>) {
                 ),
             ));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::table_after_story_message;
+
+    #[test]
+    fn table_after_story_message_has_no_double_space() {
+        let message = table_after_story_message("cart", &"cart-1");
+        assert!(message.contains("`cart-1`"), "{message}");
+        assert!(!message.contains("  "), "{message}");
     }
 }

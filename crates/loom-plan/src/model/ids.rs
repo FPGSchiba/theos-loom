@@ -115,10 +115,11 @@ impl<'de> Deserialize<'de> for TicketIdOrString {
                     .map_err(|_| E::custom(format!("`{v}` is too large for an id")))
             }
 
-            fn visit_f64<E: serde::de::Error>(self, v: f64) -> Result<Self::Value, E> {
-                Err(E::custom(format!(
-                    "`{v}` is read as a decimal number, which would change a reference like 1.10;                      write it in quotes, like \"{v}\""
-                )))
+            fn visit_f64<E: serde::de::Error>(self, _v: f64) -> Result<Self::Value, E> {
+                Err(E::custom(
+                    "a bare decimal number is read as a float, which would change a reference\
+                     like 1.10; write the reference in quotes, like \"1.10\"",
+                ))
             }
 
             fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
@@ -423,6 +424,19 @@ mod tests {
     use super::*;
 
     type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+    #[test]
+    fn float_id_message_is_plain_and_does_not_echo_the_float() {
+        use serde::de::IntoDeserializer;
+        let de: serde::de::value::F64Deserializer<serde::de::value::Error> =
+            1.10_f64.into_deserializer();
+        let message = TicketIdOrString::deserialize(de)
+            .err()
+            .map(|e| e.to_string())
+            .unwrap_or_default();
+        assert!(message.contains("like \"1.10\""), "{message}");
+        assert!(!message.contains("  "), "{message}");
+    }
 
     #[derive(serde::Deserialize)]
     struct Doc {

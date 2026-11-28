@@ -82,16 +82,21 @@ impl DependencyGraph {
             );
         }
         for at in &index.epics {
-            let me = builder.node_of(at.epic);
+            let Some(me) = builder.node_of(at.epic) else {
+                continue;
+            };
             builder.after_epic(me, at.epic, at.initiative);
             builder.needs(me, at.epic.needs());
             for story in &at.epic.stories {
-                let to = builder.node_of(story);
-                builder.edge(me, to);
+                if let Some(to) = builder.node_of(story) {
+                    builder.edge(me, to);
+                }
             }
         }
         for at in &index.stories {
-            let me = builder.node_of(at.story);
+            let Some(me) = builder.node_of(at.story) else {
+                continue;
+            };
             for on in at.story.after() {
                 let target = resolve_after(on, Some(at.mates()), at.initiative());
                 builder.edge_to(me, target);
@@ -183,6 +188,7 @@ struct Builder {
 }
 
 impl Builder {
+    /// Registers an item under its address; see `node_of` for the address-identity invariant.
     fn add<T>(&mut self, item: &T, key: Option<&Key>, kind: ItemKind, path: String) {
         let n = self.nodes.len();
         let id = key.map_or_else(|| NodeId(path.clone()), |k| NodeId(k.to_string()));
@@ -194,12 +200,22 @@ impl Builder {
         }
     }
 
-    /// The node of an item the index listed.
-    fn node_of<T>(&self, item: &T) -> usize {
-        self.by_address
+    /// The node of an item the index listed, or `None` when the address is unknown (the edge is
+    /// then skipped). Items are matched by address: `add` and `node_of` must see the same stored
+    /// item (`T` is the stored item type, `Epic` or `Story`), and addresses stay valid because
+    /// the repo is borrowed for the whole build.
+    fn node_of<T>(&self, item: &T) -> Option<usize> {
+        let node = self
+            .by_address
             .get(&(std::ptr::from_ref(item) as usize))
-            .copied()
-            .unwrap_or_default()
+            .copied();
+        if node.is_none() {
+            tracing::warn!(
+                item = std::any::type_name::<T>(),
+                "item has no graph node; edge skipped"
+            );
+        }
+        node
     }
 
     fn edge(&mut self, from: usize, to: usize) {
@@ -212,7 +228,9 @@ impl Builder {
             Some(AfterTarget::Story(story)) => self.node_of(story),
             None => return,
         };
-        self.edge(from, to);
+        if let Some(to) = to {
+            self.edge(from, to);
+        }
     }
 
     /// An edge from `from` to each prerequisite of `epic`.
