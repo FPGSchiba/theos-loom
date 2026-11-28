@@ -11,3 +11,10 @@ its precedents the same way (umbrella §5.4).
 | 2026-11-27 | A Loom GitHub App is the only identity that posts the review, contract and approval checks; commits stay under Jann's identity. |
 | 2026-11-27 | The store is PostgreSQL on Jann's dedicated database VM; tests use a throwaway database. |
 | 2026-11-27 | The workflow kit is a BMad fork from v6.12.0 with superpowers replacing BMad's implementation phase. |
+| 2026-11-27 | CI on GitHub-hosted runners; theos-loom, theos-editor and Theos-Engine go public: [0001](0001-hosted-runners-and-public-repos.md). |
+| 2026-11-27 | MIT licence for theos-loom, theos-editor and Theos-Engine: [0002](0002-mit-licence.md). |
+| 2026-11-27 | A check is a required status check; TU-00.2 holds as written: [0003](0003-a-check-is-a-required-status-check.md). |
+| 2026-11-27 | The local gate runs on Windows and Linux; CI on Linux only: [0004](0004-local-gate-on-windows-and-linux.md). |
+| 2026-11-27 | The toolchain's default linker (`rust-lld`) instead of `mold` with `clang`: [0005](0005-default-linker.md). |
+| 2026-11-27 | Every config that can switch off `ui` is protected; `lints` refuses a nested ESLint config: [0006](0006-protect-every-web-tool-config.md). |
+| 2026-11-27 | No inline suppressions in `secrets` (`gitleaks:allow`) and `ui` (`eslint-disable`): [0007](0007-no-inline-suppressions-in-secrets-and-ui.md). |

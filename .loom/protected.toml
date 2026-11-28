@@ -1,0 +1,37 @@
+# The paths whose change waits for Jann (`docs/gate.md` §5). `cargo xtask approval` reads this
+# file (`.loom/protected.toml`) from the checkout it runs in: the base commit of the pull request
+# (`docs/gate.md` §5), so a pull request cannot loosen its own gate. Changing it is a protected change.
+
+# Globs against repo-relative paths with `/`. `*` stays inside a folder, `**` crosses folders. A
+# path counts as protected whatever its case: `DOCS/x.md` is the folder `docs` on Windows.
+protected = [
+    "CLAUDE.md",
+    ".claude/**",
+    "CONTRIBUTING.md",
+    "docs/**",
+    ".github/**",
+    "gate/**",
+    "xtask/**",
+    ".loom/**",
+    "deny.toml",
+    "rust-toolchain.toml",
+    ".cargo/**",
+    "web/eslint.config.*",
+    "web/**/eslint.config.*",
+    "web/tsconfig*.json",
+    "web/vite.config.*",
+    "web/vitest.config.*",
+    "web/vitest.workspace.*",
+    ".gitleaksignore",
+    ".gitleaks.toml",
+]
+
+# Paths that are not protected after all. These match exactly as written, including case, so a
+# path that only differs in case from an exception stays protected.
+except = ["docs/plans/**", "docs/trial/**"]
+
+# A table inside a file that is protected on its own: the pull request counts as touching it
+# when the parsed table differs between the merge base and the head.
+[[tables]]
+file = "Cargo.toml"
+table = "workspace.lints"
