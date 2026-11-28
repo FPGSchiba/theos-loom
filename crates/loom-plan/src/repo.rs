@@ -173,7 +173,7 @@ impl Epic {
                 needs: None,
             },
             EpicAfter::Needs(table) => EpicPrerequisite {
-                on: AfterRef::Sibling(table.epic.clone()),
+                on: table.epic.clone(),
                 needs: table.needs.clone(),
             },
         });

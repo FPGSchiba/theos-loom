@@ -6,8 +6,8 @@ use std::collections::BTreeSet;
 use super::Context;
 use crate::finding::{Finding, Rule};
 use crate::index::{
-    EpicAt, InitiativeAt, ItemKind, StoryAt, StoryHome, epic_by_id, epic_by_slug,
-    epic_requirements, initiative_requirements, resolve_after, story_by_id,
+    EpicAt, InitiativeAt, ItemKind, StoryAt, StoryHome, epic_by_id, epic_requirements,
+    initiative_requirements, resolve_after,
 };
 use crate::model::{AfterRef, EpicAfter, InitiativeAfter, Key, Scalar};
 use crate::repo::{Initiative, PlanFile, StateMirrorFile, Story};
@@ -74,16 +74,20 @@ fn initiative(cx: &Context<'_>, at: &InitiativeAt<'_>, out: &mut Vec<Finding>) {
     for row in &breakdown.initiative {
         out.extend(covers(&path, &row.covers, me));
         for after in &row.after {
-            let id = match after {
-                InitiativeAfter::Ref(id) => id,
-                InitiativeAfter::Needs(table) => &table.initiative,
+            let named = match after {
+                InitiativeAfter::Ref(id) => id.as_str(),
+                InitiativeAfter::Needs(table) => table.initiative.as_str(),
             };
-            if !breakdown.initiative.iter().any(|r| &r.id == id) {
+            let known = breakdown
+                .initiative
+                .iter()
+                .any(|r| r.id.as_str() == named || r.slug == named);
+            if !known {
                 out.push(broken(
                     &path,
                     format!(
-                        "`after` of initiative {} names the initiative id `{id}`, which no \
-                         [[initiative]] table here has; use one of their ids",
+                        "`after` of initiative {} names the initiative `{named}`, which is no \
+                         id or slug of an [[initiative]] table here; use one of them",
                         row.slug
                     ),
                 ));
@@ -115,10 +119,10 @@ fn epic(cx: &Context<'_>, at: &EpicAt<'_>, out: &mut Vec<Finding>) {
         let path = breakdown_path(&initiative.path);
         for entry in &row.after {
             let on = match entry {
-                EpicAfter::Ref(on) => on.clone(),
-                EpicAfter::Needs(table) => AfterRef::Sibling(table.epic.clone()),
+                EpicAfter::Ref(on) => on,
+                EpicAfter::Needs(table) => &table.epic,
             };
-            out.extend(after(&path, &on, None, Some(initiative)));
+            out.extend(after(&path, on, None, Some(initiative)));
         }
     }
 }
@@ -251,38 +255,37 @@ fn after(
     if resolve_after(on, mates, initiative).is_some() {
         return None;
     }
-    let problem = match on {
-        AfterRef::Sibling(id) => match mates {
-            Some(mates) => story_by_id(mates, id)
-                .is_none()
-                .then(|| format!("the story `{id}`, which no story of this folder has as id")),
-            None => match initiative {
-                Some(i) if epic_by_id(i, id).is_some() => None,
-                _ => Some(format!(
-                    "the epic id `{id}`, which no [[epic]] table of this initiative has"
-                )),
+    let scope = initiative.map_or("the backlog", |i| i.slug.as_str());
+    let problem = match (on, mates) {
+        (AfterRef::Sibling(id), Some(_)) => format!(
+            "the story `{id}`, which is no id, tracker_id or file name of a story in this folder \
+             and no tracker_id in {scope}"
+        ),
+        (AfterRef::Sibling(id), None) => {
+            format!("the epic `{id}`, which is no [[epic]] id or slug and no tracker_id in {scope}")
+        }
+        (AfterRef::Cross { epic, .. }, _) => match initiative {
+            None => format!("the story `{on}`, but a backlog story can only wait on a sibling"),
+            Some(i) => match epic_by_id(i, epic) {
+                None => format!(
+                    "the story `{on}`, but {} lists no epic with id `{epic}`",
+                    i.slug
+                ),
+                Some(e) => format!("the story `{on}`, but {} has no story with that id", e.slug),
             },
         },
-        AfterRef::Cross { epic, entry } => match initiative.map(|i| (i, epic_by_id(i, epic))) {
-            None => Some(format!(
-                "the story `{on}`, but a backlog story can only wait on a sibling id"
-            )),
-            Some((i, None)) => Some(format!(
-                "the story `{on}`, but {} lists no epic with id `{epic}`",
-                i.slug
-            )),
-            Some((_, Some(e))) => story_by_id(&e.stories, entry)
-                .is_none()
-                .then(|| format!("the story `{on}`, but {} has no story `{entry}`", e.slug)),
+        (AfterRef::Epic(slug), _) => match initiative {
+            Some(i) => format!("the epic `{slug}`, which is no epic of {}", i.slug),
+            None => format!("the epic `{slug}`, but a backlog story can only wait on a sibling"),
         },
-        AfterRef::Epic(slug) => match initiative {
-            Some(i) if epic_by_slug(i, slug).is_some() => None,
-            Some(i) => Some(format!("the epic `{slug}`, which is no epic of {}", i.slug)),
-            None => Some(format!(
-                "the epic `{slug}`, but a backlog story can only wait on a sibling id"
-            )),
-        },
-    }?;
+        (AfterRef::Name(name), Some(_)) => format!(
+            "`{name}`, which is no tracker_id of an epic or story in {scope} and no file name \
+             (with or without .md) of a story in this folder"
+        ),
+        (AfterRef::Name(name), None) => format!(
+            "`{name}`, which is no epic slug and no tracker_id of an epic or story in {scope}"
+        ),
+    };
     Some(broken(
         path,
         format!("`after` names {problem}; change or remove it"),

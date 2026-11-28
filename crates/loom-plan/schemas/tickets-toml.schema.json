@@ -42,7 +42,7 @@
         "string",
         "integer"
       ],
-      "pattern": "^([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+)$"
+      "pattern": "^(?!epic-$)([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+|[^\\s.]+|[^\\s]+\\.md)$"
     },
     "EntryRow": {
       "description": "One `[[entry]]` table: a planned story, spike or bug.",
@@ -216,8 +216,8 @@
       "type": "object",
       "properties": {
         "epic": {
-          "description": "The epic waited on.",
-          "$ref": "#/$defs/TicketId"
+          "description": "The epic waited on: an `[[epic]]` id or slug (`tickets.py` looks the id up first).",
+          "$ref": "#/$defs/AfterRef"
         },
         "needs": {
           "description": "What is needed from it.",
@@ -278,6 +278,13 @@
         "title"
       ]
     },
+    "IdOrSlug": {
+      "type": [
+        "string",
+        "integer"
+      ],
+      "pattern": "^\\S+$"
+    },
     "InitiativeAfter": {
       "anyOf": [
         {
@@ -293,8 +300,8 @@
       "type": "object",
       "properties": {
         "initiative": {
-          "description": "The initiative waited on.",
-          "$ref": "#/$defs/TicketId"
+          "description": "The initiative waited on: an `[[initiative]]` id or slug (`tickets.py` looks the id up\nfirst).",
+          "$ref": "#/$defs/IdOrSlug"
         },
         "needs": {
           "description": "What is needed from it.",

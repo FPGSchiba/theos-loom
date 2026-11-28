@@ -209,6 +209,8 @@ impl Parts {
                         let parts = self.initiative(&component, &initiative).epics.entry(epic);
                         parts.or_default().breakdown = breakdown;
                     }
+                    // Never reached: `classify` sends `backlog/tickets.toml` to `Misplaced`, a
+                    // `layout` finding (backlog leaves have no entries, R-n).
                     Container::Backlog => {}
                 }
             }

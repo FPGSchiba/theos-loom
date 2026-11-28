@@ -646,3 +646,17 @@ needs: [API-2, API-1]
     assert!(finding.message.contains("`needs`"), "{}", finding.message);
     Ok(())
 }
+
+// AC: TU-01.2
+#[test]
+fn a_breakdown_in_backlog_is_a_layout_finding() -> TestResult {
+    // `backlog/` has no `tickets/` folder and its leaves have no entries (ticket-tree-rules).
+    let repo = read(&fixture("invalid/layout-backlog-breakdown"))?;
+    let finding = only_finding(&repo)?;
+    assert_eq!(
+        (finding.rule, finding.severity),
+        (Rule::Layout, Severity::Error)
+    );
+    assert_eq!(finding.path, "components/app/backlog/tickets.toml");
+    Ok(())
+}

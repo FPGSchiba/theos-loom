@@ -388,7 +388,7 @@
         "number"
       ],
       "minimum": 0,
-      "pattern": "^([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+)$"
+      "pattern": "^(?!epic-$)([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+|[^\\s.]+|[^\\s]+\\.md)$"
     }
   }
 }

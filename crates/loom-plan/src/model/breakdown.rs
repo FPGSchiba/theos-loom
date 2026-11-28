@@ -9,7 +9,7 @@ use serde::de::value::MapAccessDeserializer;
 use serde::de::{IntoDeserializer, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 
-use super::ids::{AfterRef, Key, LoomMark, TicketId, TicketIdOrString};
+use super::ids::{AfterRef, IdOrSlug, Key, LoomMark, TicketId, TicketIdOrString};
 use super::leaf::LeafKind;
 use super::ticket_common::{Risk, Scalar};
 use crate::finding::Finding;
@@ -45,8 +45,8 @@ pub enum EpicAfter {
 #[derive(Debug, Clone, PartialEq, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct EpicNeeds {
-    /// The epic waited on.
-    pub epic: TicketId,
+    /// The epic waited on: an `[[epic]]` id or slug (`tickets.py` looks the id up first).
+    pub epic: AfterRef,
     /// What is needed from it.
     pub needs: Option<String>,
 }
@@ -64,8 +64,9 @@ pub enum InitiativeAfter {
 #[derive(Debug, Clone, PartialEq, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct InitiativeNeeds {
-    /// The initiative waited on.
-    pub initiative: TicketId,
+    /// The initiative waited on: an `[[initiative]]` id or slug (`tickets.py` looks the id up
+    /// first).
+    pub initiative: IdOrSlug,
     /// What is needed from it.
     pub needs: Option<String>,
 }

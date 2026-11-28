@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use loom_plan::graph::{DependencyGraph, NodeId};
 use loom_plan::{Finding, Rule, Severity, check, read};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -297,10 +298,10 @@ fn every_reference_form_is_checked() -> TestResult {
     )?;
     let findings = check(&read(&root)?);
     let expected = [
-        (format!("{checkout}/tickets/tickets.toml"), "epic id `9`"),
+        (format!("{checkout}/tickets/tickets.toml"), "the epic `9`"),
         (
             "components/app/initiative-shop/tickets/tickets.toml".to_owned(),
-            "initiative id `5`",
+            "the initiative `5`",
         ),
         (
             format!("{checkout}/initiative-checkout.md"),
@@ -341,5 +342,115 @@ fn every_reference_form_is_checked() -> TestResult {
         );
     }
     assert_eq!(broken.len(), expected.len(), "{broken:#?}");
+    Ok(())
+}
+
+fn errors_of(root: &Path) -> Result<Vec<Finding>, Box<dyn std::error::Error>> {
+    Ok(check(&read(root)?)
+        .into_iter()
+        .filter(|f| f.severity == Severity::Error)
+        .collect())
+}
+
+/// A copy of `cases/<name>` in a temporary folder.
+fn case_copy(name: &str) -> Result<(tempfile::TempDir, PathBuf), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let root = dir.path().join("repo");
+    copy_dir(&fixture(&format!("cases/{name}")), &root)?;
+    Ok((dir, root))
+}
+
+// AC: TU-01.2
+#[test]
+fn after_names_a_sibling_file_a_tracker_id_and_an_epic_table_slug() -> TestResult {
+    let root = fixture("cases/after-names");
+    let errors = errors_of(&root)?;
+    assert!(errors.is_empty(), "{errors:#?}");
+    let graph = DependencyGraph::of(&read(&root)?);
+    let waits = |key: &str| graph.waits_for(&NodeId::new(key));
+    // `story-pay-by-card` and `story-pay-by-card.md`, both the file of APP-3.
+    assert_eq!(waits("APP-2"), [NodeId::new("APP-3")]);
+    // `SHOP-77`, the tracker_id of APP-3.
+    assert_eq!(waits("APP-4"), [NodeId::new("APP-3")]);
+    // `{ epic = "epic-cart", needs = .. }`: the table names the epic by slug.
+    assert_eq!(waits("APP-5"), [NodeId::new("APP-1")]);
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
+fn after_naming_nothing_is_reported() -> TestResult {
+    let (_dir, root) = case_copy("after-names")?;
+    edit(
+        &root,
+        &format!("{CART}/tickets/story-empty-cart.md"),
+        "after: [SHOP-77]",
+        "after: [SHOP-78]",
+    )?;
+    edit(
+        &root,
+        "components/app/initiative-checkout/tickets/tickets.toml",
+        "epic = \"epic-cart\"",
+        "epic = \"basket\"",
+    )?;
+    let errors = errors_of(&root)?;
+    assert_eq!(errors.len(), 2, "{errors:#?}");
+    let story = errors
+        .iter()
+        .find(|f| f.path == format!("{CART}/tickets/story-empty-cart.md"))
+        .ok_or("no finding on the story")?;
+    assert_finding(
+        story,
+        Rule::BrokenReference,
+        &story.path,
+        &["`SHOP-78`", "tracker_id", "file name"],
+    );
+    let table = errors
+        .iter()
+        .find(|f| f.path == "components/app/initiative-checkout/tickets/tickets.toml")
+        .ok_or("no finding on the table")?;
+    assert_finding(
+        table,
+        Rule::BrokenReference,
+        &table.path,
+        &["`basket`", "slug"],
+    );
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
+fn backlog_plan_joins_its_bug_by_file_stem() -> TestResult {
+    let root = fixture("cases/backlog-plan");
+    let repo = read(&root)?;
+    let bug = repo
+        .components
+        .first()
+        .and_then(|c| c.backlog.first())
+        .ok_or("no backlog bug")?;
+    let plan = bug.plan.as_ref().ok_or("the plan did not join")?;
+    assert_eq!(
+        plan.path,
+        "components/app/backlog/bug-total-rounding-plan.md"
+    );
+    assert!(repo.stray_plans.is_empty());
+    let errors = errors_of(&root)?;
+    assert!(errors.is_empty(), "{errors:#?}");
+
+    let (_dir, copy) = case_copy("backlog-plan")?;
+    edit(
+        &copy,
+        "components/app/backlog/bug-total-rounding-plan.md",
+        "ticket: bug-total-rounding",
+        "ticket: bug-nope",
+    )?;
+    let errors = errors_of(&copy)?;
+    assert_eq!(errors.len(), 1, "{errors:#?}");
+    assert_finding(
+        &errors[0],
+        Rule::BrokenReference,
+        "components/app/backlog/bug-total-rounding-plan.md",
+        &["`bug-nope`", "ticket"],
+    );
     Ok(())
 }

@@ -1,0 +1,4 @@
+[[entry]]
+id = 1
+type = "bug"
+title = "Cart total rounds the wrong way"

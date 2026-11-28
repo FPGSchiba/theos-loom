@@ -25,7 +25,9 @@ pub use directive::{Directive, DirectiveFile, DirectiveKind};
 pub use document::{DocFront, DocStatus, Document};
 pub use epic::{EpicFront, EpicType};
 pub use format::Format;
-pub use ids::{AfterRef, CriterionId, IdError, Key, LoomMark, TicketId, TicketIdOrString};
+pub use ids::{
+    AfterRef, CriterionId, IdError, IdOrSlug, Key, LoomMark, TicketId, TicketIdOrString,
+};
 pub use initiative::{InitiativeFront, InitiativeType};
 pub use leaf::{LeafFront, LeafKind};
 pub use loom_toml::{Budget, LoomToml, Notify, ProjectSettings};

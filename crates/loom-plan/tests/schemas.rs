@@ -188,6 +188,14 @@ fn id_patterns_agree_between_rust_and_schema() -> TestResult {
         "a b",
         "",
         "epic",
+        // Names (a tracker_id or a sibling's file name); a dot only in a trailing `.md`, so
+        // `x.y.z` stays an error.
+        "SHOP-77",
+        "story-pay-by-card",
+        "story-pay-by-card.md",
+        "story-v2.1.md",
+        "x.y.z",
+        ".md",
     ] {
         assert_eq!(
             s.parse::<AfterRef>().is_ok(),

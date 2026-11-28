@@ -208,6 +208,9 @@ pub enum AfterRef {
     },
     /// A whole epic by name, `"epic-cart"`.
     Epic(String),
+    /// Any other name: a `tracker_id`, or a sibling's file name with or without `.md`
+    /// (`"SHOP-77"`, `"story-pay-by-card"`). No whitespace; a dot only in a trailing `.md`.
+    Name(String),
 }
 
 impl TryFrom<TicketIdOrString> for AfterRef {
@@ -230,15 +233,24 @@ impl FromStr for AfterRef {
                 Ok(Self::Epic(text.to_owned()))
             };
         }
+        if text.is_empty() || text.chars().any(char::is_whitespace) {
+            return Err(bad());
+        }
         match text.split_once('.') {
-            None => TicketId::try_from(text.to_owned())
-                .map(Self::Sibling)
-                .map_err(|_| bad()),
-            Some((epic, entry)) => {
-                let epic = TicketId::try_from(epic.to_owned()).map_err(|_| bad())?;
-                let entry = TicketId::try_from(entry.to_owned()).map_err(|_| bad())?;
-                Ok(Self::Cross { epic, entry })
+            None if is_alnum(text) => Ok(Self::Sibling(TicketId(text.to_owned()))),
+            None => Ok(Self::Name(text.to_owned())),
+            Some((epic, entry)) if is_alnum(epic) && is_alnum(entry) => Ok(Self::Cross {
+                epic: TicketId(epic.to_owned()),
+                entry: TicketId(entry.to_owned()),
+            }),
+            Some(_)
+                if text
+                    .strip_suffix(".md")
+                    .is_some_and(|stem| !stem.is_empty()) =>
+            {
+                Ok(Self::Name(text.to_owned()))
             }
+            Some(_) => Err(bad()),
         }
     }
 }
@@ -277,7 +289,7 @@ impl fmt::Display for AfterRef {
         match self {
             Self::Sibling(id) => write!(f, "{id}"),
             Self::Cross { epic, entry } => write!(f, "{epic}.{entry}"),
-            Self::Epic(name) => f.write_str(name),
+            Self::Epic(name) | Self::Name(name) => f.write_str(name),
         }
     }
 }
@@ -289,7 +301,11 @@ impl Serialize for AfterRef {
 }
 
 /// The one pattern of a textual `after` reference, shared by every schema of it.
-const AFTER_PATTERN: &str = r"^([0-9A-Za-z]+(\.[0-9A-Za-z]+)?|epic-.+)$";
+///
+/// The forms in [`AfterRef::from_str`]'s order: an id or `<id>.<id>`, an epic slug, or a name
+/// without whitespace whose only dot is a trailing `.md`. The look-ahead refuses `epic-` alone.
+const AFTER_PATTERN: &str =
+    r"^(?!epic-$)([0-9A-Za-z]+(\.[0-9A-Za-z]+)?|epic-.+|[^\s.]+|[^\s]+\.md)$";
 
 impl JsonSchema for AfterRef {
     fn schema_name() -> Cow<'static, str> {
@@ -318,6 +334,49 @@ impl JsonSchema for YamlAfterRef {
 
     fn json_schema(_: &mut SchemaGenerator) -> Schema {
         json_schema!({ "type": ["string", "number"], "pattern": AFTER_PATTERN, "minimum": 0 })
+    }
+}
+
+/// What an `{ initiative = .. }` table of an `[[initiative]]` row waits on: a row's id or its
+/// slug (`tickets.py` looks the id up first, then takes the text as a slug).
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[serde(try_from = "TicketIdOrString")]
+pub struct IdOrSlug(String);
+
+impl IdOrSlug {
+    /// The text as written.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl TryFrom<TicketIdOrString> for IdOrSlug {
+    type Error = IdError;
+
+    fn try_from(v: TicketIdOrString) -> Result<Self, IdError> {
+        let text = v.to_string();
+        if text.is_empty() || text.chars().any(char::is_whitespace) {
+            Err(IdError::After(text))
+        } else {
+            Ok(Self(text))
+        }
+    }
+}
+
+impl fmt::Display for IdOrSlug {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl JsonSchema for IdOrSlug {
+    fn schema_name() -> Cow<'static, str> {
+        "IdOrSlug".into()
+    }
+
+    fn json_schema(_: &mut SchemaGenerator) -> Schema {
+        json_schema!({ "type": ["string", "integer"], "pattern": r"^\S+$" })
     }
 }
 
@@ -404,7 +463,21 @@ mod tests {
         assert!(matches!(cross.after, AfterRef::Cross { .. }));
         let epic: AfterDoc = toml::from_str("after = \"epic-cart\"")?;
         assert_eq!(epic.after, AfterRef::Epic("epic-cart".to_string()));
+        // Two dots is no form: not `<epic>.<entry>`, and a name's only dot is a trailing `.md`.
         assert!(toml::from_str::<AfterDoc>("after = \"x.y.z\"").is_err());
+        for name in [
+            "SHOP-77",
+            "story-pay-by-card",
+            "story-pay-by-card.md",
+            "story-v2.1.md",
+        ] {
+            let doc: AfterDoc = toml::from_str(&format!("after = \"{name}\""))?;
+            assert_eq!(doc.after, AfterRef::Name(name.to_owned()), "{name}");
+            assert_eq!(doc.after.to_string(), name);
+        }
+        for bad in ["a b", ".md", "1.", "epic-"] {
+            assert!(bad.parse::<AfterRef>().is_err(), "{bad:?}");
+        }
         assert_eq!(cross.after.to_string(), "2.3");
         Ok(())
     }

@@ -212,25 +212,86 @@ pub enum AfterTarget<'a> {
     Story(&'a Story),
 }
 
-/// Resolves one `after` prerequisite, the one place the PO's forms are read. `mates` are the
-/// stories of the same folder for a story (a bare id is a sibling story) and `None` for an epic
-/// (a bare id is an epic id of its initiative); `initiative` is the one whose epics it may name,
-/// `None` for a backlog story. `None` when it names nothing.
+/// Resolves one `after` prerequisite, the one place the PO's forms are read (`tickets.py`
+/// `_resolve`). `mates` are the stories of the same folder for a story (a bare id is a sibling
+/// story) and `None` for an epic (a bare id is an epic id of its initiative); `initiative` is
+/// the one whose epics it may name, `None` for a backlog story. An id or `<epic>.<entry>` that
+/// names nothing is tried as a name too, as `tickets.py` does. `None` when it names nothing.
 #[must_use]
 pub fn resolve_after<'a>(
     on: &AfterRef,
     mates: Option<&'a [Story]>,
     initiative: Option<&'a Initiative>,
 ) -> Option<AfterTarget<'a>> {
-    match on {
+    let direct = match on {
         AfterRef::Sibling(id) => match mates {
             Some(mates) => story_by_id(mates, id).map(AfterTarget::Story),
-            None => epic_by_id(initiative?, id).map(AfterTarget::Epic),
+            None => initiative
+                .and_then(|i| epic_by_id(i, id))
+                .map(AfterTarget::Epic),
         },
-        AfterRef::Cross { epic, entry } => {
-            let epic = epic_by_id(initiative?, epic)?;
-            story_by_id(&epic.stories, entry).map(AfterTarget::Story)
+        AfterRef::Cross { epic, entry } => initiative
+            .and_then(|i| epic_by_id(i, epic))
+            .and_then(|e| story_by_id(&e.stories, entry))
+            .map(AfterTarget::Story),
+        AfterRef::Epic(slug) => {
+            return initiative
+                .and_then(|i| epic_by_slug(i, slug))
+                .map(AfterTarget::Epic);
         }
-        AfterRef::Epic(slug) => epic_by_slug(initiative?, slug).map(AfterTarget::Epic),
+        AfterRef::Name(_) => None,
+    };
+    direct.or_else(|| resolve_name(&on.to_string(), mates, initiative))
+}
+
+/// A name in `after`: for an epic, an epic folder of its initiative (an `{ epic = <slug> }`
+/// table); then the `tracker_id` of an epic or story of the initiative or of a mate
+/// (`tickets.py` `ids`); then, for a story, a mate's file name with or without `.md`.
+fn resolve_name<'a>(
+    name: &str,
+    mates: Option<&'a [Story]>,
+    initiative: Option<&'a Initiative>,
+) -> Option<AfterTarget<'a>> {
+    if mates.is_none()
+        && let Some(epic) = initiative.and_then(|i| epic_by_slug(i, name))
+    {
+        return Some(AfterTarget::Epic(epic));
     }
+    by_tracker_id(name, mates, initiative).or_else(|| {
+        mates
+            .into_iter()
+            .flatten()
+            .find(|s| {
+                s.file
+                    .as_ref()
+                    .is_some_and(|f| f.stem == name || name.strip_suffix(".md") == Some(&f.stem))
+            })
+            .map(AfterTarget::Story)
+    })
+}
+
+/// The epic or story whose file carries `tracker_id: <name>`, among the epics and stories of
+/// `initiative` and the `mates`.
+fn by_tracker_id<'a>(
+    name: &str,
+    mates: Option<&'a [Story]>,
+    initiative: Option<&'a Initiative>,
+) -> Option<AfterTarget<'a>> {
+    let named = |id: Option<&String>| id.is_some_and(|id| !id.is_empty() && id == name);
+    let epics = initiative.map_or(&[][..], |i| i.epics.as_slice());
+    if let Some(epic) = epics
+        .iter()
+        .find(|e| named(e.file.as_ref().and_then(|f| f.front.tracker_id.as_ref())))
+    {
+        return Some(AfterTarget::Epic(epic));
+    }
+    let stories = epics
+        .iter()
+        .flat_map(|e| &e.stories)
+        .chain(initiative.into_iter().flat_map(|i| &i.stories))
+        .chain(mates.into_iter().flatten());
+    stories
+        .filter(|s| named(s.file.as_ref().and_then(|f| f.front.tracker_id.as_ref())))
+        .map(AfterTarget::Story)
+        .next()
 }

@@ -88,7 +88,18 @@ pub(crate) fn walk(text: &str, first_line: u32) -> Walk {
             }
             Event::End(TagEnd::List(_)) => depth = depth.saturating_sub(1),
             Event::Start(Tag::Item) if depth == 1 => {
-                let number = written_number(&text[range.start..]).unwrap_or(next_number);
+                let ordered = out.lists.last().is_some_and(|l| l.ordered);
+                let number = if ordered {
+                    written_number(&text[range.start..]).unwrap_or_else(|| {
+                        tracing::warn!(
+                            offset = range.start,
+                            "no number found in an ordered list item's marker; numbered on"
+                        );
+                        next_number
+                    })
+                } else {
+                    0
+                };
                 open = Some(Open {
                     number,
                     first: None,
@@ -123,8 +134,11 @@ pub(crate) fn walk(text: &str, first_line: u32) -> Walk {
 }
 
 /// The number of an ordered item's marker as written (`2.` or `2)`), which `pulldown-cmark`
-/// does not keep: it numbers items on from the list's start. `None` for a bullet item.
+/// does not keep: it numbers items on from the list's start. The item's range starts at its
+/// indentation (up to three spaces), so leading blanks are skipped. `None` when no
+/// number stands there.
 fn written_number(item: &str) -> Option<u32> {
+    let item = item.trim_start_matches([' ', '\t']);
     let digits = item.bytes().take_while(u8::is_ascii_digit).count();
     item.get(..digits)?.parse().ok()
 }
@@ -187,13 +201,17 @@ mod tests {
 
     #[test]
     fn item_numbers_are_read_as_written_not_renumbered() {
-        let w = walk("1. a\n2. b\n2. c\n7) d\n", 1);
+        // The second list is indented two spaces (CommonMark allows up to three).
+        let w = walk(
+            "1. a\n2. b\n2. c\n7) d\n\nText.\n\n  1. e\n  3. f\n\n- g\n",
+            1,
+        );
         let numbers: Vec<u32> = w
             .lists
             .iter()
             .flat_map(|l| &l.items)
             .map(|i| i.number)
             .collect();
-        assert_eq!(numbers, [1, 2, 2, 7]);
+        assert_eq!(numbers, [1, 2, 2, 7, 1, 3, 0]);
     }
 }
