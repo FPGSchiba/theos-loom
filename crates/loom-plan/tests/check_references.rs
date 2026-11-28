@@ -184,6 +184,19 @@ fn duplicate_key_is_reported() -> TestResult {
 
 // AC: TU-01.2
 #[test]
+fn two_leaf_files_with_one_id_are_reported() -> TestResult {
+    let finding = only_error("duplicate-id-leaf-file")?;
+    assert_finding(
+        &finding,
+        Rule::DuplicateId,
+        &format!("{CART}/tickets/story-remove-item.md"),
+        &["`1`", "story-add-item.md", "story-remove-item.md"],
+    );
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
 fn duplicate_entry_id_is_reported() -> TestResult {
     let finding = only_error("duplicate-id-entry")?;
     assert_finding(

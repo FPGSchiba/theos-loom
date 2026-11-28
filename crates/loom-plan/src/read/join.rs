@@ -40,6 +40,22 @@ pub(crate) fn join(folder: &str, entries: &[EntryRow], tickets: Tickets) -> Join
     let mut unlisted = Vec::new();
     let mut without_id = Vec::new();
     for leaf in tickets.leaves {
+        if let Some(id) = &leaf.front.id
+            && let Some(first) = stories
+                .iter()
+                .chain(&unlisted)
+                .find(|s| s.id.as_ref() == Some(id))
+                .and_then(|s| s.file.as_ref())
+        {
+            findings.push(Finding::error(
+                Rule::DuplicateId,
+                &leaf.path,
+                format!(
+                    "{} and {} both have id `{id}`; an id names one ticket",
+                    first.path, leaf.path
+                ),
+            ));
+        }
         let slot = leaf.front.id.as_ref().and_then(|id| {
             stories
                 .iter_mut()
