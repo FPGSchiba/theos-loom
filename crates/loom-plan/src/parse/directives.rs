@@ -58,10 +58,20 @@ fn collect(text: &str, first_line: u32, kind: DirectiveKind, out: &mut Vec<Direc
     }
 }
 
+/// A `Contradicts:` name as a directive name is read: without markup or a trailing full stop.
+fn clean_name(raw: &str) -> &str {
+    let markup = ['*', '_', '`'];
+    raw.trim()
+        .trim_end_matches('.')
+        .trim_matches(markup)
+        .trim_end_matches('.')
+        .trim()
+}
+
 fn directive(item: Item, kind: DirectiveKind) -> Directive {
     let contradicts = item.text.lines().find_map(|line| {
         let name = line.strip_prefix("Contradicts:")?;
-        let name = name.trim().trim_end_matches('.').trim();
+        let name = clean_name(name);
         (!name.is_empty()).then(|| name.to_owned())
     });
     Directive {
@@ -106,6 +116,23 @@ mod tests {
             Some("Quality over speed")
         );
         assert_eq!(f.directives[1].kind, DirectiveKind::Design);
+        Ok(())
+    }
+
+    #[test]
+    fn contradicts_name_drops_markup_and_stops() -> TestResult {
+        for line in [
+            "**Quality over speed**",
+            "**Quality over speed.**",
+            "`Quality over speed`.",
+        ] {
+            let text = format!("1. **Fast.** Go.\n   Contradicts: {line}\n");
+            let f = read("d.md", &text, Some(DirectiveKind::Design))?;
+            assert_eq!(
+                f.directives[0].contradicts.as_deref(),
+                Some("Quality over speed")
+            );
+        }
         Ok(())
     }
 

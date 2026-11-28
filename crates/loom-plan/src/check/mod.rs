@@ -5,6 +5,7 @@
 
 mod context;
 mod cycles;
+mod directives;
 mod duplicates;
 mod epic_incomplete;
 mod missing_key;
@@ -28,6 +29,7 @@ pub(crate) const RULES: &[RuleFn] = &[
     epic_incomplete::check,
     story_without_acs::check,
     missing_key::check,
+    directives::check,
 ];
 
 /// Checks `repo`: what reading found plus every rule's findings, errors before notes, then by
