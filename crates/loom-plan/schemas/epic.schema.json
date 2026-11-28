@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EpicFront",
+  "description": "Front matter of an epic file.",
+  "type": "object",
+  "properties": {
+    "after": {
+      "description": "Epics it waits on.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/AfterRef"
+      }
+    },
+    "companions": {
+      "description": "Files read beside this ticket.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "covers": {
+      "description": "Parent requirement ids it owns.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Scalar"
+      }
+    },
+    "key": {
+      "description": "(Loom) project-unique key.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Key"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "loom": {
+      "description": "(Loom) whether Loom may work on it.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LoomMark"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "needs": {
+      "description": "(Loom) cross-component prerequisites.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Key"
+      }
+    },
+    "parent": {
+      "description": "Folder name of the initiative.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "refined": {
+      "description": "False while the epic is thin.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "remote": {
+      "description": "Tracker url.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "risk": {
+      "description": "Best guess, then its children's highest.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Risk"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sources": {
+      "description": "Inputs the requirements were derived from.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "description": "`in-progress`, `done` or `dropped`.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ContainerStatus"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "description": "The outcome.",
+      "type": "string"
+    },
+    "tracker_id": {
+      "description": "Tracker id, written at publish.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tracker_status": {
+      "description": "Board state from a tracker sync.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TrackerStatus"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "description": "Always `epic`.",
+      "$ref": "#/$defs/EpicType"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "title"
+  ],
+  "$defs": {
+    "AfterRef": {
+      "type": [
+        "string",
+        "integer"
+      ],
+      "pattern": "^([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+)$"
+    },
+    "ContainerStatus": {
+      "description": "`status` of a container (initiative or epic).",
+      "oneOf": [
+        {
+          "description": "Its first ticket started.",
+          "type": "string",
+          "const": "in-progress"
+        },
+        {
+          "description": "Finished.",
+          "type": "string",
+          "const": "done"
+        },
+        {
+          "description": "Given up.",
+          "type": "string",
+          "const": "dropped"
+        }
+      ]
+    },
+    "EpicType": {
+      "description": "The only `type` an epic file carries.",
+      "oneOf": [
+        {
+          "description": "`type: epic`.",
+          "type": "string",
+          "const": "epic"
+        }
+      ]
+    },
+    "Key": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[0-9]+$"
+    },
+    "LoomMark": {
+      "description": "Whether Loom may work on an item (`loom` key).",
+      "oneOf": [
+        {
+          "description": "Loom may pick it up.",
+          "type": "string",
+          "const": "ready"
+        },
+        {
+          "description": "Loom leaves it alone.",
+          "type": "string",
+          "const": "paused"
+        }
+      ]
+    },
+    "Risk": {
+      "description": "`risk`: a best guess for a container, a call for a leaf.",
+      "oneOf": [
+        {
+          "description": "Low risk.",
+          "type": "string",
+          "const": "low"
+        },
+        {
+          "description": "Medium risk.",
+          "type": "string",
+          "const": "medium"
+        },
+        {
+          "description": "High risk.",
+          "type": "string",
+          "const": "high"
+        }
+      ]
+    },
+    "Scalar": {
+      "type": [
+        "string",
+        "number"
+      ]
+    },
+    "TrackerStatus": {
+      "description": "`tracker_status`: the board state a tracker sync writes.",
+      "oneOf": [
+        {
+          "description": "Not started.",
+          "type": "string",
+          "const": "backlog"
+        },
+        {
+          "description": "Being worked on.",
+          "type": "string",
+          "const": "in-progress"
+        },
+        {
+          "description": "Built, in review.",
+          "type": "string",
+          "const": "review"
+        },
+        {
+          "description": "Done.",
+          "type": "string",
+          "const": "done"
+        },
+        {
+          "description": "Dropped.",
+          "type": "string",
+          "const": "dropped"
+        }
+      ]
+    }
+  }
+}

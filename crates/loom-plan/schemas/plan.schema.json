@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PlanFront",
+  "description": "Front matter of a plan file.",
+  "type": "object",
+  "properties": {
+    "assignee": {
+      "description": "Who works on it.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "baseline_revision": {
+      "description": "The commit the work started from.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "blocked_at": {
+      "description": "Date it was blocked.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "blocked_reason": {
+      "description": "Why it was blocked.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "description": "The leaf's status.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlanStatus"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ticket": {
+      "description": "The entry id of the leaf, or the file stem of a backlog leaf.",
+      "$ref": "#/$defs/Scalar"
+    },
+    "title": {
+      "description": "The leaf's title, as `tickets.py mark` writes it.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "type": {
+      "description": "The build's type.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlanType"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "ticket"
+  ],
+  "$defs": {
+    "PlanStatus": {
+      "description": "The PO's eight statuses of a leaf, as the plan file carries them.",
+      "oneOf": [
+        {
+          "description": "Being drafted.",
+          "type": "string",
+          "const": "draft"
+        },
+        {
+          "description": "Ready to build.",
+          "type": "string",
+          "const": "ready-for-dev"
+        },
+        {
+          "description": "Being built.",
+          "type": "string",
+          "const": "in-progress"
+        },
+        {
+          "description": "In review.",
+          "type": "string",
+          "const": "in-review"
+        },
+        {
+          "description": "Built, nobody called it done.",
+          "type": "string",
+          "const": "built"
+        },
+        {
+          "description": "Done.",
+          "type": "string",
+          "const": "done"
+        },
+        {
+          "description": "Halted with a reason.",
+          "type": "string",
+          "const": "blocked"
+        },
+        {
+          "description": "Given up.",
+          "type": "string",
+          "const": "dropped"
+        }
+      ]
+    },
+    "PlanType": {
+      "description": "The build's type of work (never a ticket type).",
+      "oneOf": [
+        {
+          "description": "New behaviour.",
+          "type": "string",
+          "const": "feature"
+        },
+        {
+          "description": "A defect fix.",
+          "type": "string",
+          "const": "bugfix"
+        },
+        {
+          "description": "Restructuring.",
+          "type": "string",
+          "const": "refactor"
+        },
+        {
+          "description": "Upkeep.",
+          "type": "string",
+          "const": "chore"
+        }
+      ]
+    },
+    "Scalar": {
+      "type": [
+        "string",
+        "number"
+      ]
+    }
+  }
+}

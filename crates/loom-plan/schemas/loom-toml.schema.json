@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LoomToml",
+  "description": "The contents of `loom.toml`.",
+  "type": "object",
+  "properties": {
+    "budget": {
+      "description": "Optional budget weight.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Budget"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "format": {
+      "description": "Settings format; must be 1.",
+      "$ref": "#/$defs/Format"
+    },
+    "notify": {
+      "description": "Optional notification target.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Notify"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "project": {
+      "description": "The project.",
+      "$ref": "#/$defs/ProjectSettings"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "project"
+  ],
+  "$defs": {
+    "Budget": {
+      "description": "The `[budget]` table.",
+      "type": "object",
+      "properties": {
+        "weight": {
+          "description": "Share of the shared budget this project gets.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "weight"
+      ]
+    },
+    "Format": {
+      "type": "integer",
+      "const": 1
+    },
+    "Notify": {
+      "description": "The `[notify]` table.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "description": "Where notifications go.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "target"
+      ]
+    },
+    "ProjectSettings": {
+      "description": "The `[project]` table.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Project id.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Display name.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ]
+    }
+  }
+}

@@ -5,6 +5,7 @@ pub mod model;
 pub(crate) mod parse;
 mod read;
 pub mod repo;
+pub mod schema;
 
 pub use finding::{Finding, Rule, Severity};
 pub use parse::body::{

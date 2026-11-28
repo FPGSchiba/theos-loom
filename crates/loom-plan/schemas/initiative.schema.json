@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "InitiativeFront",
+  "description": "Front matter of an initiative file.",
+  "type": "object",
+  "properties": {
+    "after": {
+      "description": "Initiatives it waits on, by folder name.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "companions": {
+      "description": "Files read beside this ticket.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "covers": {
+      "description": "Parent ids it owns.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Scalar"
+      }
+    },
+    "parent": {
+      "description": "Folder name of the parent initiative.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "remote": {
+      "description": "Tracker url.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "risk": {
+      "description": "Best guess.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Risk"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sources": {
+      "description": "Inputs the requirements were derived from.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "description": "`in-progress`, `done` or `dropped`.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ContainerStatus"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "description": "The outcome.",
+      "type": "string"
+    },
+    "tracker_id": {
+      "description": "Tracker id, written at publish.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tracker_status": {
+      "description": "Board state from a tracker sync.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TrackerStatus"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "description": "Always `initiative`.",
+      "$ref": "#/$defs/InitiativeType"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "title"
+  ],
+  "$defs": {
+    "ContainerStatus": {
+      "description": "`status` of a container (initiative or epic).",
+      "oneOf": [
+        {
+          "description": "Its first ticket started.",
+          "type": "string",
+          "const": "in-progress"
+        },
+        {
+          "description": "Finished.",
+          "type": "string",
+          "const": "done"
+        },
+        {
+          "description": "Given up.",
+          "type": "string",
+          "const": "dropped"
+        }
+      ]
+    },
+    "InitiativeType": {
+      "description": "The only `type` an initiative file carries.",
+      "oneOf": [
+        {
+          "description": "`type: initiative`.",
+          "type": "string",
+          "const": "initiative"
+        }
+      ]
+    },
+    "Risk": {
+      "description": "`risk`: a best guess for a container, a call for a leaf.",
+      "oneOf": [
+        {
+          "description": "Low risk.",
+          "type": "string",
+          "const": "low"
+        },
+        {
+          "description": "Medium risk.",
+          "type": "string",
+          "const": "medium"
+        },
+        {
+          "description": "High risk.",
+          "type": "string",
+          "const": "high"
+        }
+      ]
+    },
+    "Scalar": {
+      "type": [
+        "string",
+        "number"
+      ]
+    },
+    "TrackerStatus": {
+      "description": "`tracker_status`: the board state a tracker sync writes.",
+      "oneOf": [
+        {
+          "description": "Not started.",
+          "type": "string",
+          "const": "backlog"
+        },
+        {
+          "description": "Being worked on.",
+          "type": "string",
+          "const": "in-progress"
+        },
+        {
+          "description": "Built, in review.",
+          "type": "string",
+          "const": "review"
+        },
+        {
+          "description": "Done.",
+          "type": "string",
+          "const": "done"
+        },
+        {
+          "description": "Dropped.",
+          "type": "string",
+          "const": "dropped"
+        }
+      ]
+    }
+  }
+}
