@@ -68,9 +68,9 @@ Questions to the decider (Jann) in this step:
 
 | | |
 |---|---|
-| Tokens (in / out) | |
-| Cost (API-equivalent) | |
-| Wall time | |
+| Tokens (in / out) | From `/cost`: Opus 5.5 968 in + 61.7M cache read + 1.4M cache write / 247.6k out; Sonnet 5.5 328 in + 10.8M cache read + 519.9k cache write / 68.8k out; Haiku 5.5 267.6k in / 24.6k out |
+| Cost (API-equivalent) | $28.19 (Opus $25.08, Sonnet $3.07, Haiku $0.04) |
+| Wall time | 7 h 38 min 35 s, most of it waiting for Jann's answers (API 57 min 0 s) |
 | CI green on first push | yes: the first push of review fixes (`34ff557`) was green except `approval`, which waits for Jann |
 
 ## Verdict
@@ -82,4 +82,4 @@ Questions to the decider (Jann) in this step:
 
 | Tokens | Cost | Wall time | Jann's time |
 |---|---|---|---|
-| | | | |
+| Output 1.12M (refine 0.14M, implement 0.64M, review 0.34M); input almost all cache reads (refine 12.6M, implement 111.4M, review 72.5M). The brainstorming inside the planning session isn't counted. | $71.76 (refine $7.67, implement $35.90, review $28.19), without the planning-session part | 10 h 19 min wall (refine 0:42, implement 1:59, review 7:39, mostly idle); API 2 h 41 min | |
