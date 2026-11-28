@@ -79,7 +79,7 @@ pub(crate) fn split_front_matter(text: &str) -> Split<'_> {
 }
 
 /// Moves past one line break at `at`, when there is one.
-fn skip_line_end(text: &str, at: usize) -> usize {
+pub(crate) fn skip_line_end(text: &str, at: usize) -> usize {
     let rest = &text[at..];
     if rest.starts_with("\r\n") {
         at + 2

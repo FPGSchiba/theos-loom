@@ -3,6 +3,7 @@
 pub mod breakdown;
 pub mod component_toml;
 pub mod decision;
+pub mod directive;
 pub mod document;
 pub mod epic;
 pub mod format;
@@ -20,6 +21,7 @@ pub use breakdown::{
 };
 pub use component_toml::{ComponentSettings, ComponentToml, Slicing};
 pub use decision::{DecisionFront, DecisionKind, DecisionRecord};
+pub use directive::{Directive, DirectiveFile, DirectiveKind};
 pub use document::{DocFront, DocStatus, Document};
 pub use epic::{EpicFront, EpicType};
 pub use format::Format;

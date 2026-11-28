@@ -1,6 +1,9 @@
 //! Reading front matter and TOML files into typed values; errors become [`Finding`]s.
 
+pub(crate) mod body;
+pub(crate) mod directives;
 pub(crate) mod front_matter;
+pub(crate) mod items;
 pub(crate) mod toml_file;
 
 use crate::finding::{Finding, Rule, Severity};
