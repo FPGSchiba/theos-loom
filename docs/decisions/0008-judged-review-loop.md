@@ -19,6 +19,5 @@ Date: 28 Nov 2026 · Decided by: Jann · Surfaced by: P00 verdict
 
 ## Consequences
 
-`CLAUDE.md`, the loom-phase skill and the PR template say so. The umbrella's TU-07.1 (P07: "until
-one is clean, capped at 5 rounds") still describes Loom's own review service the old way; it is
-left as it is until Jann decides whether P07 follows this rule.
+`CLAUDE.md`, the loom-phase skill and the PR template say so. Loom's own review service follows
+the same rule: the umbrella's TU-07.1 (P07) is reworded in umbrella version 7.

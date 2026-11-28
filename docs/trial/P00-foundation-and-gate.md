@@ -81,7 +81,9 @@ Questions to the decider (Jann) in this step:
   the most of his time, because every fix wave on a PR that is all protected paths asked for his
   approval, and reviewers kept finding minor issues. His changes to the loop: judge every
   finding and stop when none is worth fixing; after 5 rounds, one last fix and a targeted review,
-  then stop as best effort with the PR ready, not draft (decision 0008).
+  then stop as best effort with the PR ready, not draft (decision 0008); Loom's own review service
+  follows it too (TU-07.1); and review fixes inside a PR that already waits for him need no
+  separate approval (decision 0009).
 
 ## Totals
 
