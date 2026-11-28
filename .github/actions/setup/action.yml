@@ -1,0 +1,83 @@
+name: Set up the gate
+description: >-
+  Installs the Rust toolchain of rust-toolchain.toml, restores the build cache and installs the
+  tools at the versions of gate/tools.toml that the parts of the job need. The jobs that build
+  Rust run it after the checkout.
+
+# Without inputs a job gets a build cache of its own, saved by every run.
+inputs:
+  cache-key:
+    description: >-
+      The key of the build cache, for jobs that build the same thing and share one. Empty: the
+      job id.
+    required: false
+    default: ''
+  save-cache:
+    description: >-
+      Whether the job saves the build cache: `true` or `false`. A job that only restores passes
+      `false`.
+    required: false
+    default: 'true'
+  parts:
+    description: >-
+      The gate parts the job runs, comma-separated (the `parts` of its check in
+      .loom/checks.toml). The tools of these parts are installed, and no others.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    # `rustup toolchain install` without arguments reads rust-toolchain.toml. Since rustup 1.28
+    # `rustup show` no longer installs anything.
+    - name: Install the Rust toolchain
+      shell: bash
+      run: rustup toolchain install
+
+    - name: Restore the build cache
+      uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      with:
+        shared-key: ${{ inputs.cache-key || github.job }}
+        save-if: ${{ inputs.save-cache }}
+
+    # The line is `name@version,...` for every cargo tool of gate/tools.toml that the parts need.
+    # It goes to the next step as a step output.
+    - name: Read the pinned tools
+      id: tools
+      shell: bash
+      env:
+        PARTS: ${{ inputs.parts }}
+      run: |
+        spec=""
+        if [ -n "$PARTS" ]; then
+          spec="$(cargo xtask tools --print-install-spec --for "$PARTS")"
+        fi
+        echo "spec=${spec}" >> "$GITHUB_OUTPUT"
+
+    - name: Install the pinned tools
+      if: steps.tools.outputs.spec != ''
+      uses: taiki-e/install-action@073e1fd0bc889c9aee68dbaaa927cde1b5653a83 # v2.90.11
+      with:
+        tool: ${{ steps.tools.outputs.spec }}
+
+    # taiki-e/install-action has no manifest for gitleaks, so the release archive is downloaded
+    # and checked against the checksums file of the same release before it is unpacked. The
+    # version is the pin of gate/tools.toml. A checksum that does not match fails the step.
+    - name: Install gitleaks
+      if: contains(inputs.parts, 'secrets')
+      shell: bash
+      run: |
+        version="$(cargo xtask tools --print-pin gitleaks)"
+        base="https://github.com/gitleaks/gitleaks/releases/download/v${version}"
+        archive="gitleaks_${version}_linux_x64.tar.gz"
+        checksums="gitleaks_${version}_checksums.txt"
+        dir="$(mktemp -d)"
+        curl --fail --silent --show-error --location --output "${dir}/${archive}" "${base}/${archive}"
+        curl --fail --silent --show-error --location --output "${dir}/${checksums}" "${base}/${checksums}"
+        cd "$dir"
+        grep -F "  ${archive}" "$checksums" > archive.sha256
+        sha256sum --check --strict archive.sha256
+        tar -xzf "$archive" gitleaks
+        mkdir -p "$HOME/.local/bin"
+        install -m 0755 gitleaks "$HOME/.local/bin/gitleaks"
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
