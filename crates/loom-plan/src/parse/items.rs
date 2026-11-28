@@ -8,7 +8,7 @@ use super::line_at;
 /// One item of a top-level list.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Item {
-    /// The number as written for an ordered list; `0` for a bullet list.
+    /// The number as written in the item's marker; `0` for a bullet list.
     pub number: u32,
     /// The item text, marker removed, every line trimmed.
     pub text: String,
@@ -88,12 +88,13 @@ pub(crate) fn walk(text: &str, first_line: u32) -> Walk {
             }
             Event::End(TagEnd::List(_)) => depth = depth.saturating_sub(1),
             Event::Start(Tag::Item) if depth == 1 => {
+                let number = written_number(&text[range.start..]).unwrap_or(next_number);
                 open = Some(Open {
-                    number: next_number,
+                    number,
                     first: None,
                     name: NameState::Waiting,
                 });
-                next_number = next_number.saturating_add(1);
+                next_number = number.saturating_add(1);
             }
             Event::End(TagEnd::Item) if depth == 1 => {
                 if let (Some(item), Some(list)) = (open.take(), out.lists.last_mut()) {
@@ -119,6 +120,13 @@ pub(crate) fn walk(text: &str, first_line: u32) -> Walk {
         }
     }
     out
+}
+
+/// The number of an ordered item's marker as written (`2.` or `2)`), which `pulldown-cmark`
+/// does not keep: it numbers items on from the list's start. `None` for a bullet item.
+fn written_number(item: &str) -> Option<u32> {
+    let digits = item.bytes().take_while(u8::is_ascii_digit).count();
+    item.get(..digits)?.parse().ok()
 }
 
 /// Moves the opening-bold-span state on by one event.
@@ -175,5 +183,17 @@ mod tests {
         assert_eq!(w.lists[0].items[0].name.as_deref(), Some("A"));
         assert_eq!(w.lists[0].items[1].number, 2);
         assert_eq!(w.lists[0].items[0].line, 13);
+    }
+
+    #[test]
+    fn item_numbers_are_read_as_written_not_renumbered() {
+        let w = walk("1. a\n2. b\n2. c\n7) d\n", 1);
+        let numbers: Vec<u32> = w
+            .lists
+            .iter()
+            .flat_map(|l| &l.items)
+            .map(|i| i.number)
+            .collect();
+        assert_eq!(numbers, [1, 2, 2, 7]);
     }
 }
