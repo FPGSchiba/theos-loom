@@ -31,11 +31,15 @@ Questions to the decider (Jann):
 
 | | |
 |---|---|
-| Tokens (in / out) | |
-| Cost (API-equivalent) | |
-| Wall time | |
-| Plan gaps raised | |
-| Plan changes allowed | |
+| Tokens (in / out) | n/a: `/cost` can't be read from inside the session; Jann fills it from `/cost` |
+| Cost (API-equivalent) | n/a: same reason |
+| Wall time | 15:46 to 17:35 (about 1 h 50 min), including two gate runs stopped or failed (one killed for low memory) |
+| Plan gaps raised | 0 to Jann. Gaps were ruled by the controller (rulings in the PR): fixture naming so every `invalid/` tree has one error, PO forms the reviews found refused (plan `title`, unquoted `1.3`, `after` by file name, tracker id or slug), empty epics still checked |
+| Plan changes allowed | none (the plan file is unchanged) |
+| Questions to Jann | 1: reword the pushed commit 39af4d6 (commit-msg check) and push with `--force-with-lease`. Answer: yes |
+| Task review rounds | 14 tasks; fix rounds: Task 5 (1), 7 (1), 8 (2), 10 (1), 12 (2), 13 (1); the rest clean on first review |
+| Gate | `cargo xtask gate` on Windows: every part passes (`ui` skipped, not needed); `loom` coverage 100 %, `loom-plan` 95.8 % |
+| theos-planning | PR FPGSchiba/theos-planning#2: format 1; `loom plan check` exits 0, 0 errors, 0 notes |
 
 ## Step 3: Review
 
