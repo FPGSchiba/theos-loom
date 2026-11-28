@@ -31,9 +31,9 @@ Questions to the decider (Jann):
 
 | | |
 |---|---|
-| Tokens (in / out) | n/a: `/cost` can't be read from inside the session; Jann fills it from `/cost` |
-| Cost (API-equivalent) | n/a: same reason |
-| Wall time | 15:46 to 17:35 (about 1 h 50 min), including two gate runs stopped or failed (one killed for low memory) |
+| Tokens (in / out) | From `/cost`: Opus 5.5 930 in + 77.9M cache read + 1.1M cache write / 340.0k out; Sonnet 5.5 668 in + 21.9M cache read + 1.6M cache write / 314.6k out; Haiku 5.5 260.6k in + 1.3M cache read + 230.8k cache write / 47.9k out |
+| Cost (API-equivalent) | $38.55 (Opus $29.06, Sonnet $9.40, Haiku $0.09) |
+| Wall time | 1 h 45 min 26 s (API 1 h 28 min 44 s), 15:46 to 17:35, including two gate runs stopped or failed (one killed for low memory) |
 | Plan gaps raised | 0 to Jann. Gaps were ruled by the controller (rulings in the PR): fixture naming so every `invalid/` tree has one error, PO forms the reviews found refused (plan `title`, unquoted `1.3`, `after` by file name, tracker id or slug), empty epics still checked |
 | Plan changes allowed | none (the plan file is unchanged) |
 | Questions to Jann | 1: reword the pushed commit 39af4d6 (commit-msg check) and push with `--force-with-lease`. Answer: yes |
