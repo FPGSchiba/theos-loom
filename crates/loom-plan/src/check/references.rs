@@ -132,9 +132,9 @@ fn epic(cx: &Context<'_>, at: &EpicAt<'_>, out: &mut Vec<Finding>) {
 /// The message for an `[[epic]]` table whose `after` names a story.
 fn table_after_story_message(epic: &str, on: &impl std::fmt::Display) -> String {
     format!(
-        "the [[epic]] table of {epic} has `after` naming `{on}`, which is a story; a table's\
-                     `after` waits on epics only, so name an epic id or slug (a story goes in the epic\
-                     file's `after`)"
+        "the [[epic]] table of {epic} has `after` naming `{on}`, which is a story; a table's \
+         `after` waits on epics only, so name an epic id or slug (a story goes in the epic \
+         file's `after`)"
     )
 }
 
@@ -393,5 +393,7 @@ mod tests {
         let message = table_after_story_message("cart", &"cart-1");
         assert!(message.contains("`cart-1`"), "{message}");
         assert!(!message.contains("  "), "{message}");
+        assert!(message.contains("a table's `after` waits"), "{message}");
+        assert!(message.contains("in the epic file's `after`)"), "{message}");
     }
 }

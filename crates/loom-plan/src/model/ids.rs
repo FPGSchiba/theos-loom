@@ -117,7 +117,7 @@ impl<'de> Deserialize<'de> for TicketIdOrString {
 
             fn visit_f64<E: serde::de::Error>(self, _v: f64) -> Result<Self::Value, E> {
                 Err(E::custom(
-                    "a bare decimal number is read as a float, which would change a reference\
+                    "a bare decimal number is read as a float, which would change a reference \
                      like 1.10; write the reference in quotes, like \"1.10\"",
                 ))
             }
@@ -434,6 +434,7 @@ mod tests {
             .err()
             .map(|e| e.to_string())
             .unwrap_or_default();
+        assert!(message.contains("a reference like 1.10;"), "{message}");
         assert!(message.contains("like \"1.10\""), "{message}");
         assert!(!message.contains("  "), "{message}");
     }
