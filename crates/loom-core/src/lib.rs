@@ -1,1 +1,3 @@
-//! `loom-core`: the domain and its state machines. Empty until its phase.
+//! `loom-core`: the domain and its state machines.
+
+pub mod state;
