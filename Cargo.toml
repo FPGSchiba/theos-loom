@@ -53,9 +53,12 @@ sha2 = "0.11"
 syn = { version = "2.0", features = ["full", "visit", "extra-traits"] }
 tempfile = "3.27"
 thiserror = "2.0"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "io-util", "sync", "time", "fs"] }
+tokio-util = "0.7"
 toml = "1.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["v4", "serde"] }
 which = "8.0"
 yaml-rust2 = "0.13"
 
