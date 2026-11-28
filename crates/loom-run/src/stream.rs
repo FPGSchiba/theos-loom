@@ -13,6 +13,10 @@ const AUTH_PHRASES: [&str; 4] = [
 
 /// Parse one line of the CLI's stdout into a typed event. Never fails: a line that is not a
 /// known JSON event is kept as [`RunEvent::Unknown`] (spec R-e).
+///
+/// A `rate_limit_event` whose status starts with `allowed` (`allowed`, `allowed_warning`) is
+/// only [`RunEvent::RateLimitStatus`] and never stops a run; any other status is
+/// [`RunEvent::RateLimited`].
 #[must_use]
 pub fn parse_line(line: &[u8]) -> RunEvent {
     let parsed = serde_json::from_slice::<Value>(line).ok().and_then(typed);
@@ -98,7 +102,7 @@ fn rate_limit(raw: &Value) -> RunEvent {
     let info = raw.get("rate_limit_info").unwrap_or(&Value::Null);
     let status = text(info, "status");
     let resets_at = info.get("resetsAt").and_then(Value::as_i64);
-    if status == "allowed" {
+    if status.starts_with("allowed") {
         RunEvent::RateLimitStatus {
             kind: status,
             resets_at,
@@ -185,7 +189,7 @@ mod tests {
         else {
             panic!("second line is not an assistant event: {:?}", events[1]);
         };
-        assert_eq!(message_id, "msg_011ChVX1772TnhAHxV5GeDUA");
+        assert_eq!(message_id, "msg_FAKE000000000000000001");
         assert_eq!(model, "claude-haiku-5-5");
         assert_eq!(
             *usage,
@@ -256,6 +260,19 @@ mod tests {
     fn an_allowed_rate_limit_is_only_status() {
         let event = parse_line(lines(NORMAL)[2]);
         assert!(matches!(event, RunEvent::RateLimitStatus { .. }));
+    }
+
+    // AC: TU-03.6
+    #[test]
+    fn an_allowed_warning_is_only_status() {
+        let line = br#"{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning","resetsAt":5,"rateLimitType":"five_hour"}}"#;
+        assert_eq!(
+            parse_line(line),
+            RunEvent::RateLimitStatus {
+                kind: "allowed_warning".into(),
+                resets_at: Some(5)
+            }
+        );
     }
 
     // AC: TU-03.6

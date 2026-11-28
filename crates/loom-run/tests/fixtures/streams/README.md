@@ -16,8 +16,8 @@ The auth failure used the same command with `CLAUDE_CODE_OAUTH_TOKEN=invalid` al
 retried twice (`api_retry` events) and ended with a 401 `result`. No other variable was needed.
 The token value is the literal word `invalid`, never a real token.
 
-Scrubbing of the two real recordings: `session_id`, `uuid` and `request_id` replaced by fixed
-fake values; the user name, home and working directories replaced by `/work` and
+Scrubbing of the two real recordings: `session_id`, `uuid`, `request_id` and message ids (`msg_...`) replaced by
+fixed fake values, and `credential_expires_at` by a fixed fake timestamp; the user name, home and working directories replaced by `/work` and
 `/home/user`; the `init` event's machine-specific lists (`tools`, `slash_commands`, `skills`,
 `plugins`, `agents`, `mcp_servers`) shortened to a few fixed entries and its socket and
 PowerShell paths removed; the recording machine's hook events (`hook_started`,
