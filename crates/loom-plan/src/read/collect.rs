@@ -47,7 +47,6 @@ pub(crate) struct InitiativeParts {
 /// What was read of one component folder.
 #[derive(Debug, Default)]
 pub(crate) struct ComponentParts {
-    pub has_settings_file: bool,
     pub settings: Option<ComponentToml>,
     pub engineering: Option<DirectiveFile>,
     pub design: Option<DirectiveFile>,
@@ -72,11 +71,15 @@ pub(crate) struct Parts {
 
 impl Parts {
     /// Makes sure the component, initiative and epic folders `segments` runs through exist as
-    /// parts, so a folder holding only companions still counts.
-    pub(crate) fn touch(&mut self, segments: &[&str]) {
+    /// parts, so a folder holding only companions still counts. Only folders of `components`
+    /// (those with a `component.toml`) are components.
+    pub(crate) fn touch(&mut self, segments: &[&str], components: &BTreeSet<String>) {
         let ["components", component, rest @ ..] = segments else {
             return;
         };
+        if !components.contains(*component) {
+            return;
+        }
         let Some((_, folders)) = rest.split_last() else {
             return;
         };
@@ -231,7 +234,6 @@ impl Parts {
             }
         }
         let parts = self.components.entry(component.to_owned()).or_default();
-        parts.has_settings_file = true;
         parts.settings = settings;
     }
 

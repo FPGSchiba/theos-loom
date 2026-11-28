@@ -233,6 +233,10 @@ fn assert_valid_stories(app: &Component) -> TestResult {
 fn assert_valid_api_and_files(repo: &PlanningRepo) -> TestResult {
     // The api component: one initiative without epics, stories directly under it.
     let api = component(repo, "api")?;
+    assert_eq!(
+        api.settings.as_ref().map(|s| s.component.id.as_str()),
+        Some("api")
+    );
     assert_eq!(names(api.engineering.as_ref()), ["Idempotent endpoints"]);
     assert!(api.design.is_none());
     let payments = api.initiative.as_ref().ok_or("no api initiative")?;
@@ -564,5 +568,81 @@ fn ticket_files_in_the_earlier_layout_are_layout_findings() -> TestResult {
             "components/app/initiative-x/story-a.md"
         ]
     );
+    Ok(())
+}
+
+#[test]
+fn a_folder_without_component_toml_is_no_component() -> TestResult {
+    let (_dir, root) = tree(&[(
+        "components/notes/ideas.md",
+        "# Ideas
+",
+    )])?;
+    let repo = read(&root)?;
+    assert!(repo.read_findings.is_empty(), "{:#?}", repo.read_findings);
+    assert!(repo.components.iter().all(|c| c.id != "notes"));
+    assert!(
+        repo.documents
+            .iter()
+            .any(|d| d.path == "components/notes/ideas.md")
+    );
+    Ok(())
+}
+
+#[test]
+fn ticket_shapes_in_a_folder_without_component_toml_are_layout_findings() -> TestResult {
+    let (_dir, root) = tree(&[(
+        "components/notes/initiative-x/tickets/epic-a/epic-a.md",
+        "---
+type: epic
+title: \"A\"
+---
+",
+    )])?;
+    let repo = read(&root)?;
+    let finding = only_finding(&repo)?;
+    assert_eq!(
+        (finding.rule, finding.path.as_str()),
+        (Rule::Layout, "components/notes/initiative-x/tickets/epic-a")
+    );
+    assert!(repo.components.iter().all(|c| c.id != "notes"));
+    Ok(())
+}
+
+#[test]
+fn needs_in_another_order_is_no_drift() -> TestResult {
+    let (_dir, root) = tree(&[
+        (
+            "components/app/initiative-x/tickets/tickets.toml",
+            "[[entry]]
+id = 1
+type = \"story\"
+title = \"A\"
+needs = [\"API-1\", \"API-2\"]
+",
+        ),
+        (
+            "components/app/initiative-x/tickets/story-a.md",
+            "---
+id: 1
+type: story
+title: \"A\"
+needs: [API-2, API-1]
+---
+# A
+",
+        ),
+    ])?;
+    let repo = read(&root)?;
+    assert!(repo.read_findings.is_empty(), "{:#?}", repo.read_findings);
+    let changed = fs::read_to_string(root.join("components/app/initiative-x/tickets/story-a.md"))?
+        .replace("[API-2, API-1]", "[API-2]");
+    fs::write(
+        root.join("components/app/initiative-x/tickets/story-a.md"),
+        changed,
+    )?;
+    let finding = only_finding(&read(&root)?)?.clone();
+    assert_eq!(finding.rule, Rule::Drift);
+    assert!(finding.message.contains("`needs`"), "{}", finding.message);
     Ok(())
 }

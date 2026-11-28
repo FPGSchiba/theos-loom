@@ -7,6 +7,7 @@ mod collect;
 mod join;
 mod walk;
 
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -43,12 +44,19 @@ pub fn read(root: &Path) -> Result<PlanningRepo, ReadError> {
     }
     let mut parts = Parts::default();
     let files = walk::walk(root, &mut parts.findings)?;
+    let components: BTreeSet<String> = files
+        .iter()
+        .filter_map(|f| match f.rel.split('/').collect::<Vec<_>>().as_slice() {
+            ["components", id, "component.toml"] => Some((*id).to_owned()),
+            _ => None,
+        })
+        .collect();
     for file in files {
         let _span = tracing::debug_span!("read_file", path = %file.rel).entered();
         let segments: Vec<&str> = file.rel.split('/').collect();
-        let kind = classify::classify(&segments);
+        let kind = classify::classify(&segments, &components);
         tracing::debug!(?kind, "classified");
-        parts.touch(&segments);
+        parts.touch(&segments, &components);
         match fs::read(&file.abs) {
             Ok(bytes) => parts.add(&file.rel, kind, &bytes),
             Err(err) => {

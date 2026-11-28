@@ -8,8 +8,8 @@ pub use story::{LeafFile, PlanFile, Story};
 
 use crate::finding::Finding;
 use crate::model::{
-    Breakdown, ComponentToml, ContainerStatus, DecisionRecord, DirectiveFile, DocFront, Document,
-    EpicFront, EpicRow, InitiativeFront, Key, LoomMark, LoomToml, StateMirror,
+    AfterRef, Breakdown, ComponentToml, ContainerStatus, DecisionRecord, DirectiveFile, DocFront,
+    Document, EpicAfter, EpicFront, EpicRow, InitiativeFront, Key, LoomMark, LoomToml, StateMirror,
 };
 use crate::parse::body::{EpicBody, RequirementLine};
 
@@ -142,7 +142,44 @@ pub struct EpicFile {
     pub front: EpicFront,
 }
 
+/// One prerequisite of an epic: the epic it waits on and, when its `[[epic]]` table says so,
+/// what it needs from it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EpicPrerequisite {
+    /// What the epic waits on, in the PO's `after` forms (an id, `"<epic>.<entry>"` or
+    /// `"epic-<slug>"`).
+    pub on: AfterRef,
+    /// The `needs` text of an `{ epic, needs }` table.
+    pub needs: Option<String>,
+}
+
 impl Epic {
+    /// Every prerequisite of the epic: its file's `after` first, then its `[[epic]]` table's
+    /// `after` (an `{ epic = 1, needs = ".." }` table becomes the id `1` with its `needs`). Both
+    /// sources count (spec §5.5); a prerequisite named in both appears twice.
+    #[must_use]
+    pub fn after(&self) -> Vec<EpicPrerequisite> {
+        let from_file = self
+            .file
+            .iter()
+            .flat_map(|f| &f.front.after)
+            .map(|on| EpicPrerequisite {
+                on: on.clone(),
+                needs: None,
+            });
+        let from_row = self.row.iter().flat_map(|r| &r.after).map(|a| match a {
+            EpicAfter::Ref(on) => EpicPrerequisite {
+                on: on.clone(),
+                needs: None,
+            },
+            EpicAfter::Needs(table) => EpicPrerequisite {
+                on: AfterRef::Sibling(table.epic.clone()),
+                needs: table.needs.clone(),
+            },
+        });
+        from_file.chain(from_row).collect()
+    }
+
     /// The epic's `key`.
     #[must_use]
     pub fn key(&self) -> Option<&Key> {
@@ -167,5 +204,85 @@ impl Epic {
         self.file
             .as_ref()
             .is_some_and(|f| f.front.status == Some(ContainerStatus::Dropped))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::TicketId;
+
+    type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+    #[test]
+    fn epic_after_joins_file_and_table() -> TestResult {
+        let front = EpicFront::parse(
+            "e.md",
+            "---
+type: epic
+title: E
+after: [epic-a]
+---
+",
+        )
+        .map_err(|f| f.message)?
+        .ok_or("no front matter")?;
+        let breakdown = Breakdown::parse(
+            "tickets.toml",
+            "[[epic]]
+id = 3
+slug = \"epic-e\"
+title = \"E\"
+after = [2, { epic = 1, needs = \"the price\" }]
+",
+        )
+        .map_err(|f| f.message)?;
+        let epic = Epic {
+            slug: "epic-e".to_owned(),
+            path: "x/epic-e".to_owned(),
+            file: Some(EpicFile {
+                path: "x/epic-e/epic-e.md".to_owned(),
+                front,
+            }),
+            body: None,
+            row: breakdown.epic.into_iter().next(),
+            order: 0,
+            breakdown: None,
+            stories: Vec::new(),
+        };
+        let id = |s: &str| TicketId::try_from(s.to_owned());
+        assert_eq!(
+            epic.after(),
+            [
+                EpicPrerequisite {
+                    on: AfterRef::Epic("epic-a".to_owned()),
+                    needs: None
+                },
+                EpicPrerequisite {
+                    on: AfterRef::Sibling(id("2")?),
+                    needs: None
+                },
+                EpicPrerequisite {
+                    on: AfterRef::Sibling(id("1")?),
+                    needs: Some("the price".to_owned())
+                },
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn epic_without_file_or_table_has_no_prerequisites() {
+        let epic = Epic {
+            slug: "epic-e".to_owned(),
+            path: "x/epic-e".to_owned(),
+            file: None,
+            body: None,
+            row: None,
+            order: 0,
+            breakdown: None,
+            stories: Vec::new(),
+        };
+        assert_eq!(epic.after(), []);
     }
 }

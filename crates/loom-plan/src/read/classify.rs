@@ -4,6 +4,8 @@
 //! workspace has no regex crate, and `EPIC_RE`'s look-ahead is not supported by the `regex` crate
 //! anyway. Both are a few lines and tested against the PO's own examples below.
 
+use std::collections::BTreeSet;
+
 use crate::model::DirectiveKind;
 
 /// The ticket folder a leaf, plan or `tickets.toml` belongs to.
@@ -129,8 +131,9 @@ pub(crate) fn is_initiative_name(name: &str) -> bool {
         .is_some_and(|slug| !slug.is_empty())
 }
 
-/// Classifies the path given as its `/`-separated segments.
-pub(crate) fn classify(segments: &[&str]) -> FileKind {
+/// Classifies the path given as its `/`-separated segments. `components` are the folders of
+/// `components/` that hold a `component.toml` (R-c); any other folder there is no component.
+pub(crate) fn classify(segments: &[&str], components: &BTreeSet<String>) -> FileKind {
     match segments {
         ["loom.toml"] => FileKind::LoomToml,
         ["vision.md"] => FileKind::Vision,
@@ -142,7 +145,13 @@ pub(crate) fn classify(segments: &[&str]) -> FileKind {
                 name: name.trim_end_matches(".toml").to_owned(),
             }
         }
-        ["components", component, rest @ ..] if !rest.is_empty() => in_component(component, rest),
+        ["components", component, rest @ ..] if !rest.is_empty() => {
+            if components.contains(*component) {
+                in_component(component, rest)
+            } else {
+                misplaced_or_document(component, rest, false)
+            }
+        }
         _ => FileKind::Document,
     }
 }
@@ -216,7 +225,7 @@ fn in_component(component: &str, rest: &[&str]) -> FileKind {
             component,
             at: Container::Backlog,
         },
-        _ => misplaced_or_document(&component, rest),
+        _ => misplaced_or_document(&component, rest, true),
     }
 }
 
@@ -225,12 +234,14 @@ fn is_own_file(folder: &str, file: &str) -> bool {
 }
 
 /// A ticket-shaped path that no arm above accepted is misplaced; anything else is a document.
-fn misplaced_or_document(component: &str, rest: &[&str]) -> FileKind {
+/// `in_tree` is false for a folder of `components/` that is no component: there no place
+/// allows an epic folder.
+fn misplaced_or_document(component: &str, rest: &[&str], in_tree: bool) -> FileKind {
     let Some((last, folders)) = rest.split_last() else {
         return FileKind::Document;
     };
     for (n, folder) in folders.iter().enumerate() {
-        let allowed = n == 2 && is_initiative_name(rest[0]) && rest[1] == "tickets";
+        let allowed = in_tree && n == 2 && is_initiative_name(rest[0]) && rest[1] == "tickets";
         if is_epic_name(folder) && !allowed {
             return FileKind::Misplaced {
                 report: format!("components/{component}/{}", rest[..=n].join("/")),
@@ -251,7 +262,7 @@ mod tests {
 
     fn kind(path: &str) -> FileKind {
         let segments: Vec<&str> = path.split('/').collect();
-        classify(&segments)
+        classify(&segments, &BTreeSet::from(["app".to_owned()]))
     }
 
     #[test]

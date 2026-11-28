@@ -2,6 +2,7 @@
 //! (the PO's rules in `tickets.py`), and the `drift` findings of R-o.
 
 use std::cmp::Ordering;
+use std::collections::BTreeSet;
 
 use super::collect::Tickets;
 use crate::finding::{Finding, Rule};
@@ -157,7 +158,8 @@ fn drift(folder: &str, entry: &EntryRow, leaf: &LeafFile) -> Vec<Finding> {
     {
         report("loom", show_mark(front.loom), show_mark(Some(mark)));
     }
-    if !entry.needs.is_empty() && entry.needs != front.needs {
+    let as_set = |keys: &[Key]| keys.iter().cloned().collect::<BTreeSet<Key>>();
+    if !entry.needs.is_empty() && as_set(&entry.needs) != as_set(&front.needs) {
         report("needs", show_keys(&front.needs), show_keys(&entry.needs));
     }
     out

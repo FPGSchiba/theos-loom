@@ -56,13 +56,6 @@ pub(crate) fn assemble(root: PathBuf, parts: Parts) -> PlanningRepo {
 
 fn component(id: String, mut parts: ComponentParts, sink: &mut Sink) -> Component {
     let path = format!("components/{id}");
-    if !parts.has_settings_file {
-        sink.findings.push(Finding::error(
-            Rule::Layout,
-            &path,
-            format!("{path}/ has no component.toml; a component folder carries its settings there"),
-        ));
-    }
     let (initiative, extra_initiatives) = initiatives(&path, &mut parts.initiatives, sink);
     let backlog_path = format!("{path}/backlog");
     let backlog = sink.stories(&backlog_path, &[], parts.backlog);
