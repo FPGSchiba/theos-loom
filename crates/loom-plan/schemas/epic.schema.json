@@ -9,7 +9,7 @@
       "type": "array",
       "default": [],
       "items": {
-        "$ref": "#/$defs/AfterRef"
+        "$ref": "#/$defs/YamlAfterRef"
       }
     },
     "companions": {
@@ -142,13 +142,6 @@
     "title"
   ],
   "$defs": {
-    "AfterRef": {
-      "type": [
-        "string",
-        "number"
-      ],
-      "pattern": "^([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+)$"
-    },
     "ContainerStatus": {
       "description": "`status` of a container (initiative or epic).",
       "oneOf": [
@@ -253,6 +246,14 @@
           "const": "dropped"
         }
       ]
+    },
+    "YamlAfterRef": {
+      "type": [
+        "string",
+        "number"
+      ],
+      "minimum": 0,
+      "pattern": "^([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+)$"
     }
   }
 }

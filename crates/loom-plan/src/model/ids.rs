@@ -288,16 +288,36 @@ impl Serialize for AfterRef {
     }
 }
 
+/// The one pattern of a textual `after` reference, shared by every schema of it.
+const AFTER_PATTERN: &str = r"^([0-9A-Za-z]+(\.[0-9A-Za-z]+)?|epic-.+)$";
+
 impl JsonSchema for AfterRef {
     fn schema_name() -> Cow<'static, str> {
         "AfterRef".into()
     }
 
+    /// TOML surface: a string or an integer. The TOML reader refuses a float (`1.10` would
+    /// become `1.1`), so no fractional number is valid here.
     fn json_schema(_: &mut SchemaGenerator) -> Schema {
-        json_schema!({
-            "type": ["string", "number"],
-            "pattern": "^([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+)$"
-        })
+        json_schema!({ "type": ["string", "integer"], "pattern": AFTER_PATTERN })
+    }
+}
+
+/// Schema-only stand-in for [`AfterRef`] in YAML front matter (`after:` of epics and leaves).
+///
+/// YAML reads an unquoted `1.3` as a number, and the front-matter reader takes its source text,
+/// so the schema accepts a number here. JSON Schema can't say "written as `id.id`", so a
+/// non-negative number is the closest constraint: a negative number or an exponent form the
+/// reader refuses is still rejected only by the reader (or not at all for `1e3`).
+pub(crate) struct YamlAfterRef;
+
+impl JsonSchema for YamlAfterRef {
+    fn schema_name() -> Cow<'static, str> {
+        "YamlAfterRef".into()
+    }
+
+    fn json_schema(_: &mut SchemaGenerator) -> Schema {
+        json_schema!({ "type": ["string", "number"], "pattern": AFTER_PATTERN, "minimum": 0 })
     }
 }
 

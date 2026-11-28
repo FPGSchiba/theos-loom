@@ -147,8 +147,18 @@ fn id_patterns_agree_between_rust_and_schema() -> TestResult {
     let key = jsonschema::validator_for(&definitions("epic", "Key")?)?;
     let ticket = jsonschema::validator_for(&definitions("tickets-toml", "TicketId")?)?;
     let after = jsonschema::validator_for(&definitions("tickets-toml", "AfterRef")?)?;
-    // YAML `1.3` unquoted is a JSON number; the Rust side reads its text, "1.3".
-    assert!(after.is_valid(&json!(1.3)), "numeric 1.3");
+    // TOML refuses an unquoted float (1.10 would become 1.1), so tickets.toml takes no number
+    // with a fraction; YAML front matter reads `1.3` as text, so its schema takes one.
+    assert!(!after.is_valid(&json!(1.3)), "tickets-toml: numeric 1.3");
+    assert!(after.is_valid(&json!(2)), "tickets-toml: integer 2");
+    for name in ["leaf", "epic"] {
+        let yaml = jsonschema::validator_for(&definitions(name, "YamlAfterRef")?)?;
+        assert!(yaml.is_valid(&json!(1.3)), "{name}: numeric 1.3");
+        assert!(yaml.is_valid(&json!(2)), "{name}: integer 2");
+        assert!(!yaml.is_valid(&json!(-1.5)), "{name}: negative number");
+        assert!(yaml.is_valid(&json!("epic-x")), "{name}: slug");
+        assert!(!yaml.is_valid(&json!("epic-")), "{name}: empty slug");
+    }
     assert!("1.3".parse::<AfterRef>().is_ok());
     for s in [
         "ED-12", "A-1", "A1B-007", "ed-12", "ED-", "-12", "ED12", "1A-2", "ED-1x", "", "E D-1",
@@ -211,5 +221,23 @@ fn unquoted_cross_epic_after_validates_against_leaf_and_epic() -> TestResult {
             .collect();
         assert!(errors.is_empty(), "{file} against {schema}: {errors:?}");
     }
+    Ok(())
+}
+
+// AC: TU-01.4
+#[test]
+fn unquoted_float_after_in_tickets_toml_fails_schema() -> TestResult {
+    let validator = jsonschema::validator_for(&schema_value("tickets-toml")?)?;
+    let quoted: Value = toml::from_str(
+        "next_id = 3\n\n[[epic]]\nid = 1\nslug = \"epic-a\"\ntitle = \"A\"\ndescription = \"d\"\ncovers = [\"R1\"]\nafter = [\"1.10\"]\n",
+    )?;
+    assert!(validator.is_valid(&quoted), "quoted form is valid");
+    let float: Value = toml::from_str(
+        "next_id = 3\n\n[[epic]]\nid = 1\nslug = \"epic-a\"\ntitle = \"A\"\ndescription = \"d\"\ncovers = [\"R1\"]\nafter = [1.10]\n",
+    )?;
+    assert!(
+        !validator.is_valid(&float),
+        "unquoted float must be invalid"
+    );
     Ok(())
 }

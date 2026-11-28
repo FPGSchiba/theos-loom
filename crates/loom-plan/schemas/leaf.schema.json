@@ -9,7 +9,7 @@
       "type": "array",
       "default": [],
       "items": {
-        "$ref": "#/$defs/AfterRef"
+        "$ref": "#/$defs/YamlAfterRef"
       }
     },
     "assignee": {
@@ -200,13 +200,6 @@
     "title"
   ],
   "$defs": {
-    "AfterRef": {
-      "type": [
-        "string",
-        "number"
-      ],
-      "pattern": "^([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+)$"
-    },
     "Key": {
       "type": "string",
       "pattern": "^[A-Z][A-Z0-9]*-[0-9]+$"
@@ -388,6 +381,14 @@
           "const": "dropped"
         }
       ]
+    },
+    "YamlAfterRef": {
+      "type": [
+        "string",
+        "number"
+      ],
+      "minimum": 0,
+      "pattern": "^([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+)$"
     }
   }
 }
