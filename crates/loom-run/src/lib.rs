@@ -4,6 +4,7 @@ pub mod caps;
 pub mod chunks;
 pub mod config;
 mod deadline;
+pub mod egress;
 mod git;
 mod ident;
 pub mod kit;

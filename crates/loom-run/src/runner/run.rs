@@ -137,9 +137,14 @@ impl<L: Launcher + 'static, S: RawStreamStore + 'static> Run<L, S> {
             env: self.config.credentials.clone(),
         };
         self.launching = true;
-        let session = self.launcher.start(&ctx).await?;
+        let mut session = self.launcher.start(&ctx).await?;
         let started = Instant::now();
         let image = session.image_id();
+        if let Some(extra) = session.take_events() {
+            let events = self.events.clone();
+            self.pumps
+                .push(forward(extra, events, self.pump_stop.clone()));
+        }
         self.session = Some(session);
         if let Some(id) = image {
             self.emit(RunEvent::Image { id }).await;
@@ -229,6 +234,29 @@ impl<L: Launcher + 'static, S: RawStreamStore + 'static> Run<L, S> {
     fn writer(&self, stream: StreamKind) -> ChunkWriter<S> {
         ChunkWriter::new(Arc::clone(&self.store), self.id, stream)
     }
+}
+
+/// Passes the session's own events (the proxy's `Egress` events) on to the caller until their
+/// channel closes, which it does once the session stopped, or until `stop` fires. Its handle
+/// joins the pumps', so the end path waits for it before `RunEnded`.
+fn forward(
+    mut extra: mpsc::Receiver<RunEvent>,
+    events: mpsc::Sender<RunEvent>,
+    stop: CancellationToken,
+) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                biased;
+                event = extra.recv() => match event {
+                    // The caller may have stopped listening; that is no error.
+                    Some(event) => { let _ = events.send(event).await; }
+                    None => break,
+                },
+                () = stop.cancelled() => break,
+            }
+        }
+    })
 }
 
 /// The arguments of the CLI's run (spec §5.3 step 5); the prompt goes on stdin (R-k).

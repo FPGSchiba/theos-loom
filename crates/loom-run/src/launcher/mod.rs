@@ -11,9 +11,10 @@ use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
 
-use loom_core::run::RunId;
+use loom_core::run::{RunEvent, RunId};
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt};
+use tokio::sync::mpsc;
 
 pub use local::LocalLauncher;
 #[cfg(target_os = "linux")]
@@ -94,6 +95,13 @@ pub trait Session: Send {
 
     /// Ends every command of the session and the session itself; waits until they are gone.
     fn stop(&mut self) -> BoxFuture<'_, Result<(), LaunchError>>;
+
+    /// Events the session itself produces, besides the CLI's stream: the proxy's `Egress`
+    /// events. The runner takes them once, right after the start, and passes each on until
+    /// the channel closes, which it does once [`Session::stop`] ended. None by default.
+    fn take_events(&mut self) -> Option<mpsc::Receiver<RunEvent>> {
+        None
+    }
 
     /// The image the session runs, when it has one.
     fn image_id(&self) -> Option<String>;

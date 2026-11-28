@@ -1,18 +1,22 @@
-//! The Podman launcher (spec §5.3 steps 1, 5 and 7): each run gets its own rootless container,
-//! alive as long as the run (`sleep infinity` under `--init`), and every command of the run is a
+//! The Podman launcher (spec §5.3 steps 1, 4, 5 and 7): each run gets its own internal network,
+//! its own proxy (the only way out, see [`crate::egress`]) and its own rootless container, alive
+//! as long as the run (`sleep infinity` under `--init`); every command of the run is a
 //! `podman exec` in it. Everything it creates carries the label `loom.run=<run id>`, so stopping
 //! or aborting a run removes exactly that run's containers and networks. Linux only (D2).
 
 use std::os::unix::fs::MetadataExt;
 use std::time::Duration;
 
-use loom_core::run::RunId;
-use tokio::time::timeout;
+use loom_core::run::{RunEvent, RunId};
+use tokio::sync::mpsc;
+use tokio::time::{Instant, timeout_at};
 
 use super::child::Children;
 use super::{BoxFuture, Exec, LaunchContext, LaunchError, Launcher, Session};
 use crate::config::RunConfig;
-use crate::podman::{Podman, PodmanError};
+use crate::egress::proxy::{Proxy, ProxySpec, proxy_name, proxy_url};
+use crate::podman::{Podman, PodmanError, within};
+use crate::workspace::run_dir;
 
 /// The label key on everything of a run.
 const RUN_LABEL: &str = "loom.run";
@@ -20,17 +24,29 @@ const RUN_LABEL: &str = "loom.run";
 const WORK_DIR: &str = "/work";
 /// Where the kit is mounted, read-only.
 const KIT_DIR: &str = "/kit";
-/// How long `podman stop` waits after SIGTERM before it kills.
+/// How long `podman stop` waits after SIGTERM before it kills the run's container.
 const STOP_GRACE: Duration = Duration::from_secs(3);
-/// How long the `podman stop` call may take in all; then the container is removed by force,
-/// so a stop ends well within the 10 s of TU-03.3.
-const STOP_LIMIT: Duration = Duration::from_secs(6);
+/// The same for the proxy: a moment for its last log lines to reach Loom.
+const PROXY_STOP_GRACE: Duration = Duration::from_secs(1);
+/// How long a whole stop may take, every Podman call included, so a run ends well within the
+/// 10 s of TU-03.3 even when Podman hangs.
+const STOP_LIMIT: Duration = Duration::from_secs(7);
+/// The part of [`STOP_LIMIT`] kept for removing what is left.
+const TEARDOWN_SHARE: Duration = Duration::from_secs(2);
+/// How long a clean-up outside a stop (a failed start, an abort, a dropped session) may take.
+const CLEANUP_LIMIT: Duration = Duration::from_secs(10);
+/// The variables that point the run's tools at the proxy; both spellings, as tools differ.
+const PROXY_VARS: [&str; 4] = ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"];
 
-/// Runs each run in its own rootless Podman container, from the configured image.
+/// Runs each run in its own rootless Podman container, from the configured image, with the
+/// network of T4: the public web through the run's proxy, nothing else.
+///
+/// Its `Debug` shows the names of the variables set with [`PodmanLauncher::with_env`], never
+/// their values.
 #[derive(Debug, Clone)]
 pub struct PodmanLauncher {
     podman: Podman,
-    image: String,
+    config: RunConfig,
     /// Variables set with [`PodmanLauncher::with_env`], passed by name.
     env: Vec<String>,
     /// Extra `-v` specs.
@@ -38,12 +54,13 @@ pub struct PodmanLauncher {
 }
 
 impl PodmanLauncher {
-    /// A launcher with `config`'s Podman binary and image.
+    /// A launcher with `config`'s Podman binary, image, proxy image, egress network and
+    /// blocked ranges.
     #[must_use]
     pub fn new(config: &RunConfig) -> Self {
         Self {
             podman: Podman::new(config.podman.clone()),
-            image: config.image.clone(),
+            config: config.clone(),
             env: Vec::new(),
             volumes: Vec::new(),
         }
@@ -66,13 +83,27 @@ impl PodmanLauncher {
         self
     }
 
-    /// Creates the run's network and container; returns the started session.
+    /// Creates the run's network, proxy and container; returns the started session.
     async fn create(&self, ctx: &LaunchContext) -> Result<PodmanSession, LaunchError> {
         let label = run_label(ctx.run);
         let network = network_name(ctx.run);
         self.podman
             .network_create_internal(&network, &label)
             .await?;
+        let conf = run_dir(&self.config, ctx.run).join("squid.conf");
+        let mut proxy = Proxy::start(
+            &self.podman,
+            &ProxySpec {
+                run: ctx.run,
+                label: &label,
+                network: &network,
+                egress_network: &self.config.egress_network,
+                image: &self.config.proxy_image,
+                blocked: &self.config.blocked_ranges,
+                conf: &conf,
+            },
+        )
+        .await?;
         let owner = tokio::fs::metadata(&ctx.workspace).await.map_err(|e| {
             LaunchError::Other(format!("cannot read {}: {e}", ctx.workspace.display()))
         })?;
@@ -81,18 +112,20 @@ impl PodmanLauncher {
             label: &label,
             network: &network,
             user: (owner.uid(), owner.gid()),
-            image: &self.image,
+            image: &self.config.image,
             env: &self.env,
             volumes: &self.volumes,
         })?;
         let id = self.podman.run_detached(&args).await?;
-        let image = self.podman.image_id(&self.image).await?;
+        let image = self.podman.image_id(&self.config.image).await?;
         Ok(PodmanSession {
             podman: self.podman.clone(),
             run: ctx.run,
             id,
             image,
             children: Children::new(),
+            events: proxy.take_events(),
+            proxy: Some(proxy),
             stopped: false,
         })
     }
@@ -108,7 +141,8 @@ impl Launcher for PodmanLauncher {
         match self.create(ctx).await {
             Ok(session) => Ok(Box::new(session)),
             Err(error) => {
-                if let Err(cleanup) = teardown(&self.podman, ctx.run).await {
+                let deadline = Instant::now() + CLEANUP_LIMIT;
+                if let Err(cleanup) = teardown(&self.podman, ctx.run, deadline).await {
                     tracing::warn!(error = %cleanup, run = %ctx.run, "could not clean up a failed start");
                 }
                 Err(error)
@@ -117,7 +151,8 @@ impl Launcher for PodmanLauncher {
     }
 
     async fn abort(&self, run: RunId) -> Result<(), LaunchError> {
-        Ok(teardown(&self.podman, run).await?)
+        let deadline = Instant::now() + CLEANUP_LIMIT;
+        Ok(teardown(&self.podman, run, deadline).await?)
     }
 }
 
@@ -133,12 +168,15 @@ struct RunArgs<'a> {
 }
 
 /// The arguments after `podman run -d` (spec §5.3 step 5; R-n). Credentials and other variables
-/// go by name only: Podman copies their values from its own environment.
+/// go by name only: Podman copies their values from its own environment. The proxy's address is
+/// no secret and goes by value.
 fn run_args(a: &RunArgs<'_>) -> Result<Vec<String>, LaunchError> {
     let (uid, gid) = a.user;
     let mut args: Vec<String> = vec![
         "--init".into(),
         "--rm".into(),
+        "--name".into(),
+        worker_name(a.ctx.run),
         "--label".into(),
         a.label.into(),
         "--userns=keep-id".into(),
@@ -157,6 +195,10 @@ fn run_args(a: &RunArgs<'_>) -> Result<Vec<String>, LaunchError> {
         args.extend(["-v".into(), volume.clone()]);
     }
     args.extend(["--env".into(), format!("KIT_DIR={KIT_DIR}")]);
+    let proxy = proxy_url(a.ctx.run);
+    for var in PROXY_VARS {
+        args.extend(["--env".into(), format!("{var}={proxy}")]);
+    }
     for name in a.ctx.env.iter().chain(a.env) {
         if !is_env_name(name) {
             return Err(LaunchError::Other(format!(
@@ -186,31 +228,57 @@ fn network_name(run: RunId) -> String {
     format!("loom-run-{run}")
 }
 
-/// Removes every container and network of `run`; tries them all and returns the first error.
+fn worker_name(run: RunId) -> String {
+    format!("loom-worker-{run}")
+}
+
+/// Removes every container and network of `run`, each call bounded by `deadline`. Tries them
+/// all, also when a listing fails (then by their known names), and returns the first error.
 /// Nothing of `run` existing is no error.
-async fn teardown(podman: &Podman, run: RunId) -> Result<(), PodmanError> {
+async fn teardown(podman: &Podman, run: RunId, deadline: Instant) -> Result<(), PodmanError> {
     let label = run_label(run);
     let mut first = None;
-    for id in podman.ls_by_label(&label).await? {
-        if let Err(error) = podman.rm_force(&id).await {
+    let mut containers = vec![worker_name(run), proxy_name(run)];
+    match within(deadline, "podman ps", podman.ls_by_label(&label)).await {
+        Ok(ids) => containers.extend(ids),
+        Err(error) => {
             first.get_or_insert(error);
         }
     }
-    for name in podman.networks_by_label(&label).await? {
-        if let Err(error) = podman.network_rm(&name).await {
+    if let Err(error) = within(deadline, "podman rm", podman.rm_force(&containers)).await {
+        first.get_or_insert(error);
+    }
+    let listed = within(
+        deadline,
+        "podman network ls",
+        podman.networks_by_label(&label),
+    )
+    .await;
+    let networks = match listed {
+        Ok(names) => names,
+        Err(error) => {
+            first.get_or_insert(error);
+            vec![network_name(run)]
+        }
+    };
+    for name in networks {
+        if let Err(error) = within(deadline, "podman network rm", podman.network_rm(&name)).await {
             first.get_or_insert(error);
         }
     }
     first.map_or(Ok(()), Err)
 }
 
-/// One run's container, and the `podman exec` clients it started.
+/// One run's container and proxy, and the `podman exec` clients it started.
 struct PodmanSession {
     podman: Podman,
     run: RunId,
     id: String,
     image: String,
     children: Children,
+    proxy: Option<Proxy>,
+    /// The proxy's `Egress` events, until the runner takes them.
+    events: Option<mpsc::Receiver<RunEvent>>,
     /// Set once `stop` ran; a session dropped before it is removed in the background.
     stopped: bool,
 }
@@ -228,21 +296,46 @@ impl Session for PodmanSession {
         Box::pin(async move { exec })
     }
 
-    /// `podman stop --time 3`, at most [`STOP_LIMIT`]; then everything of the run is removed
-    /// by force. `--init` makes the stop reach every process in the container.
+    /// Stops the container (`podman stop --time 3`; `--init` makes it reach every process)
+    /// and the proxy, reads the proxy's log to its end, then removes everything of the run by
+    /// force. All of it within [`STOP_LIMIT`], every Podman call bounded.
     fn stop(&mut self) -> BoxFuture<'_, Result<(), LaunchError>> {
         let children = self.children.stop();
         Box::pin(async move {
-            match timeout(STOP_LIMIT, self.podman.stop(&self.id, STOP_GRACE)).await {
-                Ok(Ok(())) => {}
-                Ok(Err(error)) => tracing::warn!(%error, run = %self.run, "podman stop failed"),
-                Err(_) => tracing::warn!(run = %self.run, "podman stop took too long"),
+            let deadline = Instant::now() + STOP_LIMIT;
+            let stops_end = deadline - TEARDOWN_SHARE;
+            let proxy = proxy_name(self.run);
+            let (worker, proxied) = tokio::join!(
+                within(
+                    stops_end,
+                    "podman stop",
+                    self.podman.stop(&self.id, STOP_GRACE)
+                ),
+                within(
+                    stops_end,
+                    "podman stop",
+                    self.podman.stop(&proxy, PROXY_STOP_GRACE)
+                ),
+            );
+            for error in [worker.err(), proxied.err()].into_iter().flatten() {
+                tracing::warn!(%error, run = %self.run, "podman stop failed");
             }
-            let removed = teardown(&self.podman, self.run).await;
+            if let Some(proxy) = self.proxy.take() {
+                proxy.finish(stops_end).await;
+            }
+            let removed = teardown(&self.podman, self.run, deadline).await;
             self.stopped = true;
-            children.await?;
+            if let Ok(children) = timeout_at(deadline, children).await {
+                children?;
+            } else {
+                tracing::warn!(run = %self.run, "the exec clients did not end in time");
+            }
             Ok(removed?)
         })
+    }
+
+    fn take_events(&mut self) -> Option<mpsc::Receiver<RunEvent>> {
+        self.events.take()
     }
 
     fn image_id(&self) -> Option<String> {
@@ -264,7 +357,8 @@ impl Drop for PodmanSession {
             let podman = self.podman.clone();
             let run = self.run;
             runtime.spawn(async move {
-                if let Err(error) = teardown(&podman, run).await {
+                let deadline = Instant::now() + CLEANUP_LIMIT;
+                if let Err(error) = teardown(&podman, run, deadline).await {
                     tracing::warn!(%error, %run, "could not remove a dropped session's container");
                 }
             });
@@ -301,15 +395,28 @@ mod tests {
 
     #[test]
     fn the_run_args_follow_the_image_contract() {
-        let args = args(&ctx(&["GH_TOKEN"]), &["FAKE_MODE".to_owned()]).expect("args");
+        let ctx = ctx(&["GH_TOKEN"]);
+        let args = args(&ctx, &["FAKE_MODE".to_owned()]).expect("args");
         let text = args.join(" ");
+        let run = ctx.run;
         assert!(
-            text.starts_with("--init --rm --label loom.run=r --userns=keep-id --user 1000:1001")
+            text.starts_with(&format!(
+                "--init --rm --name loom-worker-{run} --label loom.run=r --userns=keep-id \
+                 --user 1000:1001"
+            )),
+            "{text}"
         );
         assert!(text.contains("--network loom-run-r"));
         assert!(text.contains("-v /data/runs/r/work:/work:z -w /work"));
         assert!(text.contains("-v /data/kits/k:/kit:ro,z -v /x:/y:ro"));
-        assert!(text.contains("--env KIT_DIR=/kit --env GH_TOKEN --env FAKE_MODE"));
+        let proxy = format!("http://loom-proxy-{run}:3128");
+        assert!(
+            text.contains(&format!(
+                "--env KIT_DIR=/kit --env HTTP_PROXY={proxy} --env HTTPS_PROXY={proxy} \
+                 --env http_proxy={proxy} --env https_proxy={proxy} --env GH_TOKEN --env FAKE_MODE"
+            )),
+            "{text}"
+        );
         assert!(text.ends_with("img sleep infinity"));
     }
 
@@ -319,5 +426,15 @@ mod tests {
         assert!(args(&ctx(&["1X"]), &[]).is_err());
         assert!(args(&ctx(&[]), &[String::new()]).is_err());
         assert!(is_env_name("_A1"));
+    }
+
+    #[test]
+    fn debug_shows_env_names_never_values() {
+        let config = RunConfig::from_toml("data_dir = 'd'\nimage = 'i'\nproxy_image = 'p'\n")
+            .expect("config");
+        let launcher = PodmanLauncher::new(&config).with_env("GH_TOKEN", "s3cr3t-value");
+        let text = format!("{launcher:?}");
+        assert!(text.contains("GH_TOKEN"), "{text}");
+        assert!(!text.contains("s3cr3t"), "{text}");
     }
 }

@@ -986,6 +986,7 @@ version = "0.0.0"
 name = "loom-run"
 version = "0.0.0"
 dependencies = [
+ "http",
  "loom-core",
  "loom-store",
  "rustls",

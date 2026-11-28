@@ -1,11 +1,13 @@
 //! The Podman command line (R-a), run through `tokio::process`: one method per call Loom makes,
 //! so every call can be copied into a shell to debug. Linux only (D2).
 
+use std::future::Future;
 use std::process::Stdio;
 use std::time::Duration;
 
 use thiserror::Error;
 use tokio::process::Command;
+use tokio::time::{Instant, timeout_at};
 
 /// A Podman call that did not run or did not succeed.
 #[derive(Debug, Error)]
@@ -37,16 +39,50 @@ pub enum PodmanError {
         /// What it printed.
         output: String,
     },
+    /// A call did not end by its deadline; it was killed.
+    #[error("`{what}` did not end in time")]
+    TimedOut {
+        /// What was called.
+        what: String,
+    },
+}
+
+/// Runs `call` until `deadline`; past it, the call is dropped, which kills its Podman process,
+/// and the error is [`PodmanError::TimedOut`] naming `what`.
+///
+/// # Errors
+/// The call's own error, or [`PodmanError::TimedOut`].
+pub async fn within<T>(
+    deadline: Instant,
+    what: &str,
+    call: impl Future<Output = Result<T, PodmanError>>,
+) -> Result<T, PodmanError> {
+    timeout_at(deadline, call).await.unwrap_or_else(|_| {
+        Err(PodmanError::TimedOut {
+            what: what.to_owned(),
+        })
+    })
 }
 
 /// The Podman CLI at one path, with extra environment variables for every call.
 ///
 /// The variables are set on the Podman process, never on its command line: `--env NAME`
-/// then copies them into a container without their values showing in `ps`.
-#[derive(Debug, Clone)]
+/// then copies them into a container without their values showing in `ps`. Its `Debug` shows
+/// their names only.
+#[derive(Clone)]
 pub struct Podman {
     program: String,
     env: Vec<(String, String)>,
+}
+
+impl std::fmt::Debug for Podman {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let names: Vec<&str> = self.env.iter().map(|(name, _)| name.as_str()).collect();
+        f.debug_struct("Podman")
+            .field("program", &self.program)
+            .field("env", &names)
+            .finish()
+    }
 }
 
 impl Podman {
@@ -160,14 +196,17 @@ impl Podman {
             .map(drop)
     }
 
-    /// `podman rm --force` of `id` without waiting; a container that is gone is no error.
+    /// `podman rm --force` of `ids` (ids or names) without waiting; a container that is gone is
+    /// no error.
     ///
     /// # Errors
     /// The call's error.
-    pub async fn rm_force(&self, id: &str) -> Result<(), PodmanError> {
-        self.output(&["rm", "--force", "--ignore", "--time", "0", id])
-            .await
-            .map(drop)
+    pub async fn rm_force(&self, ids: &[String]) -> Result<(), PodmanError> {
+        let mut args: Vec<String> = ["rm", "--force", "--ignore", "--time", "0"]
+            .map(str::to_owned)
+            .to_vec();
+        args.extend(ids.iter().cloned());
+        self.output(&args).await.map(drop)
     }
 
     /// Podman's id of `image` (`podman image inspect`).
@@ -191,6 +230,36 @@ impl Podman {
         self.output(&["network", "create", "--internal", "--label", label, name])
             .await
             .map(drop)
+    }
+
+    /// Creates the network `name` with a route out, unless it exists. Two callers at once are
+    /// no error: when the create fails, the network existing is success.
+    ///
+    /// # Errors
+    /// The call's error.
+    pub async fn network_ensure(&self, name: &str) -> Result<(), PodmanError> {
+        if self.network_exists(name).await? {
+            return Ok(());
+        }
+        match self.output(&["network", "create", name]).await {
+            Ok(_) => Ok(()),
+            Err(error) => match self.network_exists(name).await {
+                Ok(true) => Ok(()),
+                _ => Err(error),
+            },
+        }
+    }
+
+    /// Whether the network `name` exists (`podman network exists`: exit 0 yes, 1 no).
+    ///
+    /// # Errors
+    /// The call's error, when it is neither.
+    pub async fn network_exists(&self, name: &str) -> Result<bool, PodmanError> {
+        match self.output(&["network", "exists", name]).await {
+            Ok(_) => Ok(true),
+            Err(PodmanError::Failed { code: Some(1), .. }) => Ok(false),
+            Err(error) => Err(error),
+        }
     }
 
     /// Removes the network `name`, and any container still on it.
@@ -268,5 +337,26 @@ mod tests {
         };
         assert_eq!(rendered(&with), ["exec", "-i", "c1", "--version"]);
         assert_eq!(rendered(&without), ["exec", "c1", "--version"]);
+    }
+
+    #[test]
+    fn debug_shows_env_names_never_values() {
+        let podman = Podman::new("podman").with_env("GH_TOKEN", "s3cr3t-value");
+        let text = format!("{podman:?}");
+        assert!(text.contains("GH_TOKEN"), "{text}");
+        assert!(!text.contains("s3cr3t"), "{text}");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_call_past_its_deadline_times_out() {
+        let deadline = Instant::now() + Duration::from_secs(1);
+        let result: Result<(), PodmanError> =
+            within(deadline, "podman stop", std::future::pending()).await;
+        assert!(
+            matches!(&result, Err(PodmanError::TimedOut { what }) if what == "podman stop"),
+            "{result:?}"
+        );
+        let quick = within(deadline, "x", async { Ok::<_, PodmanError>(7) }).await;
+        assert_eq!(quick.ok(), Some(7));
     }
 }

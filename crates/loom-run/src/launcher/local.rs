@@ -13,11 +13,21 @@ use super::{BoxFuture, Exec, LaunchContext, LaunchError, Launcher, Session};
 /// Runs `program` as a local process, in the run's clone, with `KIT_DIR` set to the kit.
 ///
 /// The child inherits Loom's environment (it runs on Loom's own machine), plus the variables
-/// given with [`LocalLauncher::with_env`].
-#[derive(Debug, Clone)]
+/// given with [`LocalLauncher::with_env`]. Its `Debug` shows their names, never their values.
+#[derive(Clone)]
 pub struct LocalLauncher {
     program: PathBuf,
     env: Vec<(String, String)>,
+}
+
+impl std::fmt::Debug for LocalLauncher {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let names: Vec<&str> = self.env.iter().map(|(name, _)| name.as_str()).collect();
+        f.debug_struct("LocalLauncher")
+            .field("program", &self.program)
+            .field("env", &names)
+            .finish()
+    }
 }
 
 impl LocalLauncher {
@@ -100,5 +110,18 @@ impl Session for LocalSession {
 
     fn kit_dir(&self) -> String {
         self.ctx.kit.display().to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LocalLauncher;
+
+    #[test]
+    fn debug_shows_env_names_never_values() {
+        let launcher = LocalLauncher::new("claude").with_env("GH_TOKEN", "s3cr3t-value");
+        let text = format!("{launcher:?}");
+        assert!(text.contains("GH_TOKEN"), "{text}");
+        assert!(!text.contains("s3cr3t"), "{text}");
     }
 }

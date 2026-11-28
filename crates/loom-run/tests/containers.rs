@@ -9,117 +9,36 @@ mod fake;
 #[path = "support/podman.rs"]
 mod podman;
 mod support;
+#[path = "support/world.rs"]
+mod world;
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use loom_core::run::{RunEvent, RunId, StopCause};
-use loom_run::config::{KitRef, RunConfig, RunSpec};
 use loom_run::launcher::{LaunchContext, LaunchError, Launcher, PodmanLauncher};
-use loom_run::runner::{RunHandle, Runner};
-use loom_store::PgRawStreamStore;
-use loom_store::testing::TestDb;
-use podman::{Leftovers, containers, image_id, launcher, networks, podman_config};
+use podman::{assert_nothing_left, containers, launcher, podman, podman_config};
 use serde_json::Value;
-use support::{git, make_repo, spec};
-use tokio::sync::mpsc;
+use world::{World, ended, fake_line};
 
 /// Long enough for a first pull of the test image.
 const FIRST_EVENT: Duration = Duration::from_secs(300);
 
-/// One test's world: a repository, a kit at `v1`, a data dir and a throwaway database.
-struct World {
-    tmp: tempfile::TempDir,
-    db: TestDb,
-    spec: RunSpec,
-}
-
-impl World {
-    async fn new() -> Self {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let repo = tmp.path().join("repo");
-        make_repo(&repo, &[("a.txt", "a")]);
-        let kit = tmp.path().join("kit");
-        make_repo(&kit, &[("VERSION", "1.2.3\n")]);
-        git(&kit, &["tag", "v1"]);
-        let kit = KitRef {
-            repository: kit.display().to_string(),
-            version: "v1".to_owned(),
-        };
-        let spec = spec(&repo, "story/ED-12", kit);
-        let db = TestDb::create().await.expect("test database");
-        Self { tmp, db, spec }
-    }
-
-    fn config(&self) -> RunConfig {
-        podman_config(&self.tmp.path().join("data"))
-    }
-
-    /// Starts a run; the guard removes its containers and networks when the test ends.
-    fn start(
-        &self,
-        config: RunConfig,
-        launcher: PodmanLauncher,
-    ) -> (RunHandle, mpsc::Receiver<RunEvent>, Leftovers) {
-        let store = PgRawStreamStore::new(self.db.pool().clone());
-        let runner = Runner::new(config, launcher, store, None);
-        let (handle, rx) = runner.start(self.spec.clone()).expect("start");
-        let guard = Leftovers(handle.id);
-        (handle, rx, guard)
-    }
-
-    /// Runs to the end; returns the run's id, every event and the guard, which the test keeps
-    /// until it has checked that nothing is left.
-    async fn run(
-        &self,
-        config: RunConfig,
-        launcher: PodmanLauncher,
-    ) -> (RunId, Vec<RunEvent>, Leftovers) {
-        let (handle, mut rx, guard) = self.start(config, launcher);
-        let id = handle.id;
-        let mut events = Vec::new();
-        while let Some(event) = rx.recv().await {
-            events.push(event);
-        }
-        handle.join().await;
-        (id, events, guard)
-    }
-
-    async fn end(self) {
-        self.db.drop_db().await.expect("drop the test database");
-    }
-}
-
-fn ended(events: &[RunEvent]) -> &StopCause {
-    match events.last() {
-        Some(RunEvent::RunEnded { cause }) => cause,
-        other => panic!("the last event is not RunEnded: {other:?}"),
-    }
-}
-
 /// The fake's `report` line.
 fn report(events: &[RunEvent]) -> Value {
-    events
-        .iter()
-        .find_map(|event| match event {
-            RunEvent::Unknown { raw } if raw.contains("fake_report") => {
-                Some(serde_json::from_str(raw).expect("the report is JSON"))
-            }
-            _ => None,
-        })
-        .unwrap_or_else(|| panic!("no report in {events:#?}"))
+    fake_line(events, "fake_report")
+}
+
+/// Podman's id of `image`.
+fn image_id(image: &str) -> String {
+    podman(&["image", "inspect", "--format", "{{.Id}}", image]).expect("podman image inspect runs")
 }
 
 /// Writes an executable shell script.
 fn script(path: &Path, body: &str) {
     std::fs::write(path, body).expect("write the script");
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).expect("chmod");
-}
-
-fn assert_nothing_left(run: RunId) {
-    assert_eq!(containers(run), Vec::<String>::new(), "containers left");
-    assert_eq!(networks(run), Vec::<String>::new(), "networks left");
 }
 
 // AC: TU-03.1
@@ -241,7 +160,7 @@ async fn cancelling_stops_the_process_tree_and_the_container_within_10_s() {
             break;
         }
     }
-    assert_eq!(containers(id).len(), 1, "the container runs");
+    assert_eq!(containers(id).len(), 2, "the container and its proxy run");
 
     let cancelled = Instant::now();
     handle.cancel();
