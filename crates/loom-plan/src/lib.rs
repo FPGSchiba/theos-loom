@@ -2,6 +2,7 @@
 
 mod check;
 pub mod finding;
+pub mod graph;
 pub(crate) mod index;
 pub mod model;
 pub(crate) mod parse;

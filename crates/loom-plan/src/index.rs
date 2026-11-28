@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::model::{Key, TicketId};
+use crate::model::{AfterRef, Key, TicketId};
 use crate::repo::{Component, Epic, Initiative, PlanningRepo, Story};
 
 /// Whether a keyed item is an epic or a story (spike and bug included).
@@ -201,4 +201,36 @@ pub fn epic_requirements(epic: &Epic) -> Option<BTreeSet<u32>> {
     epic.body
         .as_ref()
         .map(|b| b.requirements.iter().map(|r| r.number).collect())
+}
+
+/// What an `after` reference points at.
+#[derive(Debug, Clone, Copy)]
+pub enum AfterTarget<'a> {
+    /// An epic.
+    Epic(&'a Epic),
+    /// A story, spike or bug.
+    Story(&'a Story),
+}
+
+/// Resolves one `after` prerequisite, the one place the PO's forms are read. `mates` are the
+/// stories of the same folder for a story (a bare id is a sibling story) and `None` for an epic
+/// (a bare id is an epic id of its initiative); `initiative` is the one whose epics it may name,
+/// `None` for a backlog story. `None` when it names nothing.
+#[must_use]
+pub fn resolve_after<'a>(
+    on: &AfterRef,
+    mates: Option<&'a [Story]>,
+    initiative: Option<&'a Initiative>,
+) -> Option<AfterTarget<'a>> {
+    match on {
+        AfterRef::Sibling(id) => match mates {
+            Some(mates) => story_by_id(mates, id).map(AfterTarget::Story),
+            None => epic_by_id(initiative?, id).map(AfterTarget::Epic),
+        },
+        AfterRef::Cross { epic, entry } => {
+            let epic = epic_by_id(initiative?, epic)?;
+            story_by_id(&epic.stories, entry).map(AfterTarget::Story)
+        }
+        AfterRef::Epic(slug) => epic_by_slug(initiative?, slug).map(AfterTarget::Epic),
+    }
 }

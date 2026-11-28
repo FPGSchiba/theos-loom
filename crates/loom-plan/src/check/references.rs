@@ -7,7 +7,7 @@ use super::Context;
 use crate::finding::{Finding, Rule};
 use crate::index::{
     EpicAt, InitiativeAt, ItemKind, StoryAt, StoryHome, epic_by_id, epic_by_slug,
-    epic_requirements, initiative_requirements, story_by_id,
+    epic_requirements, initiative_requirements, resolve_after, story_by_id,
 };
 use crate::model::{AfterRef, EpicAfter, InitiativeAfter, Key, Scalar};
 use crate::repo::{Initiative, PlanFile, StateMirrorFile, Story};
@@ -248,6 +248,9 @@ fn after(
     mates: Option<&[Story]>,
     initiative: Option<&Initiative>,
 ) -> Option<Finding> {
+    if resolve_after(on, mates, initiative).is_some() {
+        return None;
+    }
     let problem = match on {
         AfterRef::Sibling(id) => match mates {
             Some(mates) => story_by_id(mates, id)

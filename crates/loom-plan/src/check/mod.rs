@@ -4,6 +4,7 @@
 //! [`RULES`].
 
 mod context;
+mod cycles;
 mod duplicates;
 mod references;
 
@@ -16,7 +17,7 @@ use crate::repo::PlanningRepo;
 pub(crate) type RuleFn = fn(&Context<'_>) -> Vec<Finding>;
 
 /// Every rule `check` runs.
-pub(crate) const RULES: &[RuleFn] = &[references::check, duplicates::check];
+pub(crate) const RULES: &[RuleFn] = &[references::check, duplicates::check, cycles::check];
 
 /// Checks `repo`: what reading found plus every rule's findings, errors before notes, then by
 /// path and line.
