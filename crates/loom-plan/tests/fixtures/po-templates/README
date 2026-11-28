@@ -1,0 +1,4 @@
+These files are synthetic. They are filled in from the PO templates of requirements-bmad
+6.13.0-next (ticket-template.md, spike-template.md, bug-template.md, tickets-template.toml, and
+the plan keys of tickets.py), with plain online-shop sample values in place of the placeholders
+and Loom's keys (key, loom, needs, origin) added where the model has them.
