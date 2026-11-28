@@ -203,7 +203,7 @@
     "AfterRef": {
       "type": [
         "string",
-        "integer"
+        "number"
       ],
       "pattern": "^([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+)$"
     },

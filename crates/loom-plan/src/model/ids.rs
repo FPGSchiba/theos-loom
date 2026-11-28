@@ -295,7 +295,7 @@ impl JsonSchema for AfterRef {
 
     fn json_schema(_: &mut SchemaGenerator) -> Schema {
         json_schema!({
-            "type": ["string", "integer"],
+            "type": ["string", "number"],
             "pattern": "^([0-9A-Za-z]+(\\.[0-9A-Za-z]+)?|epic-.+)$"
         })
     }

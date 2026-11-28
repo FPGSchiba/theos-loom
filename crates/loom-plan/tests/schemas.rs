@@ -147,6 +147,9 @@ fn id_patterns_agree_between_rust_and_schema() -> TestResult {
     let key = jsonschema::validator_for(&definitions("epic", "Key")?)?;
     let ticket = jsonschema::validator_for(&definitions("tickets-toml", "TicketId")?)?;
     let after = jsonschema::validator_for(&definitions("tickets-toml", "AfterRef")?)?;
+    // YAML `1.3` unquoted is a JSON number; the Rust side reads its text, "1.3".
+    assert!(after.is_valid(&json!(1.3)), "numeric 1.3");
+    assert!("1.3".parse::<AfterRef>().is_ok());
     for s in [
         "ED-12", "A-1", "A1B-007", "ed-12", "ED-", "-12", "ED12", "1A-2", "ED-1x", "", "E D-1",
     ] {
@@ -181,6 +184,32 @@ fn id_patterns_agree_between_rust_and_schema() -> TestResult {
             after.is_valid(&json!(s)),
             "after {s:?}"
         );
+    }
+    Ok(())
+}
+
+// AC: TU-01.4
+#[test]
+fn unquoted_cross_epic_after_validates_against_leaf_and_epic() -> TestResult {
+    for (file, schema, old) in [
+        (
+            "story.md",
+            "leaf",
+            r#"after: [2, "1.3", "epic-pricing-rules"]"#,
+        ),
+        ("epic.md", "epic", r#"after: ["epic-pricing-rules"]"#),
+    ] {
+        let text = fs::read_to_string(Path::new(TEMPLATES).join(file))?;
+        assert!(text.contains(old), "{file} lost its after line");
+        let text = text.replace(old, "after: [2, 1.3, epic-x]");
+        let value = front_matter_json(&text)?.ok_or("no front matter")?;
+        assert!(value["after"][1].is_number(), "1.3 should read as a number");
+        let validator = jsonschema::validator_for(&schema_value(schema)?)?;
+        let errors: Vec<String> = validator
+            .iter_errors(&value)
+            .map(|e| e.to_string())
+            .collect();
+        assert!(errors.is_empty(), "{file} against {schema}: {errors:?}");
     }
     Ok(())
 }
