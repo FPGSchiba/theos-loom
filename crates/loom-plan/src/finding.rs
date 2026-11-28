@@ -119,6 +119,15 @@ impl Finding {
             message,
         }
     }
+
+    /// A note of `rule` about the file at `path`, without a line.
+    #[must_use]
+    pub fn note(rule: Rule, path: &str, message: String) -> Finding {
+        Finding {
+            severity: Severity::Note,
+            ..Finding::error(rule, path, message)
+        }
+    }
 }
 
 #[cfg(test)]

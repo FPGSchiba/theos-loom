@@ -6,7 +6,11 @@
 mod context;
 mod cycles;
 mod duplicates;
+mod epic_incomplete;
+mod missing_key;
+mod readiness;
 mod references;
+mod story_without_acs;
 
 use context::Context;
 
@@ -17,7 +21,14 @@ use crate::repo::PlanningRepo;
 pub(crate) type RuleFn = fn(&Context<'_>) -> Vec<Finding>;
 
 /// Every rule `check` runs.
-pub(crate) const RULES: &[RuleFn] = &[references::check, duplicates::check, cycles::check];
+pub(crate) const RULES: &[RuleFn] = &[
+    references::check,
+    duplicates::check,
+    cycles::check,
+    epic_incomplete::check,
+    story_without_acs::check,
+    missing_key::check,
+];
 
 /// Checks `repo`: what reading found plus every rule's findings, errors before notes, then by
 /// path and line.
