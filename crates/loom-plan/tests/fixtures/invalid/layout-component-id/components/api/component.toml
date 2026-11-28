@@ -1,0 +1,7 @@
+format = 1
+
+[component]
+id = "payments"
+name = "Payment service"
+repo = "git@example.com:shop/api.git"
+default_branch = "main"

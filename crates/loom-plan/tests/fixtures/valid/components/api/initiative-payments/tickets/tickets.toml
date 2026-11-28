@@ -1,0 +1,12 @@
+[[entry]]
+id = 1
+type = "story"
+title = "Charge a card"
+covers = ["R1"]
+key = "API-2"
+loom = "ready"
+
+[[entry]]
+id = 2
+type = "story"
+title = "Refund a card payment"

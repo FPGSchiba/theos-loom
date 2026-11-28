@@ -107,6 +107,20 @@ pub struct Finding {
     pub message: String,
 }
 
+impl Finding {
+    /// An error of `rule` about the file at `path`, without a line.
+    #[must_use]
+    pub fn error(rule: Rule, path: &str, message: String) -> Finding {
+        Finding {
+            severity: Severity::Error,
+            rule,
+            path: path.to_owned(),
+            line: None,
+            message,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

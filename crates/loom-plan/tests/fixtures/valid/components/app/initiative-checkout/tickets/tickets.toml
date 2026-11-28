@@ -1,0 +1,21 @@
+[[epic]]
+id = 1
+slug = "epic-cart"
+title = "Shoppers manage their cart"
+covers = ["R1"]
+
+[[epic]]
+id = 2
+slug = "epic-search"
+title = "Shoppers find products"
+covers = ["R2"]
+
+[[epic]]
+id = 3
+slug = "epic-wishlist"
+title = "Shoppers keep a wishlist"
+
+[[epic]]
+id = 4
+slug = "epic-gift-cards"
+title = "Shoppers pay with gift cards"
