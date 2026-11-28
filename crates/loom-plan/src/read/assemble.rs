@@ -7,7 +7,7 @@ use super::collect::{ComponentParts, EpicParts, InitiativeParts, Parts, Tickets}
 use super::join::join;
 use crate::finding::{Finding, Rule};
 use crate::model::EpicRow;
-use crate::repo::{Component, Epic, Initiative, PlanFile, PlanningRepo, Story};
+use crate::repo::{Component, Epic, Initiative, LeafFile, PlanFile, PlanningRepo, Story};
 
 /// What building the tree adds beside the tree itself.
 #[derive(Default)]
@@ -132,6 +132,10 @@ fn initiative(
         |b| (b.epic.clone(), b.entry.clone(), b.initiative.clone()),
     );
     let epics = epics(&tickets, epic_rows, parts.epics, sink);
+    if !epics.is_empty() {
+        sink.findings
+            .extend(parts.tickets.leaves.iter().map(leaf_beside_epics));
+    }
     let stories = sink.stories(&tickets, &entries, parts.tickets);
     let children = child_rows
         .iter()
@@ -187,4 +191,16 @@ fn epics(
             }
         })
         .collect()
+}
+
+/// A leaf directly in the `tickets/` of an initiative that has epics (R-n).
+fn leaf_beside_epics(leaf: &LeafFile) -> Finding {
+    Finding::error(
+        Rule::Layout,
+        &leaf.path,
+        format!(
+            "{} sits in the tickets/ folder of an initiative that has epics; a leaf goes there              only when the initiative has no epics, otherwise in an epic's tickets/ folder (or              backlog/)",
+            leaf.path
+        ),
+    )
 }

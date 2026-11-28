@@ -672,3 +672,20 @@ fn a_breakdown_in_backlog_is_a_layout_finding() -> TestResult {
     assert_eq!(finding.path, "components/app/backlog/tickets.toml");
     Ok(())
 }
+
+// AC: TU-01.2
+#[test]
+fn a_leaf_beside_epics_is_a_layout_finding() -> TestResult {
+    // A leaf goes in an initiative's `tickets/` only when the initiative has no epics.
+    let repo = read(&fixture("invalid/layout-leaf-beside-epics"))?;
+    let finding = only_finding(&repo)?;
+    assert_eq!(
+        (finding.rule, finding.severity),
+        (Rule::Layout, Severity::Error)
+    );
+    assert_eq!(
+        finding.path,
+        "components/app/initiative-checkout/tickets/story-gift-note.md"
+    );
+    Ok(())
+}
