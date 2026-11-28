@@ -133,3 +133,58 @@ fn unfinished_work_outside_ready_epics_gives_notes_only() -> TestResult {
     }
     Ok(())
 }
+
+// AC: TU-01.2
+#[test]
+fn ready_epic_without_stories_still_needs_a_goal() -> TestResult {
+    let finding = only_error("epic-incomplete-empty-no-goal")?;
+    assert_finding(&finding, Rule::EpicIncomplete, &["goal"]);
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
+fn ready_epic_without_stories_still_needs_a_key() -> TestResult {
+    let finding = only_error("missing-key-empty-epic")?;
+    assert_finding(&finding, Rule::MissingKey, &["epic", "key"]);
+    assert!(finding.path.ends_with("epic-cart.md"), "{finding:#?}");
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
+fn story_ready_by_its_own_mark_in_a_draft_epic_is_an_error() -> TestResult {
+    let all = findings("cases/ready-story-in-draft-epic")?;
+    let errors = of_severity(all, Severity::Error);
+    assert_eq!(errors.len(), 1, "{errors:#?}");
+    assert_finding(&errors[0], Rule::StoryWithoutAcs, &["criteria"]);
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
+fn paused_epic_gives_notes_only() -> TestResult {
+    let all = findings("cases/paused-epic")?;
+    assert_eq!(of_severity(all.clone(), Severity::Error), []);
+    let notes = of_severity(all, Severity::Note);
+    assert_eq!(notes.len(), 3, "{notes:#?}");
+    assert!(notes.iter().all(|f| f.rule == Rule::EpicIncomplete));
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
+fn dropped_ready_epic_gives_no_finding() -> TestResult {
+    assert_eq!(findings("cases/dropped-ready-epic")?, Vec::<Finding>::new());
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
+fn dropped_ready_story_gives_no_finding() -> TestResult {
+    assert_eq!(
+        findings("cases/dropped-ready-story")?,
+        Vec::<Finding>::new()
+    );
+    Ok(())
+}

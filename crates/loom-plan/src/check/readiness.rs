@@ -1,7 +1,6 @@
 //! Readiness: the one place that decides whether an epic or story is ready (decision 0021,
 //! R-q, R-r), and the severity the unfinished-work rules give it (decision 0022).
 
-use super::Context;
 use crate::finding::{Finding, Rule};
 use crate::index::{StoryAt, StoryHome};
 use crate::model::LoomMark;
@@ -19,7 +18,7 @@ pub(crate) enum Item<'a> {
 /// True when Loom may work on `item`: it carries `loom: ready` itself, or its epic does, and it
 /// is not dropped. A story outside an epic is ready only by its own mark (R-q). `paused` is not
 /// ready.
-pub(crate) fn is_ready(_cx: &Context<'_>, item: Item<'_>) -> bool {
+pub(crate) fn is_ready(item: Item<'_>) -> bool {
     match item {
         Item::Epic(epic) => epic_is_ready(epic),
         Item::Story(at) => {

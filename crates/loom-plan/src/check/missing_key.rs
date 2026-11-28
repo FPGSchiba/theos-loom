@@ -1,6 +1,6 @@
 //! `missing-key`: an epic or story without `key`, so its criteria have no ids (spec §5.4). An
 //! error when the item is ready, else a note. A keyless story is reported here and nowhere else.
-//! An epic without stories is never a finding (TU-01.2).
+//! Having no stories is never a finding (TU-01.2); an epic without stories needs its key too.
 
 use super::Context;
 use super::readiness::{Item, finding, is_ready};
@@ -12,10 +12,10 @@ pub(crate) fn check(cx: &Context<'_>) -> Vec<Finding> {
     for at in &cx.index.epics {
         let epic = at.epic;
         let Some(file) = &epic.file else { continue };
-        if epic.key().is_none() && !epic.stories.is_empty() && !epic.is_dropped() {
+        if epic.key().is_none() && !epic.is_dropped() {
             out.push(finding(
                 Rule::MissingKey,
-                is_ready(cx, Item::Epic(epic)),
+                is_ready(Item::Epic(epic)),
                 &file.path,
                 "the epic has no `key`: add `key: <COMPONENT>-<n>` to its front matter".to_owned(),
             ));
@@ -31,7 +31,7 @@ pub(crate) fn check(cx: &Context<'_>) -> Vec<Finding> {
             };
             out.push(finding(
                 Rule::MissingKey,
-                is_ready(cx, Item::Story(at)),
+                is_ready(Item::Story(at)),
                 &story.path(),
                 format!(
                     "the story \"{}\" has no `key`{ids}: add `key: <COMPONENT>-<n>`",

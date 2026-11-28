@@ -26,7 +26,7 @@ pub(crate) fn check(cx: &Context<'_>) -> Vec<Finding> {
             };
             finding(
                 Rule::StoryWithoutAcs,
-                is_ready(cx, Item::Story(at)),
+                is_ready(Item::Story(at)),
                 &story.path(),
                 format!("the story \"{}\" {what}: {add}", story.title()),
             )

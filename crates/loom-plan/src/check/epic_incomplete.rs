@@ -1,20 +1,20 @@
 //! `epic-incomplete`: an epic without goal, scope or requirement line, saying which (spec §5.4).
-//! An error when the epic is ready, else a note. An epic without stories is never a finding
-//! (TU-01.2).
+//! An error when the epic is ready, else a note. Having no stories is never a finding (TU-01.2),
+//! but an epic without stories is checked like any other.
 
 use super::Context;
 use super::readiness::{Item, finding, is_ready};
 use crate::finding::{Finding, Rule};
 
-/// Every incomplete epic with stories.
+/// Every incomplete epic, with or without stories.
 pub(crate) fn check(cx: &Context<'_>) -> Vec<Finding> {
     let mut out = Vec::new();
     for at in &cx.index.epics {
         let epic = at.epic;
-        if epic.stories.is_empty() || epic.is_dropped() {
+        if epic.is_dropped() {
             continue;
         }
-        let ready = is_ready(cx, Item::Epic(epic));
+        let ready = is_ready(Item::Epic(epic));
         let (Some(file), Some(body)) = (&epic.file, &epic.body) else {
             out.push(finding(
                 Rule::EpicIncomplete,
