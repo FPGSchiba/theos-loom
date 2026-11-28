@@ -11,7 +11,7 @@
 
 ## Final review
 
-<!-- Rounds: N · last verdict: clean (or: cap reached, open findings listed below) -->
+<!-- Rounds: N · fixed / ruled not worth fixing · last verdict: nothing worth fixing (or: best effort after 5 rounds, open findings listed below) -->
 
 ## Rulings
 

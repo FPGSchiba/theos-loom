@@ -75,11 +75,16 @@ Questions to the decider (Jann) in this step:
 
 ## Verdict
 
-- **Would Jann have merged it as is?** yes / with changes / no
-- Why:
+- **Would Jann have merged it as is?** yes
+- Why: he judged P00 done and merged PR #2 before this record was finished (it was reverted in
+  #6 and merged again as #7, unchanged). The loop's output was good enough; the review step cost
+  the most of his time, because every fix wave on a PR that is all protected paths asked for his
+  approval, and reviewers kept finding minor issues. His changes to the loop: judge every
+  finding and stop when none is worth fixing; after 5 rounds, one last fix and a targeted review,
+  then stop as best effort with the PR ready, not draft (decision 0008).
 
 ## Totals
 
 | Tokens | Cost | Wall time | Jann's time |
 |---|---|---|---|
-| Output 1.12M (refine 0.14M, implement 0.64M, review 0.34M); input almost all cache reads (refine 12.6M, implement 111.4M, review 72.5M). The brainstorming inside the planning session isn't counted. | $71.76 (refine $7.67, implement $35.90, review $28.19), without the planning-session part | 10 h 19 min wall (refine 0:42, implement 1:59, review 7:39, mostly idle); API 2 h 41 min | |
+| Output 1.12M (refine 0.14M, implement 0.64M, review 0.34M); input almost all cache reads (refine 12.6M, implement 111.4M, review 72.5M). The brainstorming inside the planning session isn't counted. | $71.76 (refine $7.67, implement $35.90, review $28.19), without the planning-session part | 10 h 19 min wall (refine 0:42, implement 1:59, review 7:39, mostly idle); API 2 h 41 min | Little; most of it went to approving each review fix wave on protected paths (questions 10–13) |

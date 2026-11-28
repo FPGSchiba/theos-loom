@@ -62,10 +62,13 @@ these rules is never acceptable, also not to unblock work.
   task names the ACs its tests prove; tests carry `// AC: <id>`.
 - **Execution** is superpowers:subagent-driven-development, in a fresh session that has never
   seen the refinement.
-- **The final review is a loop**: a fresh whole-branch reviewer (most capable model), one fix
-  subagent with the complete list of findings, then a new fresh reviewer, until one reports no
-  findings. A reviewer may reopen a ruled finding only with new evidence. After 5 rounds, stop:
-  the PR becomes a draft with the open findings listed.
+- **The final review is a loop**: a fresh whole-branch reviewer (most capable model), then a
+  judgement of every finding: fix it, or rule it not worth fixing (`Ruling:` with the reason).
+  One fix subagent gets the findings to fix, then a new fresh reviewer runs. The loop stops when
+  a reviewer reports nothing worth fixing; minor findings that change no behaviour and risk
+  nothing are ruled, not fixed. A reviewer may reopen a ruled finding only with new evidence.
+  After 5 rounds, one last fix wave and a targeted review of it, then stop: the review was best
+  effort, the PR stays ready, and the open findings are listed in it (decision 0008).
 - **Finishing** is always a PR. Enable auto-merge only when hard rule 2 allows it.
 - **Model selection**: plans and final reviews on the most capable model; task reviewers on a
   mid-tier model; implementers on the cheapest model that fits the task.
@@ -102,7 +105,7 @@ subagent; put them in subagent briefs.
 ## When to stop and ask Jann
 
 Only for: an irreversible or destructive action; a security-sensitive action; a protected-path
-change; an AC that is wrong or impossible; a final review loop that hit its cap; and, during the
+change; an AC that is wrong or impossible; and, during the
 trial, every question and approval the decider would otherwise handle. Everything else is decided
 and recorded as `Ruling: <what> — <why> — <cost if wrong>` in the plan, and listed in the PR.
 
