@@ -20,11 +20,16 @@ fn main() -> ExitCode {
         .with_env_filter(filter)
         .with_writer(io::stderr)
         .init();
-    match run(Cli::parse()) {
+    exit_code(run(Cli::parse()), &mut io::stderr().lock())
+}
+
+/// Maps the result of [`run`] to an exit code; a failure is written to `err` and is exit code 2.
+fn exit_code(result: Result<u8>, err: &mut impl Write) -> ExitCode {
+    match result {
         Ok(code) => ExitCode::from(code),
         Err(e) => {
             // Nothing sensible is left to do when stderr itself can't be written.
-            let _ = writeln!(io::stderr().lock(), "loom: {e:#}");
+            let _ = writeln!(err, "loom: {e:#}");
             ExitCode::from(plan_cmd::UNREADABLE)
         }
     }
@@ -48,4 +53,28 @@ fn run(cli: Cli) -> Result<u8> {
     };
     out.flush()?;
     Ok(code)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_failure_is_written_to_err_and_exits_2() {
+        let mut err = Vec::new();
+        let result = Err(anyhow::anyhow!("disk gone"));
+        assert_eq!(exit_code(result, &mut err), ExitCode::from(2));
+        assert_eq!(
+            String::from_utf8_lossy(&err),
+            "loom: disk gone
+"
+        );
+    }
+
+    #[test]
+    fn a_success_keeps_its_code_and_writes_nothing() {
+        let mut err = Vec::new();
+        assert_eq!(exit_code(Ok(1), &mut err), ExitCode::from(1));
+        assert_eq!(err.len(), 0);
+    }
 }
