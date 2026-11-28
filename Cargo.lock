@@ -990,9 +990,11 @@ dependencies = [
  "loom-store",
  "rustls",
  "rustls-native-certs",
+ "serde",
  "serde_json",
  "thiserror",
  "tokio",
+ "toml",
  "tracing",
  "ureq",
 ]
