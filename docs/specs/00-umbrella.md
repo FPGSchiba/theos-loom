@@ -7,7 +7,8 @@ version 4 adds a manual trial and a two-stage build; version 5 removes the revie
 and makes building Loom itself the trial (§9, O0), so the editor is onboarded only afterwards;
 version 6 moves the store from SQLite to PostgreSQL on Jann's dedicated database VM: T1, T4, T6;
 version 7, 28 Nov 2026, makes the review loop judge its findings and end as best effort: TU-07.1, decision 0008;
-version 8, 28 Nov 2026, opens runs to the public web for research, with the home LAN blocked: T4, decision 0013)
+version 8, 28 Nov 2026, opens runs to the public web for research, with the home LAN blocked: T4, decision 0013;
+and makes new models and CLI versions work without a code change: T14, decision 0016)
 Repo: `FPGSchiba/theos-loom`. A loom weaves many threads in parallel into one fabric.
 Owner of architecture: Jann · Built by: Claude Code with superpowers
 
@@ -461,6 +462,10 @@ component. The default is a self-hosted ntfy topic (my call).
 - **T13** The engineering directives of theos-editor's `CLAUDE.md` (maintainability first, use
   what exists, change the approach when fixes keep leaking, the gate is not a fortress) apply to
   Loom's own build.
+- **T14** New models and new versions of the Claude Code CLI keep working without a code change
+  or a new release of Loom. Model names and prices are data, loaded while Loom runs (a public
+  price list, with Loom's config overriding it). Every run uses the latest CLI and records the
+  version it used (decision 0016).
 
 ---
 

@@ -90,8 +90,11 @@ branch history. On `main`, the squashed pull request is the unit.
 - Every test runs in the `test` check on Linux for every pull request. A test that takes minutes
   gets a name segment that starts with `slow_` (`store::slow_migrations_apply`), so that a later split
   can tell it apart; Loom has no such test yet.
-- Tests that need PostgreSQL (from P02) read the URL of a throwaway database from
-  `LOOM_TEST_DATABASE_URL`, never the real database. Tests need no other network.
+- Tests that need PostgreSQL (from P03) read the URL of a throwaway database from
+  `LOOM_TEST_DATABASE_URL`, never the real database.
+- Tests that need containers (from P03) run Podman, rootless, and are built on Linux only: Loom
+  runs on Linux only, so the local gate on Windows leaves them out and CI runs them. They may pull
+  container images, each named by its digest. Tests need no other network.
 - A test that needs an external service is marked `#[ignore = "needs <service>"]` and runs on
   request.
 - Fixtures live in `crates/<crate>/tests/fixtures/`; synthetic fixtures say so in their file.
