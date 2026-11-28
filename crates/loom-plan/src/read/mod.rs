@@ -21,6 +21,9 @@ pub enum ReadError {
     /// The path is not a directory, or does not exist.
     #[error("{0} is not a directory")]
     NotADirectory(PathBuf),
+    /// The directory has no `loom.toml`, so it is not a planning repo.
+    #[error("{0} has no loom.toml; not a planning repo")]
+    NoLoomToml(PathBuf),
     /// The root directory could not be listed.
     #[error("cannot read {path}: {source}")]
     Io {
@@ -37,10 +40,13 @@ pub enum ReadError {
 /// others.
 ///
 /// # Errors
-/// [`ReadError`] when `root` is not a readable directory.
+/// [`ReadError`] when `root` is not a readable directory or has no `loom.toml`.
 pub fn read(root: &Path) -> Result<PlanningRepo, ReadError> {
     if !fs::metadata(root).is_ok_and(|m| m.is_dir()) {
         return Err(ReadError::NotADirectory(root.to_path_buf()));
+    }
+    if !root.join("loom.toml").is_file() {
+        return Err(ReadError::NoLoomToml(root.to_path_buf()));
     }
     let mut parts = Parts::default();
     let files = walk::walk(root, &mut parts.findings)?;

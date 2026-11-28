@@ -108,6 +108,17 @@ fn check_exits_2_on_a_path_that_is_not_a_directory() -> TestResult {
     Ok(())
 }
 
+// AC: TU-01.2
+#[test]
+fn check_exits_2_on_a_directory_without_loom_toml() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let out = loom(&["plan", "check"], dir.path())?;
+    assert_eq!(out.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("has no loom.toml"), "{stderr}");
+    Ok(())
+}
+
 // AC: TU-01.4
 #[test]
 fn schemas_command_writes_every_schema() -> TestResult {

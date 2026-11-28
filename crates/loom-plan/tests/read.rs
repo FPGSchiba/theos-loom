@@ -50,6 +50,7 @@ fn write(root: &Path, path: &str, text: &str) -> std::io::Result<()> {
     fs::write(path, text)
 }
 
+const LOOM_TOML: &str = include_str!("fixtures/valid/loom.toml");
 const COMPONENT: &str = "format = 1\n[component]\nid = \"app\"\nname = \"Web shop\"\nrepo = \"r\"\ndefault_branch = \"main\"\n";
 const INITIATIVE: &str = "---\ntype: initiative\ntitle: \"Shoppers check out\"\n---\n# T\n";
 
@@ -59,6 +60,7 @@ fn tree(
 ) -> Result<(tempfile::TempDir, PathBuf), Box<dyn std::error::Error>> {
     let dir = tempfile::tempdir()?;
     let root = dir.path().join("repo");
+    write(&root, "loom.toml", LOOM_TOML)?;
     write(&root, "components/app/component.toml", COMPONENT)?;
     write(
         &root,
@@ -458,6 +460,16 @@ fn a_missing_root_is_a_read_error() -> TestResult {
     let file = dir.path().join("file.txt");
     fs::write(&file, "x")?;
     assert!(matches!(read(&file), Err(ReadError::NotADirectory(_))));
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
+fn a_root_without_loom_toml_is_a_read_error() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let err = read(dir.path()).err().ok_or("expected a read error")?;
+    assert!(matches!(err, ReadError::NoLoomToml(ref p) if p == dir.path()));
+    assert!(err.to_string().contains("has no loom.toml"), "{err}");
     Ok(())
 }
 
