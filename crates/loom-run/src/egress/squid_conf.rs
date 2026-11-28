@@ -1,6 +1,6 @@
 //! The proxy's configuration (spec §5.3 step 4, R-c): Squid allows HTTP and `CONNECT` to any
 //! port, except to the blocked address ranges, which it checks against the *resolved* address
-//! (`dst`), and logs every request in one line Loom reads back ([`super::access_log`]).
+//! (`dst`), and logs every request in one line Loom reads back ([`super::parse_access_line`]).
 
 use std::fmt::Write as _;
 use std::net::IpAddr;

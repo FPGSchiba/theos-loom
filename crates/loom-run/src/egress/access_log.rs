@@ -1,5 +1,5 @@
-//! One line of the proxy's access log (format `loom` of [`super::squid_conf`]:
-//! `%ts %Ss %>Hs %rm %ru`) as an [`RunEvent::Egress`]. The URL is read with the `http` crate:
+//! One line of the proxy's access log (format `loom` of [`super::squid_conf()`]:
+//! `%ts %Ss %>Hs %rm %ru`) as a [`RunEvent::Egress`]. The URL is read with the `http` crate:
 //! a full URL for plain HTTP, `host:port` for `CONNECT`.
 
 use http::Uri;
