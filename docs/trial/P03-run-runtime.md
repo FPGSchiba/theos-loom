@@ -6,9 +6,9 @@ Started: 28 Nov 2026, 14:54 · Finished: –
 
 | | |
 |---|---|
-| Tokens (in / out) | n/a so far: an interactive session; to be filled from `/cost` of this session |
-| Cost (API-equivalent) | n/a so far, same reason |
-| Wall time | 28 Nov 2026, 14:54 to the plan's commit |
+| Tokens (in / out) | From `/cost`: Opus 5.5 200 in + 12.3M cache read + 276.1k cache write / 107.4k out; Haiku 5.5 3.8k in / 366 out |
+| Cost (API-equivalent) | $6.66 (Haiku $0.0006) |
+| Wall time | 49 min 43 s (API 17 min 34 s), plus Jann's reading and merging of #10 and #12 between turns |
 | Builder-check questions | 4 · 0 went to Jann (settled as spec rulings R-n, R-o, R-p and `bytea` in R-h) |
 
 Questions to the decider (Jann):
