@@ -1,0 +1,21 @@
+{
+  "_comment": "Synthetic subset in the LiteLLM price-list format, for tests; not real prices.",
+  "sample_spec": { "input_cost_per_token": 0.0 },
+  "model-a": {
+    "input_cost_per_token": 0.000003,
+    "output_cost_per_token": 0.000015,
+    "cache_creation_input_token_cost": 0.00000375,
+    "cache_creation_input_token_cost_above_1hr": 0.000006,
+    "cache_read_input_token_cost": 0.0000003
+  },
+  "model-b": {
+    "input_cost_per_token": 0.000001,
+    "output_cost_per_token": 0.000005,
+    "cache_creation_input_token_cost": 0.00000125,
+    "cache_read_input_token_cost": 0.0000001
+  },
+  "anthropic/model-c": {
+    "input_cost_per_token": 0.00001,
+    "output_cost_per_token": 0.00005
+  }
+}

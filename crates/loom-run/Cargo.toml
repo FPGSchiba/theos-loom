@@ -14,3 +14,11 @@ workspace = true
 loom-core = { path = "../loom-core" }
 serde_json.workspace = true
 tracing.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+ureq.workspace = true
+rustls.workspace = true
+rustls-native-certs.workspace = true
+
+[dev-dependencies]
+loom-store = { path = "../loom-store" }
