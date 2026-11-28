@@ -35,6 +35,9 @@ pub enum WorkspaceError {
     /// A branch name that git would read as an option.
     #[error("invalid branch name {0:?}")]
     BadBranch(String),
+    /// A repository URL that git would read as an option.
+    #[error("invalid repository url {0:?}")]
+    BadUrl(String),
 }
 
 /// A run's own clone of the story's repository.
@@ -58,6 +61,9 @@ impl Workspace {
         run: RunId,
         spec: &RunSpec,
     ) -> Result<Self, WorkspaceError> {
+        if spec.repo_url.is_empty() || spec.repo_url.starts_with('-') {
+            return Err(WorkspaceError::BadUrl(spec.repo_url.clone()));
+        }
         for branch in [&spec.story_branch, &spec.default_branch] {
             if branch.is_empty() || branch.starts_with('-') {
                 return Err(WorkspaceError::BadBranch(branch.clone()));
@@ -127,15 +133,7 @@ async fn clone_for_run(
             )
             .await?;
         } else {
-            let args = [
-                "clone".as_ref(),
-                "--mirror".as_ref(),
-                "--quiet".as_ref(),
-                "--".as_ref(),
-                url,
-                mirror.as_os_str(),
-            ];
-            git::run(None, &args).await?;
+            create_mirror(mirror, url).await?;
         }
         let args = [
             "clone".as_ref(),
@@ -175,4 +173,45 @@ async fn clone_for_run(
     )
     .await?;
     Ok(())
+}
+
+/// Clones the mirror beside its final path and renames it, so a cancelled or crashed first clone
+/// never leaves a half mirror that later runs would take for a good one.
+async fn create_mirror(mirror: &Path, url: &OsStr) -> Result<(), WorkspaceError> {
+    let mut name = mirror.as_os_str().to_owned();
+    name.push(".partial");
+    let partial = PathBuf::from(name);
+    if partial.exists() {
+        remove_dir(&partial).await?;
+    }
+    let args = [
+        "clone".as_ref(),
+        "--mirror".as_ref(),
+        "--quiet".as_ref(),
+        "--".as_ref(),
+        url,
+        partial.as_os_str(),
+    ];
+    if let Err(error) = git::run(None, &args).await {
+        // Best effort: the error that matters is the clone's.
+        let _ = remove_dir(&partial).await;
+        return Err(error.into());
+    }
+    tokio::fs::rename(&partial, mirror)
+        .await
+        .map_err(|source| WorkspaceError::Io {
+            what: "rename",
+            path: partial.clone(),
+            source,
+        })
+}
+
+async fn remove_dir(path: &Path) -> Result<(), WorkspaceError> {
+    tokio::fs::remove_dir_all(path)
+        .await
+        .map_err(|source| WorkspaceError::Io {
+            what: "remove",
+            path: path.to_owned(),
+            source,
+        })
 }

@@ -234,3 +234,60 @@ async fn a_kit_version_that_is_a_path_or_an_option_is_refused() {
         );
     }
 }
+
+#[tokio::test]
+async fn a_stale_partial_mirror_does_not_break_the_first_prepare() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let repo = tmp.path().join("repo");
+    make_repo(&repo, &[("a.txt", "a")]);
+    let config = config(&tmp.path().join("data"));
+    let spec = spec(&repo, "story/new", kit_ref(&repo, "v1"));
+    let hash = loom_hash(&spec.repo_url);
+    let partial = tmp
+        .path()
+        .join("data")
+        .join("mirrors")
+        .join(format!("{hash}.git.partial"));
+    std::fs::create_dir_all(&partial).expect("partial dir");
+    std::fs::write(partial.join("garbage"), "not a repository").expect("garbage");
+
+    let ws = Workspace::prepare(&config, RunId::new(), &spec)
+        .await
+        .expect("prepare");
+
+    assert!(ws.path().join("a.txt").exists());
+    assert!(!partial.exists());
+}
+
+#[tokio::test]
+async fn a_story_branch_or_url_that_looks_like_an_option_is_refused() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let repo = tmp.path().join("repo");
+    make_repo(&repo, &[("a.txt", "a")]);
+    let config = config(&tmp.path().join("data"));
+
+    let bad_branch = spec(&repo, "-x", kit_ref(&repo, "v1"));
+    assert!(
+        Workspace::prepare(&config, RunId::new(), &bad_branch)
+            .await
+            .is_err()
+    );
+    let mut bad_url = spec(&repo, "story/x", kit_ref(&repo, "v1"));
+    bad_url.repo_url = "--upload-pack=x".to_owned();
+    assert!(
+        Workspace::prepare(&config, RunId::new(), &bad_url)
+            .await
+            .is_err()
+    );
+}
+
+/// The mirror's directory name: the first 16 hex digits of the SHA-256 of the URL.
+fn loom_hash(text: &str) -> String {
+    use sha2::{Digest, Sha256};
+    use std::fmt::Write as _;
+    let mut out = String::new();
+    for byte in Sha256::digest(text.as_bytes()).iter().take(8) {
+        let _ = write!(out, "{byte:02x}");
+    }
+    out
+}

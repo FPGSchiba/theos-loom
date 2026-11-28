@@ -4,7 +4,7 @@
 //! files are made read-only: a run mounts the kit read-only, and nothing edits it on the host.
 
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use thiserror::Error;
 
@@ -48,9 +48,13 @@ impl Kit {
     /// [`KitError`] for a bad version, a failed git command or a failed file operation.
     pub async fn prepare(config: &RunConfig, kit: &KitRef) -> Result<Self, KitError> {
         let version = &kit.version;
-        if version.is_empty()
+        let single_component = matches!(
+            Path::new(version).components().collect::<Vec<_>>()[..],
+            [Component::Normal(_)]
+        );
+        if !single_component
             || version.starts_with('-')
-            || version == ".."
+            || version.ends_with(".partial")
             || version.contains(['/', '\\'])
         {
             return Err(KitError::BadVersion(version.clone()));
