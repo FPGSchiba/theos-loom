@@ -1,12 +1,13 @@
 # theos-loom — umbrella spec
 
-Status: approved by Jann · version 7 · 27 Nov 2026 (version 1, the same day: first draft;
+Status: approved by Jann · version 8 · 27 Nov 2026 (version 1, the same day: first draft;
 version 2 adds epic slicing and the two-phase story run: refinement, then a fresh implementation;
 version 3 adds the board, story and epic pages, and short summaries: §7 item 0, P20;
 version 4 adds a manual trial and a two-stage build; version 5 removes the review brake again
 and makes building Loom itself the trial (§9, O0), so the editor is onboarded only afterwards;
 version 6 moves the store from SQLite to PostgreSQL on Jann's dedicated database VM: T1, T4, T6;
-version 7, 28 Nov 2026, makes the review loop judge its findings and end as best effort: TU-07.1, decision 0008)
+version 7, 28 Nov 2026, makes the review loop judge its findings and end as best effort: TU-07.1, decision 0008;
+version 8, 28 Nov 2026, opens runs to the public web for research, with the home LAN blocked: T4, decision 0013)
 Repo: `FPGSchiba/theos-loom`. A loom weaves many threads in parallel into one fabric.
 Owner of architecture: Jann · Built by: Claude Code with superpowers
 
@@ -427,8 +428,10 @@ component. The default is a self-hosted ntfy topic (my call).
   containers and per-container egress filtering work). Every worker and reviewer runs in its
   own rootless container with its own git worktree. Inside a run, subagents share that worktree
   only when they run one after another; subagents that write in parallel each get their own
-  worktree and branch, merged back one at a time. Network only to GitHub, the package
-  registries the repo declares, and Anthropic. No access to the home LAN. Credentials: a
+  worktree and branch, merged back one at a time. Network only to public HTTP(S)
+  destinations, through a proxy that records every destination in the run's log, so research
+  tools work (decision 0013). No access to the home LAN, the database VM or any other private
+  address range. Credentials: a
   fine-grained GitHub token scoped to the project's repos (contents and pull requests only).
   Commits and PRs appear under Jann's GitHub identity, as in theos-editor.
 - **T4a GitHub App.** A Loom GitHub App, installed on the project's repos, is the only identity
