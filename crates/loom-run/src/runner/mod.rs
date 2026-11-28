@@ -2,7 +2,7 @@
 //! stream, enforces the caps and stop causes, and cleans up. Events go out on a channel; the
 //! caller gets a [`RunHandle`] to cancel the run or wait for its end.
 //!
-//! The run is split by step: [`run`] holds the run's state and its start, `watch` the read loop
+//! The run is split by step: `run` holds the run's state and its start, `watch` the read loop
 //! with the caps, and `end` the one path every run ends through.
 
 mod end;
