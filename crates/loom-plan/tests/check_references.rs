@@ -206,6 +206,15 @@ fn duplicate_criterion_number_is_reported() -> TestResult {
 
 // AC: TU-01.2
 #[test]
+fn duplicate_criterion_number_across_a_split_list_is_reported() -> TestResult {
+    let finding = only_error("duplicate-id-criterion-split")?;
+    assert_finding(&finding, Rule::DuplicateId, STORY, &["criterion", "1"]);
+    assert!(finding.line.is_some(), "{finding:#?}");
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
 fn duplicate_decision_number_is_reported() -> TestResult {
     let finding = only_error("duplicate-id-decision")?;
     assert_finding(

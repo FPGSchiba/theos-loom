@@ -119,19 +119,19 @@ pub struct Criterion {
     pub line: u32,
 }
 
-/// The criteria under `heading`: the items of the first ordered list there, numbered from the
-/// list's start number. An item that is only a `Verify:` line is no criterion.
+/// The criteria under `heading`: the items of every top-level ordered list there, in order, each
+/// numbered from its list's start number. An item that is only a `Verify:` line is no criterion.
 #[must_use]
 pub fn criteria(sections: &Sections, heading: &str) -> Vec<Criterion> {
     let Some(section) = sections.get(heading) else {
         return Vec::new();
     };
     let found = walk(&section.text, section.line);
-    let Some(list) = found.lists.into_iter().find(|l| l.ordered) else {
-        return Vec::new();
-    };
-    list.items
+    found
+        .lists
         .into_iter()
+        .filter(|l| l.ordered)
+        .flat_map(|list| list.items)
         .filter(|item| !item.text.starts_with("Verify:"))
         .map(|item| Criterion {
             number: item.number,
@@ -258,6 +258,28 @@ mod tests {
             .map(|c| c.number)
             .collect();
         assert_eq!(numbers, [4, 5]);
+    }
+
+    #[test]
+    fn criteria_of_a_list_split_by_text_are_all_read() {
+        let s = Sections::from_file_text(
+            "## Requirements
+
+1. **A** x
+
+Some text.
+
+1. **B** y
+
+More.
+
+2. **C** z
+",
+        );
+        let c = criteria(&s, "Requirements");
+        let read: Vec<(u32, Option<&str>)> =
+            c.iter().map(|c| (c.number, c.name.as_deref())).collect();
+        assert_eq!(read, [(1, Some("A")), (1, Some("B")), (2, Some("C"))]);
     }
 
     #[test]
