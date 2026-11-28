@@ -40,6 +40,12 @@ pub enum WorkspaceError {
     BadUrl(String),
 }
 
+/// The directory of `run`: `<data_dir>/runs/<run>`; the clone is its `work` subdirectory.
+#[must_use]
+pub fn run_dir(config: &RunConfig, run: RunId) -> PathBuf {
+    config.data_dir.join("runs").join(run.to_string())
+}
+
 /// A run's own clone of the story's repository.
 #[derive(Debug)]
 pub struct Workspace {
@@ -73,7 +79,7 @@ impl Workspace {
             .data_dir
             .join("mirrors")
             .join(format!("{}.git", short_hash(&spec.repo_url)));
-        let run_dir = config.data_dir.join("runs").join(run.to_string());
+        let run_dir = run_dir(config, run);
         let work = run_dir.join("work");
 
         if let Err(error) = clone_for_run(&mirror, &run_dir, &work, spec).await {

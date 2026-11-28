@@ -17,6 +17,7 @@ serde_json.workspace = true
 tracing.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+tokio-util.workspace = true
 ureq.workspace = true
 rustls.workspace = true
 rustls-native-certs.workspace = true
@@ -26,3 +27,4 @@ toml.workspace = true
 [dev-dependencies]
 loom-store = { path = "../loom-store" }
 tempfile.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
