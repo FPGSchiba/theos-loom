@@ -6,9 +6,9 @@ Started: 28 Nov 2026, 14:53 · Finished: –
 
 | | |
 |---|---|
-| Tokens (in / out) | n/a: `/cost` can't be read from inside the session; Jann fills it from `/cost` |
-| Cost (API-equivalent) | n/a: same reason |
-| Wall time | 14:53 to 15:40 (about 47 min), with PRs #11 (umbrella v9, decisions 0020–0025) and #13 (phase spec) |
+| Tokens (in / out) | From `/cost`: Opus 5.5 226 in + 14.8M cache read + 291.6k cache write / 112.0k out; Haiku 5.5 4.0k in / 678 out. The builder-check subagent ran on Opus (87.4k tokens) |
+| Cost (API-equivalent) | $7.36 (Opus $7.36, Haiku $0.0007) |
+| Wall time | 54 min 8 s (API 17 min 29 s), with PRs #11 (umbrella v9, decisions 0020–0025) and #13 (phase spec) |
 | Builder-check questions | 4 (plus 3 small ones the builder would settle itself) · 0 went to Jann (settled as rulings R-n to R-r) |
 
 Questions to the decider (Jann):
