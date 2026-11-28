@@ -7,15 +7,18 @@ mod fake;
 mod support;
 
 use std::collections::BTreeMap;
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use loom_core::run::{CapKind, RawStreamStore, RunEvent, RunId, StopCause, StreamKind, TokenKind};
 use loom_run::caps::Caps;
 use loom_run::config::{KitRef, RunSpec};
-use loom_run::launcher::LocalLauncher;
+use loom_run::launcher::{LaunchContext, LaunchError, Launcher, LocalLauncher, Session};
 use loom_run::prices::PriceBook;
-use loom_run::runner::Runner;
+use loom_run::runner::{PreludeLimits, Runner};
 use loom_run::stream::parse_line;
 use loom_store::PgRawStreamStore;
 use loom_store::testing::TestDb;
@@ -551,5 +554,166 @@ async fn a_kept_run_dir_stays() {
             .join("work")
             .is_dir()
     );
+    world.end().await;
+}
+
+/// A launcher whose start never finishes (or fails at once), and which records `abort`.
+#[derive(Clone, Default)]
+struct StuckLauncher {
+    fails: bool,
+    entered: Arc<tokio::sync::Notify>,
+    aborted: Arc<AtomicBool>,
+}
+
+impl Launcher for StuckLauncher {
+    fn start(
+        &self,
+        _ctx: &LaunchContext,
+    ) -> impl Future<Output = Result<Box<dyn Session>, LaunchError>> + Send {
+        let this = self.clone();
+        async move {
+            this.entered.notify_one();
+            if !this.fails {
+                tokio::time::sleep(Duration::from_secs(3600)).await;
+            }
+            Err(LaunchError::Other("the start failed".to_owned()))
+        }
+    }
+
+    fn abort(&self, _run: RunId) -> impl Future<Output = Result<(), LaunchError>> + Send {
+        self.aborted.store(true, Ordering::SeqCst);
+        std::future::ready(Ok(()))
+    }
+}
+
+async fn run_stuck(world: &World, launcher: StuckLauncher, cancel: bool) -> (RunId, Vec<RunEvent>) {
+    let runner = Runner::new(
+        config(&world.data_dir()),
+        launcher.clone(),
+        world.store(),
+        None,
+    );
+    let (handle, mut rx) = runner.start(world.spec.clone()).expect("start");
+    let id = handle.id;
+    launcher.entered.notified().await;
+    if cancel {
+        handle.cancel();
+    }
+    let mut events = Vec::new();
+    while let Some(event) = rx.recv().await {
+        events.push(event);
+    }
+    handle.join().await;
+    (id, events)
+}
+
+fn ends(events: &[RunEvent]) -> usize {
+    events
+        .iter()
+        .filter(|e| matches!(e, RunEvent::RunEnded { .. }))
+        .count()
+}
+
+// The container launcher relies on this to leave nothing of a cancelled start (TU-03.3).
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cancel_during_the_start_aborts_it() {
+    let world = World::new().await;
+    let launcher = StuckLauncher::default();
+
+    let (id, events) = run_stuck(&world, launcher.clone(), true).await;
+
+    assert_eq!(ended(&events), &StopCause::Cancelled);
+    assert_eq!(ends(&events), 1);
+    assert!(launcher.aborted.load(Ordering::SeqCst), "abort was called");
+    assert!(!world.data_dir().join("runs").join(id.to_string()).exists());
+    world.end().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_failed_start_is_aborted() {
+    let world = World::new().await;
+    let launcher = StuckLauncher {
+        fails: true,
+        ..StuckLauncher::default()
+    };
+
+    let (_, events) = run_stuck(&world, launcher.clone(), false).await;
+
+    assert_eq!(ended(&events), &StopCause::Failed { exit_code: None });
+    assert_eq!(ends(&events), 1);
+    assert!(launcher.aborted.load(Ordering::SeqCst), "abort was called");
+    world.end().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_run_that_never_launched_is_not_aborted() {
+    let world = World::new().await;
+    let launcher = StuckLauncher::default();
+    // A run whose clone fails never reaches the launcher: nothing to abort.
+    let mut spec = world.spec.clone();
+    spec.repo_url = world.tmp.path().join("missing").display().to_string();
+    let runner = Runner::new(
+        config(&world.data_dir()),
+        launcher.clone(),
+        world.store(),
+        None,
+    );
+    let (handle, mut rx) = runner.start(spec).expect("start");
+    while rx.recv().await.is_some() {}
+
+    assert_eq!(handle.join().await, StopCause::Failed { exit_code: None });
+    assert!(!launcher.aborted.load(Ordering::SeqCst));
+    world.end().await;
+}
+
+fn short_limits() -> PreludeLimits {
+    PreludeLimits {
+        update: Duration::from_millis(500),
+        version: Duration::from_millis(500),
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_hung_update_is_given_up_and_the_run_goes_on() {
+    let world = World::new().await;
+    let launcher = replay("normal_run.jsonl").with_env("FAKE_UPDATE_HANGS", "1");
+    let runner = Runner::new(config(&world.data_dir()), launcher, world.store(), None)
+        .with_prelude_limits(short_limits());
+    let (handle, mut rx) = runner.start(world.spec.clone()).expect("start");
+    let mut events = Vec::new();
+    while let Some(event) = rx.recv().await {
+        events.push(event);
+    }
+
+    let failed = position(
+        &events,
+        |e| matches!(e, RunEvent::CliUpdateFailed { message } if message.contains("did not end")),
+    );
+    let version = position(&events, |e| matches!(e, RunEvent::CliVersion { .. }));
+    assert!(failed < version);
+    assert_eq!(ended(&events), &StopCause::Completed);
+    assert_eq!(handle.join().await, StopCause::Completed);
+    world.end().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_hung_version_fails_the_run() {
+    let world = World::new().await;
+    let launcher = replay("normal_run.jsonl").with_env("FAKE_VERSION_HANGS", "1");
+    let runner = Runner::new(config(&world.data_dir()), launcher, world.store(), None)
+        .with_prelude_limits(short_limits());
+    let (handle, mut rx) = runner.start(world.spec.clone()).expect("start");
+    let mut events = Vec::new();
+    while let Some(event) = rx.recv().await {
+        events.push(event);
+    }
+
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, RunEvent::CliVersion { .. }))
+    );
+    assert_eq!(ended(&events), &StopCause::Failed { exit_code: None });
+    assert_eq!(handle.join().await, StopCause::Failed { exit_code: None });
     world.end().await;
 }

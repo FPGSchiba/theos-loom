@@ -10,6 +10,7 @@ mod run;
 mod watch;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use loom_core::run::{RawStreamStore, RunEvent, RunId, StopCause};
 use thiserror::Error;
@@ -41,6 +42,27 @@ pub struct Runner<L, S> {
     launcher: Arc<L>,
     store: Arc<S>,
     prices: Option<Arc<PriceBook>>,
+    limits: PreludeLimits,
+}
+
+/// How long the commands before the run may take: a hung `claude update` must not hold the run
+/// (R-f). Without a wall-time cap nothing else bounds them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PreludeLimits {
+    /// `claude update`; past it, the update counts as failed and the run goes on.
+    pub update: Duration,
+    /// `claude --version`; past it, the run ends as `Failed`.
+    pub version: Duration,
+}
+
+impl Default for PreludeLimits {
+    /// Five minutes for the update (a download), thirty seconds for the version.
+    fn default() -> Self {
+        Self {
+            update: Duration::from_secs(300),
+            version: Duration::from_secs(30),
+        }
+    }
 }
 
 impl<L, S> Runner<L, S>
@@ -57,11 +79,21 @@ where
             launcher: Arc::new(launcher),
             store: Arc::new(store),
             prices: prices.map(Arc::new),
+            limits: PreludeLimits::default(),
         }
     }
 
+    /// Replaces the [`PreludeLimits`]; the defaults suit real runs, tests use shorter ones.
+    #[must_use]
+    pub fn with_prelude_limits(mut self, limits: PreludeLimits) -> Self {
+        self.limits = limits;
+        self
+    }
+
     /// Starts a run of `spec` in the background. Its events arrive on the receiver, the last
-    /// one always `RunEnded`; the receiver must be read, or the run waits for it.
+    /// one `RunEnded`; the receiver must be read, or the run waits for it. The one exception:
+    /// should the run's task panic, the channel closes without `RunEnded`, and
+    /// [`RunHandle::join`] returns `Failed { exit_code: None }`.
     ///
     /// # Errors
     /// [`RunError::NoRuntime`] outside a Tokio runtime.
@@ -70,15 +102,7 @@ where
         let id = RunId::new();
         let cancel = CancellationToken::new();
         let (events, rx) = mpsc::channel(EVENT_BUFFER);
-        let run = Run::new(
-            id,
-            spec,
-            Arc::clone(&self.config),
-            Arc::clone(&self.launcher),
-            Arc::clone(&self.store),
-            self.prices.clone(),
-            events,
-        );
+        let run = Run::new(id, spec, self, events);
         let task = runtime.spawn(run.drive(cancel.clone()));
         Ok((RunHandle { id, cancel, task }, rx))
     }

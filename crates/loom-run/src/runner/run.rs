@@ -7,7 +7,7 @@ use loom_core::run::{CapKind, RawStreamStore, RunEvent, RunId, StopCause, Stream
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
-use tokio::time::Instant;
+use tokio::time::{Instant, timeout};
 use tokio_util::sync::CancellationToken;
 
 use crate::chunks::ChunkWriter;
@@ -18,6 +18,8 @@ use crate::launcher::{LaunchContext, LaunchError, Launcher, Session};
 use crate::prices::PriceBook;
 use crate::pump;
 use crate::usage::UsageLedger;
+
+use super::{PreludeLimits, Runner};
 use crate::workspace::{Workspace, WorkspaceError};
 
 /// Parsed stdout events buffered between the stdout pump and the read loop.
@@ -45,11 +47,15 @@ pub(super) struct Run<L, S: RawStreamStore> {
     pub(super) id: RunId,
     pub(super) spec: RunSpec,
     pub(super) config: Arc<RunConfig>,
-    launcher: Arc<L>,
+    pub(super) launcher: Arc<L>,
     store: Arc<S>,
     pub(super) prices: Option<Arc<PriceBook>>,
     events: mpsc::Sender<RunEvent>,
     pub(super) session: Option<Box<dyn Session>>,
+    /// Set when the launcher was asked to start: from then on the end path has a session to
+    /// stop or a half-made start to abort.
+    pub(super) launching: bool,
+    limits: PreludeLimits,
     /// The tasks reading the CLI's stdout and stderr.
     pub(super) pumps: Vec<JoinHandle<()>>,
     /// Stops the pumps when the CLI's output does not end by itself.
@@ -63,21 +69,20 @@ impl<L: Launcher + 'static, S: RawStreamStore + 'static> Run<L, S> {
     pub(super) fn new(
         id: RunId,
         spec: RunSpec,
-        config: Arc<RunConfig>,
-        launcher: Arc<L>,
-        store: Arc<S>,
-        prices: Option<Arc<PriceBook>>,
+        runner: &Runner<L, S>,
         events: mpsc::Sender<RunEvent>,
     ) -> Self {
         Self {
             id,
             spec,
-            config,
-            launcher,
-            store,
-            prices,
+            config: Arc::clone(&runner.config),
+            launcher: Arc::clone(&runner.launcher),
+            store: Arc::clone(&runner.store),
+            prices: runner.prices.clone(),
             events,
             session: None,
+            launching: false,
+            limits: runner.limits,
             pumps: Vec::new(),
             pump_stop: CancellationToken::new(),
             ledger: UsageLedger::default(),
@@ -131,6 +136,7 @@ impl<L: Launcher + 'static, S: RawStreamStore + 'static> Run<L, S> {
             kit: kit.path().to_owned(),
             env: self.config.credentials.clone(),
         };
+        self.launching = true;
         let session = self.launcher.start(&ctx).await?;
         let started = Instant::now();
         let image = session.image_id();
@@ -172,22 +178,31 @@ impl<L: Launcher + 'static, S: RawStreamStore + 'static> Run<L, S> {
     /// `claude update` (a failure is recorded and the run goes on, R-f), then
     /// `claude --version` (T14). Returns a stop cause when the version cannot be read.
     async fn prelude(&mut self) -> Result<Option<StopCause>, StepError> {
-        let update = self.collect(&["update"]).await;
+        let update = timeout(self.limits.update, self.collect(&["update"])).await;
         let failure = match update {
-            Ok(out) if out.code == Some(0) => None,
-            Ok(out) => Some(format!(
+            Err(_) => Some(format!(
+                "`claude update` did not end within {:?}",
+                self.limits.update
+            )),
+            Ok(Ok(out)) if out.code == Some(0) => None,
+            Ok(Ok(out)) => Some(format!(
                 "`claude update` exited with {}: {}",
                 out.code
                     .map_or_else(|| "no code".to_owned(), |c| c.to_string()),
                 truncated(&String::from_utf8_lossy(&out.stderr))
             )),
-            Err(error) => Some(error.to_string()),
+            Ok(Err(error)) => Some(error.to_string()),
         };
         if let Some(message) = failure {
             tracing::warn!(run = %self.id, %message, "the CLI update failed; the run goes on");
             self.emit(RunEvent::CliUpdateFailed { message }).await;
         }
-        let version = self.collect(&["--version"]).await?;
+        let limit = self.limits.version;
+        let Ok(version) = timeout(limit, self.collect(&["--version"])).await else {
+            tracing::error!(run = %self.id, ?limit, "`claude --version` did not end in time");
+            return Ok(Some(StopCause::Failed { exit_code: None }));
+        };
+        let version = version?;
         if version.code != Some(0) {
             tracing::error!(run = %self.id, code = ?version.code, "`claude --version` failed");
             return Ok(Some(StopCause::Failed {

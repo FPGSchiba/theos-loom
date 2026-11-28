@@ -1,7 +1,8 @@
 //! A fake Claude Code CLI for `loom-run`'s tests (spec R-m, R-p). Test tooling, not shipped code.
 //!
-//! - `update`: exits 0, or 1 when `FAKE_UPDATE_FAILS=1`.
-//! - `--version`: prints `9.9.9 (Fake)`.
+//! - `update`: exits 0, or 1 when `FAKE_UPDATE_FAILS=1`; sleeps an hour first when
+//!   `FAKE_UPDATE_HANGS=1`.
+//! - `--version`: prints `9.9.9 (Fake)`; sleeps an hour first when `FAKE_VERSION_HANGS=1`.
 //! - `-p …`: reads stdin, then acts by `FAKE_MODE`:
 //!   - `replay`: writes `FAKE_STDERR` to stderr, then prints the file `FAKE_STREAM` line by line,
 //!     `FAKE_DELAY_MS` apart; then sleeps an hour when `FAKE_THEN=sleep`, else exits with
@@ -29,7 +30,7 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = match args.first().map(String::as_str) {
         Some("update") => update(),
-        Some("--version") => out("9.9.9 (Fake)\n").map(|()| ExitCode::SUCCESS),
+        Some("--version") => version(),
         Some("-p") => prompt(&args),
         _ => Err(format!("fake_claude: unknown arguments {args:?}")),
     };
@@ -59,7 +60,18 @@ fn line(value: &Value) -> Result<(), String> {
     out(&format!("{value}\n"))
 }
 
+fn version() -> Result<ExitCode, String> {
+    if var("FAKE_VERSION_HANGS").as_deref() == Some("1") {
+        std::thread::sleep(HOUR);
+    }
+    out("9.9.9 (Fake)\n")?;
+    Ok(ExitCode::SUCCESS)
+}
+
 fn update() -> Result<ExitCode, String> {
+    if var("FAKE_UPDATE_HANGS").as_deref() == Some("1") {
+        std::thread::sleep(HOUR);
+    }
     if var("FAKE_UPDATE_FAILS").as_deref() == Some("1") {
         let _ = writeln!(std::io::stderr().lock(), "update failed (fake)");
         return Ok(ExitCode::FAILURE);

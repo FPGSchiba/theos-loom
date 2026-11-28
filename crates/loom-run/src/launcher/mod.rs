@@ -63,6 +63,11 @@ pub trait Launcher: Send + Sync {
         &self,
         ctx: &LaunchContext,
     ) -> impl Future<Output = Result<Box<dyn Session>, LaunchError>> + Send;
+
+    /// Removes everything this launcher may have created for `run` (containers, networks, ...).
+    /// The runner calls it when a start failed or was cancelled before it returned a session,
+    /// so nothing half-started is left. It must succeed when nothing of `run` exists.
+    fn abort(&self, run: RunId) -> impl Future<Output = Result<(), LaunchError>> + Send;
 }
 
 /// The place a run's commands run in (a container, or the local machine), alive until stopped.

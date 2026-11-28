@@ -31,6 +31,12 @@ impl<L: Launcher + 'static, S: RawStreamStore + 'static> Run<L, S> {
         {
             tracing::warn!(%error, run = %self.id, "could not stop the session");
         }
+        if self.session.is_none()
+            && self.launching
+            && let Err(error) = self.launcher.abort(self.id).await
+        {
+            tracing::warn!(%error, run = %self.id, "could not abort the half-made start");
+        }
         join_pumps(std::mem::take(&mut self.pumps), &self.pump_stop).await;
         if let Some(event) = self.spend_mismatch() {
             self.emit(event).await;

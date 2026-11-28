@@ -5,6 +5,7 @@ use std::future::Future;
 use std::path::PathBuf;
 use std::process::Stdio;
 
+use loom_core::run::RunId;
 use tokio::io::AsyncWriteExt;
 use tokio::process::{Child, Command};
 use tokio::sync::oneshot;
@@ -42,6 +43,11 @@ impl LocalLauncher {
 }
 
 impl Launcher for LocalLauncher {
+    /// Nothing to remove: a local start creates nothing before it returns its session.
+    fn abort(&self, _run: RunId) -> impl Future<Output = Result<(), LaunchError>> + Send {
+        std::future::ready(Ok(()))
+    }
+
     fn start(
         &self,
         ctx: &LaunchContext,
