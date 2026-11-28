@@ -963,6 +963,11 @@ version = "0.0.0"
 [[package]]
 name = "loom-run"
 version = "0.0.0"
+dependencies = [
+ "loom-core",
+ "serde_json",
+ "tracing",
+]
 
 [[package]]
 name = "loom-store"

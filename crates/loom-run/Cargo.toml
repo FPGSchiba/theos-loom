@@ -9,3 +9,8 @@ license.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+loom-core = { path = "../loom-core" }
+serde_json.workspace = true
+tracing.workspace = true
