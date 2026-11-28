@@ -17,14 +17,15 @@ pub(crate) enum Item<'a> {
 
 /// True when Loom may work on `item`: it carries `loom: ready` itself, or its epic does, and it
 /// is not dropped. A story outside an epic is ready only by its own mark (R-q). `paused` is not
-/// ready.
+/// ready, and a story's own `paused` wins over its epic's `ready`.
 pub(crate) fn is_ready(item: Item<'_>) -> bool {
     match item {
         Item::Epic(epic) => epic_is_ready(epic),
         Item::Story(at) => {
             let own = at.story.loom() == Some(LoomMark::Ready);
             let by_epic = matches!(at.home, StoryHome::Epic(_, epic) if epic_is_ready(epic));
-            (own || by_epic) && !at.story.is_dropped()
+            let paused = at.story.loom() == Some(LoomMark::Paused);
+            (own || (by_epic && !paused)) && !at.story.is_dropped()
         }
     }
 }

@@ -174,6 +174,21 @@ fn paused_epic_gives_notes_only() -> TestResult {
 
 // AC: TU-01.2
 #[test]
+fn paused_story_in_a_ready_epic_gives_notes_only() -> TestResult {
+    let all = findings("cases/paused-story-in-ready-epic")?;
+    assert_eq!(of_severity(all.clone(), Severity::Error), []);
+    let notes = of_severity(all, Severity::Note);
+    assert!(
+        notes
+            .iter()
+            .any(|f| f.rule == Rule::StoryWithoutAcs && f.path.ends_with("story-add-item.md")),
+        "{notes:#?}"
+    );
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
 fn dropped_ready_epic_gives_no_finding() -> TestResult {
     assert_eq!(findings("cases/dropped-ready-epic")?, Vec::<Finding>::new());
     Ok(())
