@@ -1,8 +1,9 @@
 # P03 · Run runtime — phase spec
 
 Status: draft for Jann's approval (decider approval, trial step 1) · 28 Nov 2026
-Source: `docs/specs/00-umbrella.md` §9 P03, read at umbrella **version 8** (#10: T4 opened to the
-public web, new T14). Scope and acceptance criteria come from there; this spec decides how.
+Source: `docs/specs/00-umbrella.md` §9 P03, read at umbrella **version 9** (version 8, #10: T4
+opened to the public web, new T14; version 9, #11: the planning repo's ticket tree and keys).
+Scope and acceptance criteria come from there; this spec decides how.
 
 ## 1. Goal
 
@@ -177,10 +178,10 @@ allow), or `ureq`. `deny.toml` is not changed.
   GitHub) and an override table per model and kind.
 - `keep_run_dirs` (default false, R-j).
 
-`RunSpec` (per run): the story id, the component repo URL, the story branch, the default branch,
-the kit (repository and version), the prompt, the model and extra CLI arguments, and the caps:
-`input_tokens`, `output_tokens`, `cache_write_tokens`, `cache_read_tokens`, `spend_usd`,
-`wall_time`, each optional.
+`RunSpec` (per run): the story's key (umbrella §2.1, `ED-12`), the component repo URL, the story
+branch, the default branch, the kit (repository and version), the prompt, the model and extra
+CLI arguments, and the caps: `input_tokens`, `output_tokens`, `cache_write_tokens`,
+`cache_read_tokens`, `spend_usd`, `wall_time`, each optional.
 
 ### 5.3 One run, step by step
 
