@@ -45,7 +45,10 @@ these rules is never acceptable, also not to unblock work.
 2. Never merge, enable auto-merge on, or ask anyone to merge a PR that touches a protected path.
    Until P00 defines them, protected paths are: `CLAUDE.md`, `.claude/**`, `docs/specs/00-umbrella.md`,
    `docs/decisions/**`, `.github/**` and everything under `gate/` and `xtask/`.
-3. Never change protected paths inside an implementation PR. They get their own PR.
+3. Never change protected paths inside an implementation PR. They get their own PR. A PR that
+   already touches protected paths and waits for Jann may change protected paths in its own
+   review fixes without asking first; the PR lists them and Jann's approval covers them
+   (decision 0009).
 4. Never change an AC. If an AC is wrong or impossible, stop and say so.
 5. Never use `--no-verify`, force-push to a shared branch, or rewrite history on `main`.
 6. Never claim a check passed without having run it and read its output
@@ -105,7 +108,7 @@ subagent; put them in subagent briefs.
 ## When to stop and ask Jann
 
 Only for: an irreversible or destructive action; a security-sensitive action; a protected-path
-change; an AC that is wrong or impossible; and, during the
+change (except a review fix inside a PR that already waits for Jann, decision 0009); an AC that is wrong or impossible; and, during the
 trial, every question and approval the decider would otherwise handle. Everything else is decided
 and recorded as `Ruling: <what> — <why> — <cost if wrong>` in the plan, and listed in the PR.
 

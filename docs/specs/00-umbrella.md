@@ -1,11 +1,12 @@
 # theos-loom — umbrella spec
 
-Status: approved by Jann, to be merged as the repo's first PR · version 6 · 27 Nov 2026 (version 1, the same day: first draft;
+Status: approved by Jann · version 7 · 27 Nov 2026 (version 1, the same day: first draft;
 version 2 adds epic slicing and the two-phase story run: refinement, then a fresh implementation;
 version 3 adds the board, story and epic pages, and short summaries: §7 item 0, P20;
 version 4 adds a manual trial and a two-stage build; version 5 removes the review brake again
 and makes building Loom itself the trial (§9, O0), so the editor is onboarded only afterwards;
-version 6 moves the store from SQLite to PostgreSQL on Jann's dedicated database VM: T1, T4, T6)
+version 6 moves the store from SQLite to PostgreSQL on Jann's dedicated database VM: T1, T4, T6;
+version 7, 28 Nov 2026, makes the review loop judge its findings and end as best effort: TU-07.1, decision 0008)
 Repo: `FPGSchiba/theos-loom`. A loom weaves many threads in parallel into one fabric.
 Owner of architecture: Jann · Built by: Claude Code with superpowers
 
@@ -614,8 +615,10 @@ so a story can pass refinement without input. The real answers arrive with P11.
 
 **TU-07 Safe merge**
 - TU-07.1 After CI is green, a fresh reviewer run reviews the PR against the story, the
-  directives and the vision. Its findings go to the worker. The loop repeats with a new reviewer
-  until one is clean, capped at 5 rounds.
+  directives and the vision. Every finding is judged: it goes to the worker to fix, or it is
+  ruled not worth fixing, with the reason. The loop repeats with a new reviewer until one reports
+  nothing worth fixing. After 5 rounds, one last fix and a targeted review end the loop as best
+  effort, and the PR lists its open findings.
 - TU-07.2 Only the Loom GitHub App posts `loom-review`, `loom-contract` and `loom-approval`.
   Branch protection requires them from the App. A check or status with the same name posted with
   a worker's token doesn't satisfy the requirement (verified against a sandbox repo).
