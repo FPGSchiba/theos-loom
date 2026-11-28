@@ -1,0 +1,165 @@
+/* Theos UI — generated from tokens.json */
+:root, [data-theme="grid-noir"] {
+  --bg: #060810;
+  --panel: #0b1120;
+  --panel2: #111a2e;
+  --panel3: #162038;
+  --border: #1f2b48;
+  --borderHi: #2b3a63;
+  --text: #e4ecff;
+  --textDim: #7d8bb1;
+  --textMute: #4c587a;
+  --textProse: #ccd4e7;
+  --amber: #ff8b2e;
+  --magenta: #ff3ea5;
+  --cyan: #3ef0ff;
+  --green: #29e8a5;
+  --red: #ff516f;
+  --yellow: #ffd54a;
+  --violet: #7a6cff;
+  --onFill: var(--bg);
+  --sig-attention: var(--amber);
+  --sig-ai: var(--magenta);
+  --sig-info: var(--cyan);
+  --sig-approve: var(--green);
+  --sig-reject: var(--red);
+  --sig-warn: var(--yellow);
+  --sig-script: var(--violet);
+  --panel-inworld: #19140e;
+  --line-inworld: #473b2c;
+  --ink-inworld: #dfd3bf;
+  --ink-inworld-dim: #9f907b;
+  --kind-world: #a2caa6;
+  --kind-truth: #95c5e2;
+  --kind-belief: #e5aea7;
+  --kind-clue: #c1c191;
+  --kind-perspective: #beb7e5;
+  --kind-chronicle: #8cccc7;
+  --kind-beat: #dab791;
+  --kind-concept: #daaecc;
+  --kind-template: #c2bdb5;
+  --el-earth-lo: hsl(28, 32%, 36%);
+  --el-earth-hi: hsl(110, 26%, 40%);
+  --el-water-lo: hsl(175, 62%, 42%);
+  --el-water-hi: hsl(210, 72%, 48%);
+  --el-fire-lo: hsl(0, 82%, 46%);
+  --el-fire-hi: hsl(38, 96%, 56%);
+  --el-fire-core: hsl(48, 100%, 94%);
+  --el-air-lo: hsl(190, 22%, 82%);
+  --el-air-hi: hsl(210, 14%, 95%);
+  --el-lightning-lo: hsl(270, 80%, 60%);
+  --el-lightning-hi: hsl(315, 82%, 62%);
+  --el-lightning-core: hsl(48, 100%, 88%);
+  --shadow-hot: inset 0 0 0 1px #ff8b2e66, 0 0 12px #ff8b2e33;
+  --shadow-popover: 0 8px 24px #000000b3;
+}
+[data-theme="grid-light"] {
+  --bg: #e6e9f2;
+  --panel: #fcfcfe;
+  --panel2: #f0f3fa;
+  --panel3: #e8edf7;
+  --border: #cad1e0;
+  --borderHi: #a0abc2;
+  --text: #0b1120;
+  --textDim: #4e5a77;
+  --textMute: #7b869f;
+  --textProse: #1e2638;
+  --amber: #a35103;
+  --magenta: #c00476;
+  --cyan: #04737c;
+  --green: #016142;
+  --red: #b9033e;
+  --yellow: #655003;
+  --violet: #573fd0;
+  --onFill: #ffffff;
+  --panel-inworld: #f8efe0;
+  --line-inworld: #cdbba2;
+  --ink-inworld: #382b1d;
+  --ink-inworld-dim: #6f5d47;
+  --kind-world: #234328;
+  --kind-truth: #153f55;
+  --kind-belief: #562d29;
+  --kind-clue: #3e3d13;
+  --kind-perspective: #3b3457;
+  --kind-chronicle: #014441;
+  --kind-beat: #4f3414;
+  --kind-concept: #4f2e45;
+  --kind-template: #3e3a34;
+  --el-air-lo: hsl(190, 32%, 50%);
+  --el-air-hi: hsl(205, 16%, 60%);
+  --shadow-hot: inset 0 0 0 1px #a3510380, 0 0 0 3px #a351031f;
+  --shadow-popover: 0 6px 20px #0b112029;
+  --sig-attention: var(--amber);
+  --sig-ai: var(--magenta);
+  --sig-info: var(--cyan);
+  --sig-approve: var(--green);
+  --sig-reject: var(--red);
+  --sig-warn: var(--yellow);
+  --sig-script: var(--violet);
+}
+:root {
+  --sp-2: 2px;
+  --sp-4: 4px;
+  --sp-6: 6px;
+  --sp-8: 8px;
+  --sp-10: 10px;
+  --sp-12: 12px;
+  --sp-14: 14px;
+  --sp-16: 16px;
+  --sp-20: 20px;
+  --sp-24: 24px;
+  --sp-32: 32px;
+  --sp-48: 48px;
+  --radius-instrument: 0px;
+  --radius-manuscript: 2px;
+  --h-control-sm: 22px;
+  --h-control: 26px;
+  --h-control-lg: 32px;
+  --h-tab: 28px;
+  --h-titlebar: 30px;
+  --h-toolbar: 42px;
+  --h-statusbar: 22px;
+  --w-rail: 54px;
+  --h-rail-item: 48px;
+  --measure-prose: 70ch;
+  --measure-inworld: 62ch;
+  --font-ui: "Inter", "JetBrains Mono", -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-serif: "Spectral", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+}
+.inst-title { font-family: var(--font-ui); font-size: 32px; line-height: 38px; font-weight: 700; letter-spacing: -0.5px; }
+.inst-section { font-family: var(--font-ui); font-size: 14px; line-height: 18px; font-weight: 700; letter-spacing: 1.2px; }
+.inst-heading { font-family: var(--font-ui); font-size: 14px; line-height: 18px; font-weight: 700; }
+.inst-body { font-family: var(--font-ui); font-size: 12px; line-height: 16px; font-weight: 400; }
+.inst-panel-title { font-family: var(--font-ui); font-size: 10.5px; line-height: 14px; font-weight: 700; letter-spacing: 1px; }
+.inst-tab { font-family: var(--font-ui); font-size: 10px; line-height: 14px; font-weight: 500; letter-spacing: 1px; }
+.inst-button { font-family: var(--font-ui); font-size: 10.5px; line-height: 14px; font-weight: 700; letter-spacing: 0.5px; }
+.inst-label { font-family: var(--font-ui); font-size: 10.5px; line-height: 14px; font-weight: 700; letter-spacing: 0.5px; }
+.inst-label-sm { font-family: var(--font-ui); font-size: 10px; line-height: 14px; font-weight: 700; letter-spacing: 0.8px; }
+.inst-label-xs { font-family: var(--font-ui); font-size: 9px; line-height: 12px; font-weight: 700; letter-spacing: 0.8px; }
+.inst-chip { font-family: var(--font-ui); font-size: 9.5px; line-height: 12px; font-weight: 700; letter-spacing: 0.8px; }
+.data-lg { font-family: var(--font-mono); font-size: 14px; line-height: 20px; font-weight: 400; }
+.data { font-family: var(--font-mono); font-size: 10.5px; line-height: 16px; font-weight: 400; }
+.data-sm { font-family: var(--font-mono); font-size: 10px; line-height: 14px; font-weight: 400; }
+.data-xs { font-family: var(--font-mono); font-size: 9px; line-height: 12px; font-weight: 400; }
+.rail-label { font-family: var(--font-mono); font-size: 8px; line-height: 10px; font-weight: 700; letter-spacing: 0.6px; }
+.ms-title { font-family: var(--font-ui); font-size: 26px; line-height: 32px; font-weight: 600; letter-spacing: -0.3px; }
+.ms-h2 { font-family: var(--font-ui); font-size: 19px; line-height: 26px; font-weight: 600; letter-spacing: -0.1px; }
+.ms-h3 { font-family: var(--font-ui); font-size: 15px; line-height: 24px; font-weight: 600; }
+.ms-body { font-family: var(--font-ui); font-size: 15px; line-height: 24px; font-weight: 400; }
+.ms-meta { font-family: var(--font-ui); font-size: 13px; line-height: 20px; font-weight: 400; }
+.ms-mono { font-family: var(--font-mono); font-size: 13px; line-height: 20px; font-weight: 400; }
+.iw-title { font-family: var(--font-serif); font-size: 22px; line-height: 28px; font-weight: 500; }
+.iw-body { font-family: var(--font-serif); font-size: 17px; line-height: 28px; font-weight: 400; }
+.iw-attribution { font-family: var(--font-serif); font-size: 14px; line-height: 20px; font-weight: 400; font-style: italic; }
+@font-face { font-family: 'Inter'; src: url('fonts/InterVariable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/InterVariable-Italic.woff2') format('woff2'); font-weight: 100 900; font-style: italic; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('fonts/JetBrainsMono-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('fonts/JetBrainsMono-Medium.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('fonts/JetBrainsMono-SemiBold.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('fonts/JetBrainsMono-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Spectral'; src: url('fonts/Spectral-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Spectral'; src: url('fonts/Spectral-Italic.woff2') format('woff2'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Spectral'; src: url('fonts/Spectral-Medium.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Spectral'; src: url('fonts/Spectral-MediumItalic.woff2') format('woff2'); font-weight: 500; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Spectral'; src: url('fonts/Spectral-SemiBold.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }

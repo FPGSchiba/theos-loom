@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>11 · Activity log — Loom cockpit reference</title>
+<!--
+  Reference screen 11 of the Loom cockpit, exported from the design canvas on 2026-11-27.
+  Built only from web/design/theos-ui (tokens.css, components/bundle.css) plus the page styles below.
+  Theme: change data-theme on the first element to "grid-light" to see Grid Light.
+  Sample content is illustrative; docs/specs/00-umbrella.md wins where they disagree.
+-->
+<link rel="stylesheet" href="../../../web/design/theos-ui/tokens.css">
+<link rel="stylesheet" href="../../../web/design/theos-ui/components/bundle.css">
+<style>
+body{margin:0}
+a{color:inherit}
+.lm-rail a{text-decoration:none}
+.lm-h{margin:0;font:700 10px/14px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;color:var(--textDim)}
+.lm-model{padding:0 5px;border:1px solid var(--border);color:var(--textDim);font:500 9.5px/14px var(--font-mono)}
+.lm-table{width:100%;border-collapse:collapse;font-size:12px;line-height:17px}
+.lm-table th{position:sticky;top:0;z-index:1;text-align:left;padding:8px 10px;background:var(--panel2);border-bottom:1px solid var(--border);font:700 9.5px/12px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;color:var(--textDim);white-space:nowrap}
+.lm-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.lm-num{font-family:var(--font-mono);font-size:11px;text-align:right;white-space:nowrap}
+.lm-row{cursor:default}
+.lm-row:hover td{background:color-mix(in srgb,var(--panel2) 60%,transparent)}
+.lm-row.is-sel td{background:color-mix(in srgb,var(--sig-attention) 8%,transparent)}
+.lm-row.is-sel td:first-child{box-shadow:inset 2px 0 0 var(--sig-attention)}
+.lm-rowbtn{padding:0;border:0;background:none;color:var(--text);font:600 12px/17px var(--font-ui);text-align:left;cursor:default}
+.lm-rowbtn:focus-visible{outline:1px solid var(--sig-attention);outline-offset:2px}
+.lm-tag{display:inline-flex;gap:5px;align-items:center;padding:1px 6px;border:1px solid var(--border);background:var(--panel2);color:var(--textDim);font:500 9.5px/13px var(--font-mono);white-space:nowrap}
+.lm-kind{display:inline-block;min-width:44px;padding:0 4px;border:1px solid var(--border);font:700 9px/14px var(--font-mono);letter-spacing:.6px;text-align:center;color:var(--textDim)}
+.lm-kind.is-run{color:var(--sig-info);border-color:color-mix(in srgb,var(--sig-info) 45%,transparent)}
+.lm-kind.is-ai{color:var(--sig-ai);border-color:color-mix(in srgb,var(--sig-ai) 45%,transparent)}
+.lm-kind.is-edit{color:var(--text);border-color:var(--borderHi)}
+.lm-bar{height:8px;background:var(--bg);border:1px solid var(--border);position:relative}
+.lm-bar>span{position:absolute;inset:0 auto 0 0;background:var(--textDim)}
+.lm-tile{flex:1 1 0;padding:12px 14px;background:var(--panel2);border:1px solid var(--border);display:flex;flex-direction:column;gap:4px;min-width:0}
+.lm-tile b{font:400 22px/28px var(--font-mono);color:var(--text)}
+.lm-card{display:flex;flex-direction:column;gap:6px;padding:8px 9px;background:var(--panel);border:1px solid var(--border);text-decoration:none;color:var(--text)}
+.lm-card:hover{border-color:var(--borderHi)}
+textarea.lm-ta{width:100%;box-sizing:border-box;min-height:64px;resize:vertical;padding:8px 10px;background:var(--bg);color:var(--text);border:1px solid var(--border);font:400 12px/18px var(--font-ui)}
+textarea.lm-ta:focus{outline:1px solid var(--sig-attention);outline-offset:-1px}
+.lm-node{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:7px 12px;border-bottom:1px solid var(--border)}
+.lm-node.is-sub{padding-left:30px;position:relative}
+.lm-node.is-sub::before{content:"";position:absolute;left:15px;top:0;bottom:0;border-left:1px dotted var(--borderHi)}
+.lm-node.is-sub::after{content:"";position:absolute;left:15px;top:15px;width:10px;border-top:1px dotted var(--borderHi)}
+.lm-act{display:grid;grid-template-columns:64px 58px minmax(0,1fr);gap:8px;padding:5px 12px;border-bottom:1px solid var(--border);align-items:baseline}
+.lm-dec{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border-bottom:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div data-theme="grid-noir" style="width: 1920px; height: 1080px; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 12px; line-height: 16px">
+<header class="tu-titlebar">
+<span class="tu-titlebar__brand"><span class="tu-mark"></span>LOOM</span>
+<span class="tu-titlebar__sep">▸</span><span>Theos</span><span class="tu-titlebar__sep">▸</span><span class="tu-titlebar__preset">Activity</span>
+<span class="tu-spacer"></span>
+<span class="tu-statuspip"><span class="tu-pip tu-pip--glow is-info"></span>3 runs</span>
+<span class="tu-statuspip"><span class="tu-pip is-approve"></span>night window · until 07:00</span>
+<span class="tu-statuspip"><span class="tu-pip is-approve"></span>main green · 4 repos</span>
+</header>
+<div style="flex: 1; display: flex; min-height: 0">
+<nav class="tu-rail lm-rail" aria-label="Sections">
+<a href="Main.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">▦</span><span class="tu-rail__label">Board</span></a>
+<a href="Activity.dc.html" class="tu-rail__item is-active"><span class="tu-rail__glyph">≋</span><span class="tu-rail__label">Activity</span></a>
+<a href="Inbox.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">◴</span><span class="tu-rail__label">Inbox</span><span class="tu-rail__badge">2</span></a>
+<a href="Review.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">✓</span><span class="tu-rail__label">Review</span><span class="tu-rail__badge is-neutral">5</span></a>
+<a href="Spend.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">¤</span><span class="tu-rail__label">Spend</span></a>
+<span class="tu-rail__spacer"></span>
+<a href="Controls.dc.html" class="tu-rail__item"><span class="tu-rail__glyph">⚙</span><span class="tu-rail__label">Controls</span></a>
+</nav>
+<main style="flex: 1; min-width: 0; min-height: 0; padding: 4px; display: flex; flex-direction: column; gap: 4px">
+
+<div role="search" aria-label="Filter activity" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 10px; background: var(--panel2); border: 1px solid var(--border)">
+<span class="tu-label tu-label--sm tu-label--strong">Filter</span>
+<span class="tu-label tu-label--xs">Component</span>
+<span class="tu-seg"><button type="button" class="tu-seg__opt is-active" aria-pressed="true">All</button><button type="button" class="tu-seg__opt" aria-pressed="false">Loom</button><button type="button" class="tu-seg__opt" aria-pressed="false">Editor</button><button type="button" class="tu-seg__opt" aria-pressed="false">Engine</button><button type="button" class="tu-seg__opt" aria-pressed="false">Game</button></span>
+<span class="tu-label tu-label--xs">Step</span>
+<button type="button" class="tu-filter is-neutral" aria-pressed="true">SLICE</button><button type="button" class="tu-filter is-neutral" aria-pressed="true">REFINE</button><button type="button" class="tu-filter is-neutral" aria-pressed="true">IMPL</button><button type="button" class="tu-filter is-neutral" aria-pressed="true">REVIEW</button><button type="button" class="tu-filter is-neutral" aria-pressed="true">MERGE</button><button type="button" class="tu-filter is-neutral" aria-pressed="true">DECIDE</button><button type="button" class="tu-filter is-neutral" aria-pressed="true">SUMMARY</button>
+<label class="tu-input" style="width: 260px"><span class="tu-input__icon">⌕</span><input aria-label="Find a story or epic" placeholder="Story or epic"></label>
+<span class="tu-spacer"></span>
+<button type="button" class="tu-btn tu-btn--sm tu-btn--accent" aria-pressed="true"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>Live</button>
+<span class="tu-mono tu-dim" style="font-size: 10px">12 runs · today and yesterday</span>
+</div>
+<div style="flex: 1; display: flex; gap: 4px; min-height: 0">
+<section class="tu-window" style="flex: 1 1 0; min-width: 0">
+<div class="tu-tabbar"><div class="tu-tabbar__title">Runs <span class="tu-mono tu-dim" style="font-size: 10px; font-weight: 400; letter-spacing: 0">newest first</span></div><div class="tu-tabbar__ctrls"><span>⋯</span></div></div>
+<div class="tu-window__body">
+<table class="lm-table">
+<thead><tr><th scope="col">Started</th><th scope="col">Step</th><th scope="col">Story</th><th scope="col">Component</th><th scope="col" style="text-align: right">Agents</th><th scope="col">State</th><th scope="col">Last action</th><th scope="col" style="text-align: right">Rulings</th><th scope="col">Kit</th></tr></thead>
+<tbody>
+
+<tr class="lm-row is-sel">
+<td class="tu-mono tu-dim" style="font-size: 10.5px; white-space: nowrap">14:41</td>
+<td><span class="lm-kind">REVIEW</span></td>
+<td><button type="button" class="lm-rowbtn">Store and state machines</button><br><span class="tu-mono tu-dim" style="font-size: 10px">Foundation</span></td>
+<td>Loom</td>
+<td class="lm-num">2</td>
+<td style="white-space: nowrap"><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running</span></td>
+<td class="tu-mono" style="font-size: 10.5px; color: var(--textDim); max-width: 420px">14:41:02 read docs/specs/phases/P02-store-and-state-machines.md</td>
+<td class="lm-num">4</td>
+<td class="tu-mono tu-dim" style="font-size: 10px">0.3.1</td>
+</tr>
+
+<tr class="lm-row">
+<td class="tu-mono tu-dim" style="font-size: 10.5px; white-space: nowrap">13:02</td>
+<td><span class="lm-kind is-run">IMPL</span></td>
+<td><button type="button" class="lm-rowbtn">Chime and gate places</button><br><span class="tu-mono tu-dim" style="font-size: 10px">Map places</span></td>
+<td>Editor</td>
+<td class="lm-num">3</td>
+<td style="white-space: nowrap"><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running</span></td>
+<td class="tu-mono" style="font-size: 10.5px; color: var(--textDim); max-width: 420px">14:40:51 run cargo nextest run -p theos-map places</td>
+<td class="lm-num">1</td>
+<td class="tu-mono tu-dim" style="font-size: 10px">0.3.1</td>
+</tr>
+
+<tr class="lm-row">
+<td class="tu-mono tu-dim" style="font-size: 10.5px; white-space: nowrap">12:20</td>
+<td><span class="lm-kind is-run">IMPL</span></td>
+<td><button type="button" class="lm-rowbtn">Run runtime</button><br><span class="tu-mono tu-dim" style="font-size: 10px">Foundation</span></td>
+<td>Loom</td>
+<td class="lm-num">3</td>
+<td style="white-space: nowrap"><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running</span></td>
+<td class="tu-mono" style="font-size: 10.5px; color: var(--textDim); max-width: 420px">14:40:12 edit crates/loom-run/src/container.rs +22 −4</td>
+<td class="lm-num">1</td>
+<td class="tu-mono tu-dim" style="font-size: 10px">0.3.1</td>
+</tr>
+
+<tr class="lm-row">
+<td class="tu-mono tu-dim" style="font-size: 10.5px; white-space: nowrap">11:20</td>
+<td><span class="lm-kind">REFINE</span></td>
+<td><button type="button" class="lm-rowbtn">Map pins, cameras and frames</button><br><span class="tu-mono tu-dim" style="font-size: 10px">Map places</span></td>
+<td>Editor</td>
+<td class="lm-num">2</td>
+<td style="white-space: nowrap"><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-attention"></span>waits for you</span></td>
+<td class="tu-mono" style="font-size: 10.5px; color: var(--textDim); max-width: 420px">11:44:12 note writing the camera part while the pin question waits</td>
+<td class="lm-num">2</td>
+<td class="tu-mono tu-dim" style="font-size: 10px">0.3.1</td>
+</tr>
+
+<tr class="lm-row">
+<td class="tu-mono tu-dim" style="font-size: 10.5px; white-space: nowrap">10:46</td>
+<td><span class="lm-kind">SUMMARY</span></td>
+<td><button type="button" class="lm-rowbtn">Reveal ledger view</button><br><span class="tu-mono tu-dim" style="font-size: 10px">Codex</span></td>
+<td>Editor</td>
+<td class="lm-num">1</td>
+<td style="white-space: nowrap"><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-approve"></span>done</span></td>
+<td class="tu-mono" style="font-size: 10.5px; color: var(--textDim); max-width: 420px">10:46:40 summary stored · source hash 9f1c…</td>
+<td class="lm-num">0</td>
+<td class="tu-mono tu-dim" style="font-size: 10px">0.3.1</td>
+</tr>
+
+<tr class="lm-row">
+<td class="tu-mono tu-dim" style="font-size: 10.5px; white-space: nowrap">10:30</td>
+<td><span class="lm-kind is-run">MERGE</span></td>
+<td><button type="button" class="lm-rowbtn">Prose editor links</button><br><span class="tu-mono tu-dim" style="font-size: 10px">Codex</span></td>
+<td>Editor</td>
+<td class="lm-num">0</td>
+<td style="white-space: nowrap"><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-approve"></span>merged</span></td>
+<td class="tu-mono" style="font-size: 10.5px; color: var(--textDim); max-width: 420px">10:30:05 merged on green · auto-merge</td>
+<td class="lm-num">0</td>
+<td class="tu-mono tu-dim" style="font-size: 10px">0.3.1</td>
+</tr>
+
+<tr class="lm-row">
+<td class="tu-mono tu-dim" style="font-size: 10.5px; white-space: nowrap">09:58</td>
+<td><span class="lm-kind">REFINE</span></td>
+<td><button type="button" class="lm-rowbtn">Prompt-injection tests</button><br><span class="tu-mono tu-dim" style="font-size: 10px">Local LLM</span></td>
+<td>Engine</td>
+<td class="lm-num">1</td>
+<td style="white-space: nowrap"><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-reject"></span>blocked</span></td>
+<td class="tu-mono" style="font-size: 10.5px; color: var(--textDim); max-width: 420px">09:58:40 stopped · waits for the model bundle on main</td>
+<td class="lm-num">1</td>
+<td class="tu-mono tu-dim" style="font-size: 10px">0.3.1</td>
+</tr>
+
+<tr class="lm-row">
+<td class="tu-mono tu-dim" style="font-size: 10.5px; white-space: nowrap">09:05</td>
+<td><span class="lm-kind">REFINE</span></td>
+<td><button type="button" class="lm-rowbtn">Chime and gate places</button><br><span class="tu-mono tu-dim" style="font-size: 10px">Map places</span></td>
+<td>Editor</td>
+<td class="lm-num">2</td>
+<td style="white-space: nowrap"><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-approve"></span>done</span></td>
+<td class="tu-mono" style="font-size: 10.5px; color: var(--textDim); max-width: 420px">10:01:44 write docs/plans/chime-and-gate.md</td>
+<td class="lm-num">1</td>
+<td class="tu-mono tu-dim" style="font-size: 10px">0.3.0</td>
+</tr>
+
+<tr class="lm-row">
+<td class="tu-mono tu-dim" style="font-size: 10.5px; white-space: nowrap">08:40</td>
+<td><span class="lm-kind is-ai">DECIDE</span></td>
+<td><button type="button" class="lm-rowbtn">Command: pause the engine overnight</button><br><span class="tu-mono tu-dim" style="font-size: 10px">—</span></td>
+<td>Engine</td>
+<td class="lm-num">1</td>
+<td style="white-space: nowrap"><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-approve"></span>confirmed by you</span></td>
+<td class="tu-mono" style="font-size: 10.5px; color: var(--textDim); max-width: 420px">08:41:02 paused Engine until 18:00</td>
+<td class="lm-num">1</td>
+<td class="tu-mono tu-dim" style="font-size: 10px">0.3.0</td>
+</tr>
+
+<tr class="lm-row">
+<td class="tu-mono tu-dim" style="font-size: 10.5px; white-space: nowrap">Yest 22:14</td>
+<td><span class="lm-kind">SLICE</span></td>
+<td><button type="button" class="lm-rowbtn">Cavern and tree maps</button><br><span class="tu-mono tu-dim" style="font-size: 10px">Map kinds</span></td>
+<td>Editor</td>
+<td class="lm-num">1</td>
+<td style="white-space: nowrap"><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running</span></td>
+<td class="tu-mono" style="font-size: 10.5px; color: var(--textDim); max-width: 420px">22:20:10 read crates/theos-map/src/stages/</td>
+<td class="lm-num">0</td>
+<td class="tu-mono tu-dim" style="font-size: 10px">0.3.0</td>
+</tr>
+
+<tr class="lm-row">
+<td class="tu-mono tu-dim" style="font-size: 10.5px; white-space: nowrap">Yest 21:40</td>
+<td><span class="lm-kind is-run">IMPL</span></td>
+<td><button type="button" class="lm-rowbtn">Store and state machines</button><br><span class="tu-mono tu-dim" style="font-size: 10px">Foundation</span></td>
+<td>Loom</td>
+<td class="lm-num">9</td>
+<td style="white-space: nowrap"><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-approve"></span>done</span></td>
+<td class="tu-mono" style="font-size: 10.5px; color: var(--textDim); max-width: 420px">13:39:41 run gh pr create</td>
+<td class="lm-num">1</td>
+<td class="tu-mono tu-dim" style="font-size: 10px">0.3.0</td>
+</tr>
+
+<tr class="lm-row">
+<td class="tu-mono tu-dim" style="font-size: 10.5px; white-space: nowrap">Yest 18:02</td>
+<td><span class="lm-kind">REVIEW</span></td>
+<td><button type="button" class="lm-rowbtn">Reveal ledger view</button><br><span class="tu-mono tu-dim" style="font-size: 10px">Codex</span></td>
+<td>Editor</td>
+<td class="lm-num">3</td>
+<td style="white-space: nowrap"><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-approve"></span>clean in round 2</span></td>
+<td class="tu-mono" style="font-size: 10.5px; color: var(--textDim); max-width: 420px">19:10:02 done · no findings</td>
+<td class="lm-num">2</td>
+<td class="tu-mono tu-dim" style="font-size: 10px">0.3.0</td>
+</tr>
+
+</tbody>
+</table>
+</div>
+</section>
+<aside class="tu-window" style="flex: 0 0 620px; min-width: 0">
+<div class="tu-tabbar"><div class="tu-tabbar__title">Run</div><div class="tu-tabbar__ctrls"><span>⋯</span></div></div>
+<div class="tu-window__body">
+<div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; background: var(--panel2); border-bottom: 1px solid var(--border)">
+<span style="display: flex; gap: 8px; align-items: center"><span class="lm-kind">REVIEW</span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running</span></span>
+<a href="Story-Review.dc.html" style="font: 600 17px/24px var(--font-ui); text-decoration: none">Store and state machines</a>
+<span class="tu-mono tu-dim" style="font-size: 10px">Loom · Foundation · started 14:41 · 58m · 336k tokens · kit 0.3.1</span>
+</div>
+<h2 class="lm-h" style="padding: 12px 12px 6px">Session and agents</h2>
+
+<div class="lm-node"><span style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap"><span style="font-weight: 600">Review session</span><span class="lm-model">opus</span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running</span></span><span class="tu-mono tu-dim" style="font-size: 10px">worktree · 41k</span></div>
+
+<div class="lm-node is-sub"><span style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap"><span style="font-weight: 600">Round 1 · reviewer</span><span class="lm-model">opus</span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-warn"></span>3 findings</span></span><span class="tu-mono tu-dim" style="font-size: 10px">read only · 138k</span></div>
+
+<div class="lm-node is-sub"><span style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap"><span style="font-weight: 600">Round 1 · fix agent</span><span class="lm-model">sonnet</span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm is-approve"></span>fixed 3 of 3</span></span><span class="tu-mono tu-dim" style="font-size: 10px">same worktree · 97k</span></div>
+
+<div class="lm-node is-sub"><span style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap"><span style="font-weight: 600">Round 2 · reviewer</span><span class="lm-model">opus</span><span class="tu-statuspip"><span class="tu-pip tu-pip--sm tu-pip--glow is-info"></span>running</span></span><span class="tu-mono tu-dim" style="font-size: 10px">read only · 60k</span></div>
+
+<h2 class="lm-h" style="padding: 14px 12px 6px">Last actions</h2>
+
+<div class="lm-act"><span class="tu-mono tu-dim" style="font-size: 10.5px">14:35:02</span><span><span class="lm-kind is-run">RUN</span></span><span class="tu-mono" style="font-size: 10.5px; word-break: break-word">cargo nextest run -p loom-store mirror · 16 passed</span></div>
+
+<div class="lm-act"><span class="tu-mono tu-dim" style="font-size: 10.5px">14:37:20</span><span><span class="lm-kind">READ</span></span><span class="tu-mono" style="font-size: 10.5px; word-break: break-word">crates/loom-store/src/state.rs</span></div>
+
+<div class="lm-act"><span class="tu-mono tu-dim" style="font-size: 10.5px">14:39:44</span><span><span class="lm-kind">GREP</span></span><span class="tu-mono" style="font-size: 10.5px; word-break: break-word">"unwrap(" in crates/loom-store/src · 0 hits</span></div>
+
+<div class="lm-act"><span class="tu-mono tu-dim" style="font-size: 10.5px">14:41:02</span><span><span class="lm-kind">READ</span></span><span class="tu-mono" style="font-size: 10.5px; word-break: break-word">docs/specs/phases/P02-store-and-state-machines.md §Rulings</span></div>
+
+<div style="padding: 8px 12px"><a href="Story-Review.dc.html" class="tu-btn tu-btn--secondary tu-btn--sm" style="text-decoration: none">Every action on the story page ▸</a></div>
+<h2 class="lm-h" style="padding: 10px 12px 6px">Decider rulings in this run</h2>
+
+<div class="lm-dec"><span style="display: flex; gap: 8px; align-items: center"><span class="tu-ai">AI</span><span style="font-weight: 600">Rename the event kinds now or defer?</span></span><span>Fix now; the names reach the cockpit.</span><span class="tu-mono tu-dim" style="font-size: 10px">confidence 0.86 · sources · precedent: names users see are fixed in review</span></div>
+
+
+<h2 class="lm-h" style="padding: 10px 12px 6px">Pull request and checks</h2>
+<div style="padding: 0 12px 16px; display: flex; flex-direction: column; gap: 4px"><span class="tu-mono" style="font-size: 11px">feat(store): store and state machines · open · auto-merge on</span><span class="tu-dim" style="font-size: 11.5px">7 of 8 checks green · loom-review waits for a clean round</span></div>
+</div>
+</aside>
+</div>
+
+</main>
+</div>
+<footer class="tu-statusbar">
+<span class="tu-statusbar__brand">LOOM</span>
+<span>decider · strict 0.85</span>
+<span style="display: inline-flex; gap: 6px; align-items: center">week budget <span class="tu-meter is-info" style="width: 60px"><span class="tu-meter__fill" style="width: 61%"></span></span> 61%</span>
+<span>rate limit ok</span>
+<span class="tu-spacer"></span>
+<span>planning repo synced 2 min ago</span>
+</footer>
+</div>
+</body>
+</html>
