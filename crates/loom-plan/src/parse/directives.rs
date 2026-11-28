@@ -68,9 +68,27 @@ fn clean_name(raw: &str) -> &str {
         .trim()
 }
 
+/// The text after a `Contradicts:` label. The label may be wrapped in markup (`**`, `*`, `_`) and
+/// follow a list marker, and is matched in any case: it is a label, not a name. The name after it
+/// is matched exactly (decision 0023).
+fn after_label(line: &str) -> Option<&str> {
+    let markup = ['*', '_'];
+    let line = line.trim_start();
+    let line = line
+        .strip_prefix(['-', '*', '+'])
+        .filter(|rest| rest.starts_with(' '))
+        .unwrap_or(line);
+    let line = line.trim_start().trim_start_matches(markup);
+    let (label, rest) = line.split_at_checked("Contradicts:".len())?;
+    if !label.eq_ignore_ascii_case("Contradicts:") {
+        return None;
+    }
+    Some(rest.trim_start_matches(markup))
+}
+
 fn directive(item: Item, kind: DirectiveKind) -> Directive {
     let contradicts = item.text.lines().find_map(|line| {
-        let name = line.strip_prefix("Contradicts:")?;
+        let name = after_label(line)?;
         let name = clean_name(name);
         (!name.is_empty()).then(|| name.to_owned())
     });
@@ -133,6 +151,96 @@ mod tests {
                 Some("Quality over speed")
             );
         }
+        Ok(())
+    }
+
+    fn contradicts_of(line: &str) -> Result<Option<String>, String> {
+        let text = format!(
+            "1. **Fast.** Go.
+   {line}
+"
+        );
+        let f = read("d.md", &text, Some(DirectiveKind::Design))?;
+        Ok(f.directives[0].contradicts.clone())
+    }
+
+    // AC: TU-01.3
+    #[test]
+    fn contradicts_label_bold_label() -> TestResult {
+        assert_eq!(
+            contradicts_of("**Contradicts:** Quality over speed")?.as_deref(),
+            Some("Quality over speed")
+        );
+        Ok(())
+    }
+
+    // AC: TU-01.3
+    #[test]
+    fn contradicts_label_italic_whole_line() -> TestResult {
+        assert_eq!(
+            contradicts_of("*Contradicts: Quality over speed*")?.as_deref(),
+            Some("Quality over speed")
+        );
+        Ok(())
+    }
+
+    // AC: TU-01.3
+    #[test]
+    fn contradicts_label_underscore_label() -> TestResult {
+        assert_eq!(
+            contradicts_of("_Contradicts:_ Quality over speed")?.as_deref(),
+            Some("Quality over speed")
+        );
+        Ok(())
+    }
+
+    // AC: TU-01.3
+    #[test]
+    fn contradicts_label_after_dash_marker() -> TestResult {
+        assert_eq!(
+            contradicts_of("- Contradicts: Quality over speed")?.as_deref(),
+            Some("Quality over speed")
+        );
+        Ok(())
+    }
+
+    // AC: TU-01.3
+    #[test]
+    fn contradicts_label_after_star_marker() -> TestResult {
+        assert_eq!(
+            contradicts_of("* **Contradicts:** Quality over speed")?.as_deref(),
+            Some("Quality over speed")
+        );
+        Ok(())
+    }
+
+    // AC: TU-01.3
+    #[test]
+    fn contradicts_label_lowercase_label() -> TestResult {
+        assert_eq!(
+            contradicts_of("contradicts: Quality over speed")?.as_deref(),
+            Some("Quality over speed")
+        );
+        Ok(())
+    }
+
+    // AC: TU-01.3
+    #[test]
+    fn contradicts_label_uppercase_label() -> TestResult {
+        assert_eq!(
+            contradicts_of("CONTRADICTS: Quality over speed")?.as_deref(),
+            Some("Quality over speed")
+        );
+        Ok(())
+    }
+
+    // AC: TU-01.3
+    #[test]
+    fn contradicts_name_is_still_matched_exactly() -> TestResult {
+        assert_eq!(
+            contradicts_of("**Contradicts:** quality over speed")?.as_deref(),
+            Some("quality over speed")
+        );
         Ok(())
     }
 
