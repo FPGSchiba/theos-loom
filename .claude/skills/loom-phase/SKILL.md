@@ -45,10 +45,13 @@ branch state. If Jann names a phase, use it; otherwise take the next one of stag
 
 ## Step 3: Review (session C, fresh)
 
-1. Run the final review loop of `CLAUDE.md`: fresh whole-branch reviewer, one fix subagent with the
-   complete list, a new fresh reviewer, until a reviewer reports nothing. Cap: 5 rounds.
-2. Record each round's findings (counts by severity, one line each) in the trial record.
-3. When clean and CI is green: enable auto-merge, unless the PR touches a protected path; then it
+1. Run the final review loop of `CLAUDE.md`: fresh whole-branch reviewer, judge every finding
+   (fix, or rule it not worth fixing), one fix subagent with the findings to fix, a new fresh
+   reviewer, until a reviewer reports nothing worth fixing. After 5 rounds: one last fix wave and
+   a targeted review, then stop as best effort (decision 0008).
+2. Record each round's findings (counts by severity, how many fixed and how many ruled, one line
+   each) in the trial record.
+3. When the loop has stopped and CI is green: enable auto-merge, unless the PR touches a protected path; then it
    waits for Jann.
 4. Ask Jann for his verdict and note it in the trial record: **would he have merged it as is?**
    (yes / with changes / no), plus a line on why.

@@ -18,3 +18,5 @@ its precedents the same way (umbrella §5.4).
 | 2026-11-27 | The toolchain's default linker (`rust-lld`) instead of `mold` with `clang`: [0005](0005-default-linker.md). |
 | 2026-11-27 | Every config that can switch off `ui` is protected; `lints` refuses a nested ESLint config: [0006](0006-protect-every-web-tool-config.md). |
 | 2026-11-27 | No inline suppressions in `secrets` (`gitleaks:allow`) and `ui` (`eslint-disable`): [0007](0007-no-inline-suppressions-in-secrets-and-ui.md). |
+| 2026-11-28 | The final review loop judges every finding, stops when none is worth fixing, and after 5 rounds ends as best effort with one last fix and a targeted review: [0008](0008-judged-review-loop.md). |
+| 2026-11-28 | Review fixes inside a PR that already waits for Jann may change protected paths without asking first: [0009](0009-review-fixes-in-a-protected-pr.md). |
