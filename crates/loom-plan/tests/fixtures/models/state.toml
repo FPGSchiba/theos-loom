@@ -1,0 +1,6 @@
+format = 1
+epic = "active"
+
+[stories]
+SHOP-12 = "merged"
+SHOP-13 = "queued"

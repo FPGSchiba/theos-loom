@@ -1,0 +1,9 @@
+format = 1
+
+[component]
+id = "storefront"
+name = "Storefront"
+repo = "git@example.com:shop/storefront.git"
+default_branch = "main"
+forbidden_paths = ["secrets/**", "*.pem"]
+slicing = "review"
