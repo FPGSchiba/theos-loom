@@ -1,6 +1,6 @@
 # theos-loom — umbrella spec
 
-Status: approved by Jann · version 8 · 27 Nov 2026 (version 1, the same day: first draft;
+Status: approved by Jann · version 9 · 27 Nov 2026 (version 1, the same day: first draft;
 version 2 adds epic slicing and the two-phase story run: refinement, then a fresh implementation;
 version 3 adds the board, story and epic pages, and short summaries: §7 item 0, P20;
 version 4 adds a manual trial and a two-stage build; version 5 removes the review brake again
@@ -8,7 +8,9 @@ and makes building Loom itself the trial (§9, O0), so the editor is onboarded o
 version 6 moves the store from SQLite to PostgreSQL on Jann's dedicated database VM: T1, T4, T6;
 version 7, 28 Nov 2026, makes the review loop judge its findings and end as best effort: TU-07.1, decision 0008;
 version 8, 28 Nov 2026, opens runs to the public web for research, with the home LAN blocked: T4, decision 0013;
-and makes new models and CLI versions work without a code change: T14, decision 0016)
+and makes new models and CLI versions work without a code change: T14, decision 0016;
+version 9, 28 Nov 2026, makes the planning repo follow the BMad PO's ticket tree, with Loom's keys
+added to it: §2.1, §3, TU-20.3, decisions 0020–0025)
 Repo: `FPGSchiba/theos-loom`. A loom weaves many threads in parallel into one fabric.
 Owner of architecture: Jann · Built by: Claude Code with superpowers
 
@@ -76,7 +78,7 @@ Loom is built for **many projects** from the start. Theos is the first.
 |---|---|
 | **Project** | Top isolation level. One planning repo, one orchestrator, one **vision**, optional project-wide directives. Example: Theos. |
 | **Component** | A product inside a project, with its own repo and one parent **initiative** (its BMad brief/PRD and architecture). Holds the component's **engineering directives** and **design directives**, which add to the project-wide ones and never contradict them. Theos has three: Engine, Editor, Tower of Theos. |
-| **Epic** | A slice of a component's initiative, planned with BMad: goal, scope, out of scope, and epic-level acceptance criteria. It becomes work when Jann merges it with status `ready`. Its stories may be written by Jann or sliced by Loom. |
+| **Epic** | A slice of a component's initiative, planned with BMad: goal, scope, out of scope, and epic-level acceptance criteria (§2.1 says where each lives in the epic file). It becomes work when Jann merges it marked `loom: ready`. Its stories may be written by Jann or sliced by Loom. |
 | **Story** | The unit of work for one worker: one branch, one PR, in one component repo. It carries its acceptance criteria and its dependencies, which may point into other components. |
 | **Orchestrator** | Deterministic Rust code: reads the planning repo, runs the state machines, schedules, enforces gates and budget. It holds no model context. |
 | **Decider** | A short Claude Code run that the orchestrator starts for each judgment call. It gets a **briefing**, **retrieval** and **read-only tools** (§5). It decides, or it escalates. |
@@ -91,23 +93,50 @@ Loom is built for **many projects** from the start. Theos is the first.
 
 ```text
 README.md
-loom.toml                       # project id, components, repos, budget weights, notification target
+_bmad/                          # the workflow kit's config (BMad); Loom doesn't read it
+loom.toml                       # project id, budget weights, notification target
 vision.md                       # the project vision (Jann)
 directives/
   project.md                    # project-wide engineering and design directives (optional)
-components/<component>/
+components/<component>/         # the components are these folders, nothing else lists them
   component.toml                # repo URL, default branch, workflow-kit version, forbidden paths
-  initiative/                   # BMad brief, PRD, UX, architecture for this component
   directives/engineering.md
   directives/design.md
-  epics/<epic-slug>/
-    epic.md                     # front matter: status, priority, depends_on; goal, scope, epic ACs
-    stories/<story-slug>.md     # written by Jann or sliced by Loom; status, depends_on, ACs
+  initiative-<slug>/            # the component's one initiative (it may be a parent of child
+    initiative-<slug>.md        #   initiatives, each a folder beside it), with the BMad brief,
+    …                           #   PRD, UX and architecture as companions beside its file
+    tickets/
+      tickets.toml              # its epics, in build order
+      epic-<slug>/
+        epic-<slug>.md          # the epic
+        tickets/
+          tickets.toml          # its stories, in build order
+          story-<slug>.md       # a story (also spike-… or bug-…), written by Jann or sliced by Loom
+          story-<slug>-plan.md  # the BMad PO's plan file of that story, when one exists
+  backlog/                      # bugs and stories outside any epic
 canon/                          # design and canon the workers build from (Theos: O4)
 decisions/NNNN-<slug>.md        # decision records, Jann's answers and precedents
 archive/                        # read-only imports (Theos: the Jira backlog)
 _state/                         # written only by Loom (§3.2); everything else is Jann's
 ```
+
+The ticket tree (initiative, `tickets/`, `tickets.toml`, epic and story files, plan files) is the
+BMad PO's, with its templates, so its own tools work on the planning repo (decision 0020). Loom
+adds a few front-matter keys of its own, which those tools ignore:
+
+- `key`: a short id unique in the project (`ED-12`) on every epic and story. A criterion's id is
+  the key plus its number: `ED-12.3` for a story's third criterion, `ED-4.R2` for an epic's
+  requirement line R2. These are the ids that tests carry as `AC: <id>` (decision 0024).
+- `loom`: `ready` or `paused`. Absent means draft. Dropped is the PO's own `status: dropped`
+  (decision 0021).
+- `needs`: prerequisites in other components, by key. The PO's `after` keeps the prerequisites
+  inside the initiative; Loom's dependencies are both together (decision 0024).
+- `origin: sliced` on stories Loom sliced (§3.2).
+
+Where the epic's parts of §2 live: its **goal** is the Description and Outcome, its **scope** and
+**out of scope** are the Boundaries, and its **epic-level ACs** are the numbered requirement
+lines (`R<n>`). A story's **ACs** are its numbered criteria. Priority is the build order of the
+`tickets.toml` (decision 0021).
 
 ---
 
@@ -117,7 +146,7 @@ _state/                         # written only by Loom (§3.2); everything else 
 
 1. **Plan.** Jann plans in Claude Code with the workflow kit's planning skills, down to the
    epic: goal, scope, out of scope and epic-level ACs. Writing stories himself is optional. He
-   merges the epic with `status: ready`.
+   merges the epic marked `loom: ready`.
 2. **Detect.** The orchestrator polls the planning repo's default branch. A webhook can be added
    later. It sees the new or changed `ready` epic.
 3. **Intake.** The decider reviews the epic before any worker starts. It checks against the
@@ -174,10 +203,12 @@ _state/                         # written only by Loom (§3.2); everything else 
   never edited). Everything else Loom wants in the planning repo (follow-up story drafts, a
   proposed directive or check text) goes as a **PR that Jann merges**. So T11 holds: Loom never
   changes his files without his merge.
-- Status a person sets lives in front matter: `draft`, `ready`, `paused`, `dropped`.
+- Status a person sets: draft (no `loom` key), `loom: ready`, `loom: paused`, and the BMad PO's
+  `status: dropped` (in an epic's file, or in a story's plan file) (§2.1).
 - **Jann's actions in the cockpit are his edits.** Moving a card to `ready`, `paused` or `dropped`
-  on the board, or changing its priority, commits that one front-matter field to the planning
-  repo under his identity, with a `Via: loom-cockpit` trailer. These are the only planning
+  on the board, or changing its priority, commits that one field to the planning repo under his
+  identity, with a `Via: loom-cockpit` trailer. Priority is the card's place in its
+  `tickets.toml`. These are the only planning
   files the cockpit writes. Everything else is still edited in Claude Code.
 - Run state lives in Loom's database and is mirrored to `_state/<component>/<epic>.toml` on each
   change. Epics: `intake`, `slicing`, `active`, `blocked`, `done`. Stories: `queued`, `refining`,
@@ -199,7 +230,7 @@ _state/                         # written only by Loom (§3.2); everything else 
 - When the CLI reports a rate limit, Loom pauses new runs, keeps the paused ones resumable and
   restarts when the limit resets. It never retries in a tight loop.
 - **Fair share across projects** by weights in each `loom.toml`. Priority inside a project comes
-  from the epic's and story's `priority`.
+  from the build order of the epics and stories in their `tickets.toml`.
 - **Concurrency limits**: global, per project and per component.
 - Budget and concurrency limits count every run: slicers, refiners, implementers, reviewers and
   deciders.
@@ -217,8 +248,8 @@ _state/                         # written only by Loom (§3.2); everything else 
 - **BMad fork.** `FPGSchiba/bmad-method`, forked from the latest stable release (v6.12.0 when
   this spec was written). Changes from `next` or a later upstream release are pulled
   deliberately, as their own story, never automatically. Phases 1–3 stay BMad: analysis, PRD,
-  UX, architecture, and the PO's slicing into epics and stories. The fork changes the story
-  template to the front matter Loom reads (§2.1).
+  UX, architecture, and the PO's slicing into epics and stories. The fork keeps the PO's
+  ticket tree and templates and adds Loom's keys to them (§2.1).
 - **Phase 4 is superpowers.** BMad's implementation chain (sprint planning, build, build-auto,
   code-review) is replaced by superpowers: writing-plans → subagent-driven-development →
   requesting-code-review → finishing-a-development-branch.
@@ -777,7 +808,8 @@ so a story can pass refinement without input. The real answers arrive with P11.
 - TU-20.2 Blocked cards carry a flag and keep their column. Cards with a waiting decision carry
   a marker that opens that decision.
 - TU-20.3 Dragging a card to *Ready*, *Paused* or *Dropped*, or reordering within a column,
-  commits only that front-matter field under Jann's identity with the `Via: loom-cockpit`
+  commits only the one field it changes (the `loom` key, the BMad PO's `status: dropped`, or the
+  card's place in its `tickets.toml`) under Jann's identity with the `Via: loom-cockpit`
   trailer. Every other drag is refused with the reason (tested for each column pair).
 - TU-20.4 The story page shows the summary, the ACs verbatim, dependencies and the tabs of §7
   item 0. *Activity* lists every run of the story with its questions, answers and review
@@ -858,7 +890,7 @@ Decided by Claude, not by Jann. Each can be overruled with a one-line change.
   summary, because the ACs are what binds the work (§7).
 - **Summaries live only in Loom's database**, keyed by the source file's hash, and no run ever
   reads them. A wrong summary can mislead Jann but never an agent (§7).
-- **The board can change only Jann's fields** (ready, paused, dropped, priority). Those changes
+- **The board can change only Jann's fields** (ready, paused, dropped, order). Those changes
   are committed as his own edits (§3.2).
 - **Blocked is a flag, not a column**, so a stuck card stays where its work is (§7).
 - **Jann answers the refiner's questions himself during the trial**, in the decider's place, so

@@ -23,3 +23,9 @@ its precedents the same way (umbrella §5.4).
 | 2026-11-28 | Runs reach the public web through a logging proxy, for research; the home LAN and private ranges stay blocked: [0013](0013-open-web-for-research.md). |
 | 2026-11-28 | Container tests run Podman on Linux and may pull images pinned by digest: [0014](0014-container-tests-pull-pinned-images.md). |
 | 2026-11-28 | New models and CLI versions work without a code change; prices are data; every run uses the latest CLI: [0016](0016-new-models-without-a-code-change.md). |
+| 2026-11-28 | The planning repo follows the BMad PO's ticket tree, so her tools work on it: [0020](0020-planning-repo-follows-the-po-ticket-tree.md). |
+| 2026-11-28 | `loom: ready` or `paused` starts and pauses work; dropped is the PO's own status; priority is the build order: [0021](0021-loom-ready-and-build-order.md). |
+| 2026-11-28 | `loom plan check`: mistakes are errors everywhere, unfinished work only in ready epics: [0022](0022-check-errors-everywhere-completeness-when-ready.md). |
+| 2026-11-28 | Directives are named; a marked contradiction is an error: [0023](0023-directive-names-and-contradiction-marks.md). |
+| 2026-11-28 | Every epic and story has a project-unique key; criteria ids are key plus number; `needs` holds cross-component prerequisites: [0024](0024-keys-criteria-ids-and-cross-component-needs.md). |
+| 2026-11-28 | A board move edits the one field it changes; TU-20.3 reworded: [0025](0025-board-moves-edit-one-field.md). |
