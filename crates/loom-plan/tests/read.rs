@@ -689,3 +689,41 @@ fn a_leaf_beside_epics_is_a_layout_finding() -> TestResult {
     );
     Ok(())
 }
+
+// AC: TU-01.2
+#[test]
+fn an_initiative_table_without_a_folder_is_a_note() -> TestResult {
+    let (_dir, root) = tree(&[(
+        "components/app/initiative-x/tickets/tickets.toml",
+        "[[initiative]]\nid = 1\nslug = \"initiative-later\"\ntitle = \"Later\"\n",
+    )])?;
+    let repo = read(&root)?;
+    let finding = only_finding(&repo)?;
+    assert_eq!(
+        (finding.rule, finding.severity),
+        (Rule::Layout, Severity::Note)
+    );
+    assert_eq!(
+        finding.path,
+        "components/app/initiative-x/tickets/tickets.toml"
+    );
+    assert!(finding.message.contains("initiative-later"), "{finding:?}");
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
+fn two_epic_tables_with_one_slug_are_a_duplicate_id() -> TestResult {
+    let repo = read(&fixture("invalid/duplicate-id-epic-slug"))?;
+    let finding = only_finding(&repo)?;
+    assert_eq!(
+        (finding.rule, finding.severity),
+        (Rule::DuplicateId, Severity::Error)
+    );
+    assert_eq!(
+        finding.path,
+        "components/app/initiative-checkout/tickets/tickets.toml"
+    );
+    assert!(finding.message.contains("epic-cart"), "{finding:?}");
+    Ok(())
+}

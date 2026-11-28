@@ -14,6 +14,8 @@ use crate::repo::{Component, Epic, Initiative, LeafFile, PlanFile, PlanningRepo,
 struct Sink {
     findings: Vec<Finding>,
     stray_plans: Vec<PlanFile>,
+    /// The initiative folders of the component being built, taken or not.
+    folders: BTreeSet<String>,
 }
 
 impl Sink {
@@ -78,6 +80,7 @@ fn initiatives(
     folders: &mut BTreeMap<String, InitiativeParts>,
     sink: &mut Sink,
 ) -> (Option<Initiative>, Vec<String>) {
+    sink.folders = folders.keys().cloned().collect();
     let children: BTreeSet<String> = folders
         .iter()
         .flat_map(|(slug, i)| {
@@ -137,9 +140,23 @@ fn initiative(
             .extend(parts.tickets.leaves.iter().map(leaf_beside_epics));
     }
     let stories = sink.stories(&tickets, &entries, parts.tickets);
+    let breakdown_path = format!("{tickets}/tickets.toml");
     let children = child_rows
         .iter()
-        .filter_map(|row| initiative(component, &row.slug, folders, sink))
+        .filter_map(|row| {
+            let child = initiative(component, &row.slug, folders, sink);
+            if child.is_none() && !sink.folders.contains(&row.slug) {
+                sink.findings.push(Finding::note(
+                    Rule::Layout,
+                    &breakdown_path,
+                    format!(
+                        "the [[initiative]] table of {} has no folder yet: add                          {component}/{}/{}.md to start it",
+                        row.slug, row.slug, row.slug
+                    ),
+                ));
+            }
+            child
+        })
         .collect();
     Some(Initiative {
         slug: slug.to_owned(),
@@ -160,9 +177,20 @@ fn epics(
     mut folders: BTreeMap<String, EpicParts>,
     sink: &mut Sink,
 ) -> Vec<Epic> {
+    let mut seen = BTreeSet::new();
     let mut listed: Vec<(String, Option<EpicRow>, EpicParts)> = rows
         .into_iter()
         .map(|row| {
+            if !seen.insert(row.slug.clone()) {
+                sink.findings.push(Finding::error(
+                    Rule::DuplicateId,
+                    &format!("{tickets}/tickets.toml"),
+                    format!(
+                        "two [[epic]] tables have the slug {}; a slug names one epic, so give                          each table its own",
+                        row.slug
+                    ),
+                ));
+            }
             let parts = folders.remove(&row.slug).unwrap_or_default();
             (row.slug.clone(), Some(row), parts)
         })
