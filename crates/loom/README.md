@@ -20,7 +20,7 @@ note[epic-incomplete] components/app/initiative-checkout/tickets/epic-search/epi
 | --- | --- |
 | 0 | no errors (notes do not count) |
 | 1 | at least one error |
-| 2 | `<path>` is not a readable directory (message on stderr) |
+| 2 | `<path>` is not a readable directory (message on stderr), or a command-line usage error |
 
 ## `loom plan schemas <dir>`
 
@@ -30,3 +30,5 @@ directory `<dir>` and lists the files. Exit 0, or 2 when `<dir>` can't be writte
 ## Logging
 
 `tracing` writes to stderr, default level `warn`; set `RUST_LOG` to change it.
+
+Usage errors (unknown subcommand, missing argument) are reported by clap and also exit 2.

@@ -154,7 +154,7 @@ fn ready_epic_without_stories_still_needs_a_key() -> TestResult {
 // AC: TU-01.2
 #[test]
 fn story_ready_by_its_own_mark_in_a_draft_epic_is_an_error() -> TestResult {
-    let all = findings("cases/ready-story-in-draft-epic")?;
+    let all = findings("invalid/story-without-acs-ready-story-in-draft-epic")?;
     let errors = of_severity(all, Severity::Error);
     assert_eq!(errors.len(), 1, "{errors:#?}");
     assert_finding(&errors[0], Rule::StoryWithoutAcs, &["criteria"]);

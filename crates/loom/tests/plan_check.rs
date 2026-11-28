@@ -56,13 +56,10 @@ fn check_exits_0_on_the_valid_tree() -> TestResult {
     let cases = subdirs(&fixtures().join("cases"))?;
     assert!(!cases.is_empty(), "no case trees found");
     for case in cases {
-        // This case lives in `cases/` but has one error by design (a story ready by its own mark
-        // in a draft epic); `check_completeness.rs` asserts it. It must exit 1, not 0.
-        let want = i32::from(case.ends_with("ready-story-in-draft-epic"));
         let out = loom(&["plan", "check"], &case)?;
         assert_eq!(
             out.status.code(),
-            Some(want),
+            Some(0),
             "{}: {}",
             case.display(),
             String::from_utf8_lossy(&out.stdout)
