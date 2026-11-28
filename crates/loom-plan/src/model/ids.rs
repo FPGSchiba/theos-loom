@@ -5,7 +5,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Why a value type refused a string.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -84,13 +84,49 @@ impl JsonSchema for Key {
 }
 
 /// A TOML or YAML value that is an integer or a string, as the PO writes ids.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(untagged)]
+///
+/// A float (`1.10` unquoted) is refused with a message asking for quotes: reading it as a number
+/// would turn `1.10` into `1.1`.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TicketIdOrString {
     /// A bare integer, `id = 6`.
     Int(i64),
     /// A string, `id = "6"`.
     Str(String),
+}
+
+impl<'de> Deserialize<'de> for TicketIdOrString {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct V;
+        impl serde::de::Visitor<'_> for V {
+            type Value = TicketIdOrString;
+
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("an integer or a string")
+            }
+
+            fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<Self::Value, E> {
+                Ok(TicketIdOrString::Int(v))
+            }
+
+            fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                i64::try_from(v)
+                    .map(TicketIdOrString::Int)
+                    .map_err(|_| E::custom(format!("`{v}` is too large for an id")))
+            }
+
+            fn visit_f64<E: serde::de::Error>(self, v: f64) -> Result<Self::Value, E> {
+                Err(E::custom(format!(
+                    "`{v}` is read as a decimal number, which would change a reference like 1.10;                      write it in quotes, like \"{v}\""
+                )))
+            }
+
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(TicketIdOrString::Str(v.to_owned()))
+            }
+        }
+        deserializer.deserialize_any(V)
+    }
 }
 
 impl fmt::Display for TicketIdOrString {
@@ -178,17 +214,24 @@ impl TryFrom<TicketIdOrString> for AfterRef {
     type Error = IdError;
 
     fn try_from(v: TicketIdOrString) -> Result<Self, IdError> {
-        let text = v.to_string();
-        let bad = || IdError::After(text.clone());
+        v.to_string().parse()
+    }
+}
+
+impl FromStr for AfterRef {
+    type Err = IdError;
+
+    fn from_str(text: &str) -> Result<Self, IdError> {
+        let bad = || IdError::After(text.to_owned());
         if let Some(slug) = text.strip_prefix("epic-") {
             return if slug.is_empty() {
                 Err(bad())
             } else {
-                Ok(Self::Epic(text.clone()))
+                Ok(Self::Epic(text.to_owned()))
             };
         }
         match text.split_once('.') {
-            None => TicketId::try_from(text.clone())
+            None => TicketId::try_from(text.to_owned())
                 .map(Self::Sibling)
                 .map_err(|_| bad()),
             Some((epic, entry)) => {
@@ -198,6 +241,35 @@ impl TryFrom<TicketIdOrString> for AfterRef {
             }
         }
     }
+}
+
+/// Reads a YAML `after` list as the scalars' source text, so an unquoted `1.10` (which
+/// `tickets.py pull` writes) stays `1.10` and is never read as the float `1.1`.
+pub(crate) fn yaml_after_list<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Vec<AfterRef>, D::Error> {
+    struct Text(String);
+    impl<'de> Deserialize<'de> for Text {
+        fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+            struct V;
+            impl serde::de::Visitor<'_> for V {
+                type Value = Text;
+
+                fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    f.write_str("an id, an `<epic>.<id>` pair or an epic slug")
+                }
+
+                fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Text, E> {
+                    Ok(Text(v.to_owned()))
+                }
+            }
+            deserializer.deserialize_str(V)
+        }
+    }
+    Vec::<Text>::deserialize(deserializer)?
+        .into_iter()
+        .map(|t| t.0.parse().map_err(serde::de::Error::custom))
+        .collect()
 }
 
 impl fmt::Display for AfterRef {

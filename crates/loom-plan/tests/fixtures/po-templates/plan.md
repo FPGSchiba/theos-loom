@@ -1,4 +1,5 @@
 ---
+title: "Add an item to the cart"
 ticket: 1
 type: feature
 status: blocked

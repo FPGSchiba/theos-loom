@@ -198,3 +198,45 @@ fn two_kinds_of_table_are_counted_not_refused() -> TestResult {
     assert_eq!(Breakdown::default().kinds(), 0);
     Ok(())
 }
+
+// AC: TU-01.1
+#[test]
+fn unknown_key_in_after_table_is_named() -> TestResult {
+    let cases = [
+        ("[[epic]]\nid = 1\nslug = \"epic-a\"\ntitle = \"A\"\nafter = [{ epic = 1, nedes = \"x\" }]\n"),
+        ("[[initiative]]\nid = 1\nslug = \"initiative-a\"\ntitle = \"A\"\nafter = [{ initiative = 1, nedes = \"x\" }]\n"),
+    ];
+    for text in cases {
+        let f = Breakdown::parse("tickets.toml", text)
+            .err()
+            .ok_or("expected an error")?;
+        unknown_key_in(&f, "nedes", "tickets.toml");
+    }
+    Ok(())
+}
+
+#[test]
+fn unquoted_cross_epic_after_is_read_losslessly() -> TestResult {
+    let text = STORY.replace(
+        "after: [2, \"1.3\", \"epic-pricing-rules\"]",
+        "after: [2, 1.3, epic-pricing-rules, 1.10]",
+    );
+    let story = some(ok(LeafFront::parse("story.md", &text))?)?;
+    let shown: Vec<String> = story.after.iter().map(ToString::to_string).collect();
+    assert_eq!(shown, ["2", "1.3", "epic-pricing-rules", "1.10"]);
+    let epic = EPIC.replace("after: [\"epic-pricing-rules\"]", "after: [1.10]");
+    let epic = some(ok(EpicFront::parse("epic.md", &epic))?)?;
+    assert_eq!(epic.after[0].to_string(), "1.10");
+    Ok(())
+}
+
+#[test]
+fn unquoted_float_in_toml_asks_for_quotes() -> TestResult {
+    let text = "[[entry]]\nid = 1\ntype = \"story\"\ntitle = \"T\"\nafter = [1.10]\n";
+    let f = Breakdown::parse("tickets.toml", text)
+        .err()
+        .ok_or("expected an error")?;
+    assert_eq!(f.rule, Rule::Parse);
+    assert!(f.message.contains("quotes"), "{}", f.message);
+    Ok(())
+}

@@ -3,7 +3,7 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use super::ids::{AfterRef, Key, LoomMark};
+use super::ids::{AfterRef, Key, LoomMark, yaml_after_list};
 use super::ticket_common::{ContainerStatus, Risk, Scalar, TrackerStatus};
 use crate::finding::Finding;
 use crate::parse::front_matter::front_matter;
@@ -39,7 +39,7 @@ pub struct EpicFront {
     #[serde(default)]
     pub companions: Vec<String>,
     /// Epics it waits on.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "yaml_after_list")]
     pub after: Vec<AfterRef>,
     /// `in-progress`, `done` or `dropped`.
     pub status: Option<ContainerStatus>,

@@ -3,7 +3,7 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use super::ids::{AfterRef, Key, LoomMark, TicketId};
+use super::ids::{AfterRef, Key, LoomMark, TicketId, yaml_after_list};
 use super::ticket_common::{Origin, PlanStatus, Risk, Scalar, Severity, TrackerStatus};
 use crate::finding::Finding;
 use crate::parse::front_matter::front_matter;
@@ -45,7 +45,7 @@ pub struct LeafFront {
     #[serde(default)]
     pub companions: Vec<String>,
     /// Prerequisites.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "yaml_after_list")]
     pub after: Vec<AfterRef>,
     /// A tracker's assignee.
     pub assignee: Option<String>,

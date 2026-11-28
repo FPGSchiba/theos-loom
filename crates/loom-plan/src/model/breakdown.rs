@@ -1,9 +1,15 @@
 //! `tickets.toml`: the agreed children of a container.
 
-use schemars::JsonSchema;
-use serde::Deserialize;
+use std::borrow::Cow;
+use std::fmt;
+use std::marker::PhantomData;
 
-use super::ids::{AfterRef, Key, LoomMark, TicketId};
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
+use serde::de::value::MapAccessDeserializer;
+use serde::de::{IntoDeserializer, MapAccess, Visitor};
+use serde::{Deserialize, Deserializer};
+
+use super::ids::{AfterRef, Key, LoomMark, TicketId, TicketIdOrString};
 use super::leaf::LeafKind;
 use super::ticket_common::{Risk, Scalar};
 use crate::finding::Finding;
@@ -27,8 +33,7 @@ pub struct Breakdown {
 }
 
 /// An epic waits on an epic: a bare reference or an `{ epic, needs }` table.
-#[derive(Debug, Clone, PartialEq, Deserialize, JsonSchema)]
-#[serde(untagged)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum EpicAfter {
     /// An id, `2`, or a slug, `"epic-cart"`.
     Ref(AfterRef),
@@ -47,8 +52,7 @@ pub struct EpicNeeds {
 }
 
 /// An initiative waits on an initiative: a bare id or an `{ initiative, needs }` table.
-#[derive(Debug, Clone, PartialEq, Deserialize, JsonSchema)]
-#[serde(untagged)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum InitiativeAfter {
     /// An id of a sibling initiative.
     Ref(TicketId),
@@ -154,6 +158,113 @@ pub struct InitiativeRow {
     /// Initiatives it waits on.
     #[serde(default)]
     pub after: Vec<InitiativeAfter>,
+}
+
+/// What an `after` item was: a plain reference or a table.
+enum RefOrTable<R, N> {
+    Ref(R),
+    Table(N),
+}
+
+/// Reads an int or string as `R` and a table as `N`. Not an untagged enum, so an unknown key in
+/// the table keeps serde's own error and is reported as `unknown-key`.
+struct RefOrTableVisitor<R, N>(PhantomData<(R, N)>);
+
+impl<R, N> RefOrTableVisitor<R, N>
+where
+    R: TryFrom<TicketIdOrString>,
+    R::Error: fmt::Display,
+{
+    fn reference<E: serde::de::Error>(
+        value: Result<TicketIdOrString, E>,
+    ) -> Result<RefOrTable<R, N>, E> {
+        R::try_from(value?).map(RefOrTable::Ref).map_err(E::custom)
+    }
+}
+
+impl<'de, R, N> Visitor<'de> for RefOrTableVisitor<R, N>
+where
+    R: TryFrom<TicketIdOrString>,
+    R::Error: fmt::Display,
+    N: Deserialize<'de>,
+{
+    type Value = RefOrTable<R, N>;
+
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("an id, a reference or a table with `needs`")
+    }
+
+    fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<Self::Value, E> {
+        Self::reference(TicketIdOrString::deserialize(v.into_deserializer()))
+    }
+
+    fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+        Self::reference(TicketIdOrString::deserialize(v.into_deserializer()))
+    }
+
+    fn visit_f64<E: serde::de::Error>(self, v: f64) -> Result<Self::Value, E> {
+        Self::reference(TicketIdOrString::deserialize(v.into_deserializer()))
+    }
+
+    fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        Self::reference(TicketIdOrString::deserialize(v.into_deserializer()))
+    }
+
+    fn visit_map<A: MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
+        N::deserialize(MapAccessDeserializer::new(map)).map(RefOrTable::Table)
+    }
+}
+
+fn ref_or_table<'de, D, R, N>(deserializer: D) -> Result<RefOrTable<R, N>, D::Error>
+where
+    D: Deserializer<'de>,
+    R: TryFrom<TicketIdOrString>,
+    R::Error: fmt::Display,
+    N: Deserialize<'de>,
+{
+    deserializer.deserialize_any(RefOrTableVisitor(PhantomData))
+}
+
+impl<'de> Deserialize<'de> for EpicAfter {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Ok(match ref_or_table(deserializer)? {
+            RefOrTable::Ref(r) => Self::Ref(r),
+            RefOrTable::Table(n) => Self::Needs(n),
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for InitiativeAfter {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Ok(match ref_or_table(deserializer)? {
+            RefOrTable::Ref(r) => Self::Ref(r),
+            RefOrTable::Table(n) => Self::Needs(n),
+        })
+    }
+}
+
+impl JsonSchema for EpicAfter {
+    fn schema_name() -> Cow<'static, str> {
+        "EpicAfter".into()
+    }
+
+    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
+        let reference = generator.subschema_for::<AfterRef>();
+        let table = generator.subschema_for::<EpicNeeds>();
+        json_schema!({ "anyOf": [reference, table] })
+    }
+}
+
+impl JsonSchema for InitiativeAfter {
+    fn schema_name() -> Cow<'static, str> {
+        "InitiativeAfter".into()
+    }
+
+    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
+        let reference = generator.subschema_for::<TicketId>();
+        let table = generator.subschema_for::<InitiativeNeeds>();
+        json_schema!({ "anyOf": [reference, table] })
+    }
 }
 
 impl Breakdown {

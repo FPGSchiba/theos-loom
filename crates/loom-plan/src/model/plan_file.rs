@@ -27,6 +27,8 @@ pub enum PlanType {
 pub struct PlanFront {
     /// The entry id of the leaf, or the file stem of a backlog leaf.
     pub ticket: Scalar,
+    /// The leaf's title, as `tickets.py mark` writes it.
+    pub title: Option<String>,
     /// The build's type.
     #[serde(rename = "type")]
     pub kind: Option<PlanType>,
