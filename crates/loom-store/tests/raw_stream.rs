@@ -68,3 +68,50 @@ async fn prune_deletes_only_older_chunks() {
     assert_eq!(store.read(run, StreamKind::Stdout).await.unwrap(), b"new");
     db.drop_db().await.unwrap();
 }
+
+#[tokio::test]
+async fn concurrent_appends_to_one_run_lose_nothing() {
+    use std::sync::Arc;
+
+    let db = TestDb::create().await.unwrap();
+    let store = Arc::new(PgRawStreamStore::new(db.pool().clone()));
+    let run = RunId::new();
+    let writer = |stream: StreamKind, tag: &'static str| {
+        let store = Arc::clone(&store);
+        async move {
+            for i in 0..50 {
+                store
+                    .append(run, stream, format!("{tag}{i};").as_bytes())
+                    .await
+                    .unwrap();
+            }
+        }
+    };
+    let done = tokio::join!(
+        tokio::spawn(writer(StreamKind::Stdout, "o")),
+        tokio::spawn(writer(StreamKind::Stdout, "p")),
+        tokio::spawn(writer(StreamKind::Stderr, "e")),
+        tokio::spawn(writer(StreamKind::Stderr, "f")),
+    );
+    done.0.unwrap();
+    done.1.unwrap();
+    done.2.unwrap();
+    done.3.unwrap();
+    let seqs: Vec<i32> = sqlx::query_scalar("select seq from run_stream_chunks order by seq")
+        .fetch_all(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(seqs, (0..200).collect::<Vec<i32>>());
+    for (stream, tags) in [
+        (StreamKind::Stdout, ["o", "p"]),
+        (StreamKind::Stderr, ["e", "f"]),
+    ] {
+        let text = String::from_utf8(store.read(run, stream).await.unwrap()).unwrap();
+        for tag in tags {
+            let own: Vec<&str> = text.split(';').filter(|c| c.starts_with(tag)).collect();
+            let want: Vec<String> = (0..50).map(|i| format!("{tag}{i}")).collect();
+            assert_eq!(own, want);
+        }
+    }
+    db.drop_db().await.unwrap();
+}

@@ -32,29 +32,23 @@ impl RawStreamStore for PgRawStreamStore {
     type Error = StoreError;
 
     async fn append(&self, run: RunId, stream: StreamKind, chunk: &[u8]) -> Result<(), StoreError> {
-        // The next `seq` is taken in the same statement; a concurrent append to one run that
-        // picks the same `seq` loses on the primary key, so it is retried.
-        let mut attempt = 0;
-        loop {
-            let result = sqlx::query(
-                "insert into run_stream_chunks (run_id, seq, stream, body) \
-                 select $1, coalesce(max(seq), -1) + 1, $2, $3 \
-                 from run_stream_chunks where run_id = $1",
-            )
+        // Appends to one run are serialised by a transaction-scoped advisory lock, so the
+        // `seq` taken in the insert never clashes and no chunk is lost.
+        let mut tx = self.pool.begin().await?;
+        sqlx::query("select pg_advisory_xact_lock(hashtext($1::text))")
             .bind(run.0)
-            .bind(stream_name(stream))
-            .bind(chunk)
-            .execute(&self.pool)
-            .await;
-            match result {
-                Ok(_) => return Ok(()),
-                Err(sqlx::Error::Database(e)) if e.is_unique_violation() && attempt < 4 => {
-                    attempt += 1;
-                    tracing::debug!(%run, attempt, "raw stream seq clash, retrying");
-                }
-                Err(e) => return Err(e.into()),
-            }
-        }
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query(
+            "insert into run_stream_chunks (run_id, seq, stream, body)              select $1, coalesce(max(seq), -1) + 1, $2, $3              from run_stream_chunks where run_id = $1",
+        )
+        .bind(run.0)
+        .bind(stream_name(stream))
+        .bind(chunk)
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok(())
     }
 
     async fn read(&self, run: RunId, stream: StreamKind) -> Result<Vec<u8>, StoreError> {
