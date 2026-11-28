@@ -20,3 +20,6 @@ its precedents the same way (umbrella §5.4).
 | 2026-11-27 | No inline suppressions in `secrets` (`gitleaks:allow`) and `ui` (`eslint-disable`): [0007](0007-no-inline-suppressions-in-secrets-and-ui.md). |
 | 2026-11-28 | The final review loop judges every finding, stops when none is worth fixing, and after 5 rounds ends as best effort with one last fix and a targeted review: [0008](0008-judged-review-loop.md). |
 | 2026-11-28 | Review fixes inside a PR that already waits for Jann may change protected paths without asking first: [0009](0009-review-fixes-in-a-protected-pr.md). |
+| 2026-11-28 | Runs reach the public web through a logging proxy, for research; the home LAN and private ranges stay blocked: [0013](0013-open-web-for-research.md). |
+| 2026-11-28 | Container tests run Podman on Linux and may pull images pinned by digest: [0014](0014-container-tests-pull-pinned-images.md). |
+| 2026-11-28 | New models and CLI versions work without a code change; prices are data; every run uses the latest CLI: [0016](0016-new-models-without-a-code-change.md). |
