@@ -9,8 +9,10 @@
 //!     `FAKE_EXIT` (default 0).
 //!   - `sleep`: prints one `system`/`init` line, then sleeps an hour.
 //!   - `spawn`: starts two children of itself in `sleep` mode, prints their pids, then sleeps.
-//!   - `report`: prints one `fake_report` line: uid, cwd, branch, kit version, args, stdin and the
-//!     `LOOM_TEST_*` variables.
+//!   - `report`: prints one `fake_report` line: uid, cwd, the names in it, branch, kit version,
+//!     args, stdin and the `LOOM_TEST_*` variables. With `FAKE_MARK=1` it first writes a file
+//!     with a name of its own, `.fake-mark-<time>-<pid>`, into its working directory, and
+//!     reports that name as `mark`.
 //!   - `request`: an HTTP GET of `FAKE_URL` through `HTTP_PROXY`; prints its status or error.
 //!   - `connect`: a direct TCP connection to `FAKE_ADDR`; prints whether it worked.
 //!   - `serve`: answers every HTTP request on `0.0.0.0:FAKE_PORT` with 200 `ok`.
@@ -154,6 +156,23 @@ fn spawn() -> Result<ExitCode, String> {
 
 fn report(args: &[String], stdin: &str) -> Result<ExitCode, String> {
     let cwd = std::env::current_dir().map_err(|e| format!("cwd: {e}"))?;
+    let mark = if var("FAKE_MARK").as_deref() == Some("1") {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|e| format!("clock: {e}"))?
+            .as_nanos();
+        let name = format!(".fake-mark-{nanos}-{}", std::process::id());
+        std::fs::write(cwd.join(&name), "").map_err(|e| format!("mark: {e}"))?;
+        Some(name)
+    } else {
+        None
+    };
+    let mut files: Vec<String> = std::fs::read_dir(&cwd)
+        .map_err(|e| format!("list cwd: {e}"))?
+        .filter_map(Result::ok)
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .collect();
+    files.sort();
     let branch = std::fs::read_to_string(cwd.join(".git").join("HEAD"))
         .ok()
         .map(|head| {
@@ -172,7 +191,9 @@ fn report(args: &[String], stdin: &str) -> Result<ExitCode, String> {
     line(&json!({
         "type": "fake_report",
         "uid": uid(),
+        "mark": mark,
         "cwd": cwd.display().to_string(),
+        "files": files,
         "branch": branch,
         "kit_version": kit_version,
         "args": args,

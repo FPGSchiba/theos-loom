@@ -9,6 +9,8 @@ mod ident;
 pub mod kit;
 pub mod launcher;
 mod locks;
+#[cfg(target_os = "linux")]
+pub mod podman;
 pub mod prices;
 mod pump;
 pub mod runner;

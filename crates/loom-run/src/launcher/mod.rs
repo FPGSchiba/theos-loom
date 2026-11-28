@@ -1,8 +1,11 @@
-//! The process seam (R-p): how the runner starts the CLI. A container launcher (Podman, Linux)
-//! and a local-process launcher implement it; the runner only sees a [`Session`] that runs
-//! commands and can be stopped.
+//! The process seam (R-p): how the runner starts the CLI. A container launcher
+//! (`PodmanLauncher`, Linux only) and a local-process launcher implement it; the runner only
+//! sees a [`Session`] that runs commands and can be stopped.
 
+mod child;
 mod local;
+#[cfg(target_os = "linux")]
+mod podman;
 
 use std::future::Future;
 use std::path::PathBuf;
@@ -13,6 +16,8 @@ use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 pub use local::LocalLauncher;
+#[cfg(target_os = "linux")]
+pub use podman::PodmanLauncher;
 
 /// A boxed, sendable future, for the object-safe [`Session`].
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
@@ -35,6 +40,13 @@ pub enum LaunchError {
     /// Waiting for a process failed.
     #[error("waiting for the process failed: {0}")]
     Wait(#[source] std::io::Error),
+    /// Podman does not run rootless; the run refuses to start (spec §5.3 step 1).
+    #[error("podman does not run rootless; a run never starts as root")]
+    NotRootless,
+    /// A Podman call failed.
+    #[cfg(target_os = "linux")]
+    #[error(transparent)]
+    Podman(#[from] crate::podman::PodmanError),
     /// The session was stopped; it runs nothing more.
     #[error("the session is stopped")]
     Stopped,
