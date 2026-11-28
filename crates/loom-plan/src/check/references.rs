@@ -6,11 +6,11 @@ use std::collections::BTreeSet;
 use super::Context;
 use crate::finding::{Finding, Rule};
 use crate::index::{
-    EpicAt, InitiativeAt, ItemKind, StoryAt, StoryHome, epic_by_id, epic_requirements,
-    initiative_requirements, resolve_after,
+    AfterTarget, EpicAt, InitiativeAt, ItemKind, StoryAt, StoryHome, epic_by_id, epic_requirements,
+    initiative_requirements, resolve_after, resolve_epic_prerequisite,
 };
-use crate::model::{AfterRef, EpicAfter, InitiativeAfter, Key, Scalar};
-use crate::repo::{Initiative, PlanFile, StateMirrorFile, Story};
+use crate::model::{AfterRef, InitiativeAfter, Key, Scalar};
+use crate::repo::{Initiative, PlanFile, PrerequisiteSource, StateMirrorFile, Story};
 
 /// Every broken reference in the repo.
 pub(crate) fn check(cx: &Context<'_>) -> Vec<Finding> {
@@ -110,18 +110,26 @@ fn epic(cx: &Context<'_>, at: &EpicAt<'_>, out: &mut Vec<Finding>) {
             Some(&initiative.slug),
         ));
         out.extend(covers(&file.path, &front.covers, initiative));
-        for on in &front.after {
-            out.extend(after(&file.path, on, None, Some(initiative)));
-        }
         out.extend(needs(cx, &file.path, &front.needs));
     }
-    if let Some(row) = &epic.row {
-        let path = breakdown_path(&initiative.path);
-        for entry in &row.after {
-            let on = match entry {
-                EpicAfter::Ref(on) => on,
-                EpicAfter::Needs(table) => &table.epic,
-            };
+    for prerequisite in epic.after() {
+        let path = match (prerequisite.source, &epic.file) {
+            (PrerequisiteSource::File, Some(file)) => file.path.clone(),
+            _ => breakdown_path(&initiative.path),
+        };
+        if resolve_epic_prerequisite(&prerequisite, initiative).is_some() {
+            continue;
+        }
+        let on = &prerequisite.on;
+        if let Some(AfterTarget::Story(_)) = resolve_after(on, None, Some(initiative)) {
+            out.push(broken(
+                &path,
+                format!(
+                    "the [[epic]] table of {} has `after` naming `{on}`, which is a story; a                      table's `after` waits on epics only, so name an epic id or slug (a story                      goes in the epic file's `after`)",
+                    epic.slug
+                ),
+            ));
+        } else {
             out.extend(after(&path, on, None, Some(initiative)));
         }
     }

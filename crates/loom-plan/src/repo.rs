@@ -151,6 +151,17 @@ pub struct EpicPrerequisite {
     pub on: AfterRef,
     /// The `needs` text of an `{ epic, needs }` table.
     pub needs: Option<String>,
+    /// Where it is written.
+    pub source: PrerequisiteSource,
+}
+
+/// Where an epic prerequisite is written: it decides what the prerequisite may name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PrerequisiteSource {
+    /// The epic file's `after`: an epic or a story.
+    File,
+    /// The `after` of the epic's `[[epic]]` table: an epic only (`tickets.py` `declared_after`).
+    Table,
 }
 
 impl Epic {
@@ -166,15 +177,18 @@ impl Epic {
             .map(|on| EpicPrerequisite {
                 on: on.clone(),
                 needs: None,
+                source: PrerequisiteSource::File,
             });
         let from_row = self.row.iter().flat_map(|r| &r.after).map(|a| match a {
             EpicAfter::Ref(on) => EpicPrerequisite {
                 on: on.clone(),
                 needs: None,
+                source: PrerequisiteSource::Table,
             },
             EpicAfter::Needs(table) => EpicPrerequisite {
                 on: table.epic.clone(),
                 needs: table.needs.clone(),
+                source: PrerequisiteSource::Table,
             },
         });
         from_file.chain(from_row).collect()
@@ -256,15 +270,18 @@ after = [2, { epic = 1, needs = \"the price\" }]
             [
                 EpicPrerequisite {
                     on: AfterRef::Epic("epic-a".to_owned()),
-                    needs: None
+                    needs: None,
+                    source: PrerequisiteSource::File,
                 },
                 EpicPrerequisite {
                     on: AfterRef::Sibling(id("2")?),
-                    needs: None
+                    needs: None,
+                    source: PrerequisiteSource::Table,
                 },
                 EpicPrerequisite {
                     on: AfterRef::Sibling(id("1")?),
-                    needs: Some("the price".to_owned())
+                    needs: Some("the price".to_owned()),
+                    source: PrerequisiteSource::Table,
                 },
             ]
         );

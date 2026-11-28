@@ -19,5 +19,5 @@ pub use parse::directives::parse_directives;
 pub use read::{ReadError, read};
 pub use repo::{
     Component, Epic, EpicFile, EpicPrerequisite, Initiative, InitiativeFile, LeafFile, PlanFile,
-    PlanningRepo, StateMirrorFile, Story, Vision,
+    PlanningRepo, PrerequisiteSource, StateMirrorFile, Story, Vision,
 };

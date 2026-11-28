@@ -15,7 +15,7 @@ use petgraph::algo::tarjan_scc;
 use petgraph::graphmap::DiGraphMap;
 
 pub use crate::index::ItemKind;
-use crate::index::{AfterTarget, Index, StoryHome, resolve_after};
+use crate::index::{AfterTarget, Index, StoryHome, resolve_after, resolve_epic_prerequisite};
 use crate::model::Key;
 use crate::repo::{Epic, Initiative, PlanningRepo, Story};
 
@@ -218,7 +218,7 @@ impl Builder {
     /// An edge from `from` to each prerequisite of `epic`.
     fn after_epic(&mut self, from: usize, epic: &Epic, initiative: &Initiative) {
         for prerequisite in epic.after() {
-            let target = resolve_after(&prerequisite.on, None, Some(initiative));
+            let target = resolve_epic_prerequisite(&prerequisite, initiative);
             self.edge_to(from, target);
         }
     }

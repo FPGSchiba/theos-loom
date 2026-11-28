@@ -4,7 +4,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::model::{AfterRef, Key, TicketId};
-use crate::repo::{Component, Epic, Initiative, PlanningRepo, Story};
+use crate::repo::{
+    Component, Epic, EpicPrerequisite, Initiative, PlanningRepo, PrerequisiteSource, Story,
+};
 
 /// Whether a keyed item is an epic or a story (spike and bug included).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -223,25 +225,52 @@ pub fn resolve_after<'a>(
     mates: Option<&'a [Story]>,
     initiative: Option<&'a Initiative>,
 ) -> Option<AfterTarget<'a>> {
-    let direct = match on {
-        AfterRef::Sibling(id) => match mates {
+    match on {
+        // A digit-only id is an id and nothing else: `tickets.py` refuses a bare number that
+        // names no sibling at once, so a typo never lands on a numeric `tracker_id`.
+        AfterRef::Sibling(id) if is_digits(id.as_str()) => match mates {
             Some(mates) => story_by_id(mates, id).map(AfterTarget::Story),
             None => initiative
                 .and_then(|i| epic_by_id(i, id))
                 .map(AfterTarget::Epic),
         },
-        AfterRef::Cross { epic, entry } => initiative
-            .and_then(|i| epic_by_id(i, epic))
-            .and_then(|e| story_by_id(&e.stories, entry))
-            .map(AfterTarget::Story),
-        AfterRef::Epic(slug) => {
-            return initiative
-                .and_then(|i| epic_by_slug(i, slug))
-                .map(AfterTarget::Epic);
+        AfterRef::Sibling(id) => match mates {
+            Some(mates) => story_by_id(mates, id).map(AfterTarget::Story),
+            None => initiative
+                .and_then(|i| epic_by_id(i, id))
+                .map(AfterTarget::Epic),
         }
-        AfterRef::Name(_) => None,
-    };
-    direct.or_else(|| resolve_name(&on.to_string(), mates, initiative))
+        .or_else(|| resolve_name(id.as_str(), mates, initiative)),
+        // Once the epic id is known, the entry must be in it (`tickets.py` raises); only an
+        // `a.b` whose `a` is no epic id is tried as a name (`story-v2.md`-like texts).
+        AfterRef::Cross { epic, entry } => match initiative.and_then(|i| epic_by_id(i, epic)) {
+            Some(epic) => story_by_id(&epic.stories, entry).map(AfterTarget::Story),
+            None => resolve_name(&on.to_string(), mates, initiative),
+        },
+        AfterRef::Epic(slug) => initiative
+            .and_then(|i| epic_by_slug(i, slug))
+            .map(AfterTarget::Epic),
+        AfterRef::Name(name) => resolve_name(name, mates, initiative),
+    }
+}
+
+fn is_digits(text: &str) -> bool {
+    text.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// Resolves one prerequisite of `epic`'s `after()`. A prerequisite from the `[[epic]]` table
+/// must name an epic (`tickets.py` `declared_after`); one from the epic's file may also name a
+/// story. `None` when it names nothing allowed.
+#[must_use]
+pub fn resolve_epic_prerequisite<'a>(
+    prerequisite: &EpicPrerequisite,
+    initiative: &'a Initiative,
+) -> Option<AfterTarget<'a>> {
+    let target = resolve_after(&prerequisite.on, None, Some(initiative))?;
+    match (prerequisite.source, target) {
+        (PrerequisiteSource::Table, AfterTarget::Story(_)) => None,
+        _ => Some(target),
+    }
 }
 
 /// A name in `after`: for an epic, an epic folder of its initiative (an `{ epic = <slug> }`

@@ -454,3 +454,91 @@ fn backlog_plan_joins_its_bug_by_file_stem() -> TestResult {
     );
     Ok(())
 }
+
+const EMPTY_CART: &str =
+    "components/app/initiative-checkout/tickets/epic-cart/tickets/story-empty-cart.md";
+const PAY_BY_CARD: &str =
+    "components/app/initiative-checkout/tickets/epic-cart/tickets/story-pay-by-card.md";
+
+/// The errors of `root` and what APP-4 and APP-5 wait for.
+type Outcome = (Vec<Finding>, Vec<NodeId>, Vec<NodeId>);
+
+fn outcome(root: &Path) -> Result<Outcome, Box<dyn std::error::Error>> {
+    let graph = DependencyGraph::of(&read(root)?);
+    Ok((
+        errors_of(root)?,
+        graph.waits_for(&NodeId::new("APP-4")),
+        graph.waits_for(&NodeId::new("APP-5")),
+    ))
+}
+
+// AC: TU-01.2
+#[test]
+fn a_mistyped_number_never_lands_on_a_numeric_tracker_id() -> TestResult {
+    let (_dir, root) = case_copy("after-names")?;
+    edit(
+        &root,
+        PAY_BY_CARD,
+        "tracker_id: SHOP-77",
+        "tracker_id: \"4\"",
+    )?;
+    edit(&root, EMPTY_CART, "after: [SHOP-77]", "after: [4]")?;
+    let (errors, app4, _) = outcome(&root)?;
+    assert_eq!(errors.len(), 1, "{errors:#?}");
+    assert_finding(
+        &errors[0],
+        Rule::BrokenReference,
+        EMPTY_CART,
+        &["`4`", "story"],
+    );
+    assert!(app4.is_empty(), "no edge for a broken reference: {app4:?}");
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
+fn a_missing_entry_of_a_known_epic_is_not_tried_as_a_name() -> TestResult {
+    let (_dir, root) = case_copy("after-names")?;
+    edit(
+        &root,
+        PAY_BY_CARD,
+        "tracker_id: SHOP-77",
+        "tracker_id: \"1.9\"",
+    )?;
+    edit(&root, EMPTY_CART, "after: [SHOP-77]", "after: [\"1.9\"]")?;
+    let (errors, app4, _) = outcome(&root)?;
+    assert_eq!(errors.len(), 1, "{errors:#?}");
+    assert_finding(
+        &errors[0],
+        Rule::BrokenReference,
+        EMPTY_CART,
+        &["`1.9`", "epic-cart has no story"],
+    );
+    assert!(app4.is_empty(), "{app4:?}");
+    Ok(())
+}
+
+// AC: TU-01.2
+#[test]
+fn an_epic_table_waits_on_epics_only_while_the_epic_file_may_name_a_story() -> TestResult {
+    let (_dir, root) = case_copy("after-names")?;
+    let initiative = "components/app/initiative-checkout/tickets/tickets.toml";
+    edit(&root, initiative, "epic = \"epic-cart\"", "epic = \"1.2\"")?;
+    edit(
+        &root,
+        "components/app/initiative-checkout/tickets/epic-search/epic-search.md",
+        "key: APP-5",
+        "key: APP-5\nafter: [\"1.2\"]",
+    )?;
+    let (errors, _, app5) = outcome(&root)?;
+    assert_eq!(errors.len(), 1, "{errors:#?}");
+    assert_finding(
+        &errors[0],
+        Rule::BrokenReference,
+        initiative,
+        &["`1.2`", "epic-search", "epics only"],
+    );
+    // The file's `after: ["1.2"]` is the story APP-3; the table's is no edge.
+    assert_eq!(app5, [NodeId::new("APP-3")]);
+    Ok(())
+}
