@@ -26,13 +26,21 @@ const WORK_DIR: &str = "/work";
 const KIT_DIR: &str = "/kit";
 /// How long `podman stop` waits after SIGTERM before it kills the run's container.
 const STOP_GRACE: Duration = Duration::from_secs(3);
-/// The same for the proxy: a moment for its last log lines to reach Loom.
-const PROXY_STOP_GRACE: Duration = Duration::from_secs(1);
+/// The same for the proxy. On SIGTERM Squid closes what is still open, logs it and exits,
+/// which takes it about a second even with `shutdown_lifetime 0`.
+const PROXY_STOP_GRACE: Duration = Duration::from_secs(2);
 /// How long a whole stop may take, every Podman call included, so a run ends well within the
-/// 10 s of TU-03.3 even when Podman hangs.
+/// 10 s of TU-03.3 even when Podman hangs. It is shared in turn: the worker's stop, the
+/// proxy's stop, the rest of the proxy's log, and what is left for removing everything.
 const STOP_LIMIT: Duration = Duration::from_secs(7);
-/// The part of [`STOP_LIMIT`] kept for removing what is left.
-const TEARDOWN_SHARE: Duration = Duration::from_secs(2);
+/// The part of [`STOP_LIMIT`] for stopping the worker ([`STOP_GRACE`] and Podman's own time).
+const WORKER_STOP_SHARE: Duration = Duration::from_secs(4);
+/// The part for stopping the proxy, after the worker's; a worker that stopped early leaves
+/// its unused part to the proxy.
+const PROXY_STOP_SHARE: Duration = Duration::from_millis(1500);
+/// The part for reading the rest of the proxy's access log; the remaining 1 s removes
+/// everything.
+const LOG_SHARE: Duration = Duration::from_millis(500);
 /// How long a clean-up outside a stop (a failed start, an abort, a dropped session) may take.
 const CLEANUP_LIMIT: Duration = Duration::from_secs(10);
 /// The variables that point the run's tools at the proxy; both spellings, as tools differ.
@@ -87,10 +95,12 @@ impl PodmanLauncher {
     async fn create(&self, ctx: &LaunchContext) -> Result<PodmanSession, LaunchError> {
         let label = run_label(ctx.run);
         let network = network_name(ctx.run);
+        // No route out; names on it resolve through Podman's own resolver. A DNS channel that
+        // remains through it is accepted with the open web (spec §8; controller ruling).
         self.podman
             .network_create_internal(&network, &label)
             .await?;
-        let conf = run_dir(&self.config, ctx.run).join("squid.conf");
+        let dir = run_dir(&self.config, ctx.run).join("proxy");
         let mut proxy = Proxy::start(
             &self.podman,
             &ProxySpec {
@@ -100,7 +110,7 @@ impl PodmanLauncher {
                 egress_network: &self.config.egress_network,
                 image: &self.config.proxy_image,
                 blocked: &self.config.blocked_ranges,
-                conf: &conf,
+                dir: &dir,
             },
         )
         .await?;
@@ -232,37 +242,30 @@ fn worker_name(run: RunId) -> String {
     format!("loom-worker-{run}")
 }
 
-/// Removes every container and network of `run`, each call bounded by `deadline`. Tries them
-/// all, also when a listing fails (then by their known names), and returns the first error.
-/// Nothing of `run` existing is no error.
+/// Removes every container and network of `run`, each call bounded by `deadline`: two calls,
+/// by label. Tries everything: when a call by label fails, the same goes by the known names,
+/// and the first error is returned. Nothing of `run` existing is no error.
 async fn teardown(podman: &Podman, run: RunId, deadline: Instant) -> Result<(), PodmanError> {
     let label = run_label(run);
     let mut first = None;
-    let mut containers = vec![worker_name(run), proxy_name(run)];
-    match within(deadline, "podman ps", podman.ls_by_label(&label)).await {
-        Ok(ids) => containers.extend(ids),
-        Err(error) => {
+    if let Err(error) = within(deadline, "podman rm", podman.rm_by_label(&label)).await {
+        first.get_or_insert(error);
+        let known = [worker_name(run), proxy_name(run)];
+        if let Err(error) = within(deadline, "podman rm", podman.rm_force(&known)).await {
             first.get_or_insert(error);
         }
     }
-    if let Err(error) = within(deadline, "podman rm", podman.rm_force(&containers)).await {
-        first.get_or_insert(error);
-    }
-    let listed = within(
+    let pruned = within(
         deadline,
-        "podman network ls",
-        podman.networks_by_label(&label),
+        "podman network prune",
+        podman.network_prune_by_label(&label),
     )
     .await;
-    let networks = match listed {
-        Ok(names) => names,
-        Err(error) => {
-            first.get_or_insert(error);
-            vec![network_name(run)]
-        }
-    };
-    for name in networks {
-        if let Err(error) = within(deadline, "podman network rm", podman.network_rm(&name)).await {
+    if let Err(error) = pruned {
+        first.get_or_insert(error);
+        let network = network_name(run);
+        if let Err(error) = within(deadline, "podman network rm", podman.network_rm(&network)).await
+        {
             first.get_or_insert(error);
         }
     }
@@ -302,26 +305,31 @@ impl Session for PodmanSession {
     fn stop(&mut self) -> BoxFuture<'_, Result<(), LaunchError>> {
         let children = self.children.stop();
         Box::pin(async move {
-            let deadline = Instant::now() + STOP_LIMIT;
-            let stops_end = deadline - TEARDOWN_SHARE;
+            let started = Instant::now();
+            let deadline = started + STOP_LIMIT;
+            let worker_end = started + WORKER_STOP_SHARE;
+            let proxy_end = worker_end + PROXY_STOP_SHARE;
+            let log_end = proxy_end + LOG_SHARE;
+            // The worker first: its connections close, and Squid logs the tunnels they held
+            // (it logs a tunnel when it closes). Then the proxy, then the rest of its log.
+            let worker = within(
+                worker_end,
+                "podman stop",
+                self.podman.stop(&self.id, STOP_GRACE),
+            )
+            .await;
             let proxy = proxy_name(self.run);
-            let (worker, proxied) = tokio::join!(
-                within(
-                    stops_end,
-                    "podman stop",
-                    self.podman.stop(&self.id, STOP_GRACE)
-                ),
-                within(
-                    stops_end,
-                    "podman stop",
-                    self.podman.stop(&proxy, PROXY_STOP_GRACE)
-                ),
-            );
+            let proxied = within(
+                proxy_end,
+                "podman stop",
+                self.podman.stop(&proxy, PROXY_STOP_GRACE),
+            )
+            .await;
             for error in [worker.err(), proxied.err()].into_iter().flatten() {
                 tracing::warn!(%error, run = %self.run, "podman stop failed");
             }
             if let Some(proxy) = self.proxy.take() {
-                proxy.finish(stops_end).await;
+                proxy.finish(log_end).await;
             }
             let removed = teardown(&self.podman, self.run, deadline).await;
             self.stopped = true;

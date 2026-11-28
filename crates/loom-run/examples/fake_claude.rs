@@ -14,6 +14,8 @@
 //!     with a name of its own, `.fake-mark-<time>-<pid>`, into its working directory, and
 //!     reports that name as `mark`.
 //!   - `request`: an HTTP GET of `FAKE_URL` through `HTTP_PROXY`; prints its status or error.
+//!   - `tunnel`: a `CONNECT` to `FAKE_ADDR` through `HTTP_PROXY`; prints the proxy's status, then
+//!     closes the tunnel, or holds it open for an hour when `FAKE_THEN=hold`.
 //!   - `connect`: a direct TCP connection to `FAKE_ADDR`; prints whether it worked.
 //!   - `serve`: answers every HTTP request on `0.0.0.0:FAKE_PORT` with 200 `ok`.
 
@@ -94,6 +96,7 @@ fn prompt(args: &[String]) -> Result<ExitCode, String> {
         "report" => report(args, &stdin),
         "request" => request(),
         "connect" => connect(),
+        "tunnel" => tunnel(),
         "serve" => serve(),
         other => Err(format!("fake_claude: unknown FAKE_MODE {other:?}")),
     }
@@ -228,19 +231,29 @@ fn request() -> Result<ExitCode, String> {
 
 fn http_get_via_proxy() -> Result<u16, String> {
     let url = var("FAKE_URL").ok_or("FAKE_URL is not set")?;
-    let proxy = var("HTTP_PROXY")
-        .or_else(|| var("http_proxy"))
-        .ok_or("HTTP_PROXY is not set")?;
-    let proxy_addr = proxy
-        .strip_prefix("http://")
-        .unwrap_or(&proxy)
-        .trim_end_matches('/');
     let host = url
         .strip_prefix("http://")
         .and_then(|rest| rest.split('/').next())
         .ok_or("FAKE_URL must start with http://")?;
-    let mut stream = open(proxy_addr)?;
+    let mut stream = open(&proxy_addr()?)?;
     let request = format!("GET {url} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n");
+    status(&mut stream, &request)
+}
+
+/// `host:port` of `HTTP_PROXY`.
+fn proxy_addr() -> Result<String, String> {
+    let proxy = var("HTTP_PROXY")
+        .or_else(|| var("http_proxy"))
+        .ok_or("HTTP_PROXY is not set")?;
+    Ok(proxy
+        .strip_prefix("http://")
+        .unwrap_or(&proxy)
+        .trim_end_matches('/')
+        .to_owned())
+}
+
+/// Sends `request` and reads the status code of the answer's first line.
+fn status(stream: &mut TcpStream, request: &str) -> Result<u16, String> {
     stream
         .write_all(request.as_bytes())
         .map_err(|e| format!("write: {e}"))?;
@@ -253,6 +266,27 @@ fn http_get_via_proxy() -> Result<u16, String> {
         .nth(1)
         .and_then(|code| code.parse().ok())
         .ok_or_else(|| format!("no HTTP status in {status_line:?}"))
+}
+
+fn tunnel() -> Result<ExitCode, String> {
+    let opened = var("FAKE_ADDR")
+        .ok_or_else(|| "FAKE_ADDR is not set".to_owned())
+        .and_then(|addr| {
+            let mut stream = open(&proxy_addr()?)?;
+            let request = format!("CONNECT {addr} HTTP/1.1\r\nHost: {addr}\r\n\r\n");
+            Ok((status(&mut stream, &request)?, stream))
+        });
+    match opened {
+        Ok((code, stream)) => {
+            line(&json!({"type": "fake_tunnel", "status": code}))?;
+            if var("FAKE_THEN").as_deref() == Some("hold") {
+                std::thread::sleep(HOUR);
+            }
+            drop(stream);
+        }
+        Err(error) => line(&json!({"type": "fake_tunnel", "error": error}))?,
+    }
+    Ok(ExitCode::SUCCESS)
 }
 
 fn open(addr: &str) -> Result<TcpStream, String> {

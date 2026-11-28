@@ -5,8 +5,9 @@
 use http::Uri;
 use loom_core::run::RunEvent;
 
-/// The `Egress` event of one access-log line; `None` for any other line the proxy's output
-/// holds (Squid's own log), and for a request that names no destination.
+/// The `Egress` event of one access-log line; `None` for a line that is not one, and for a
+/// request that names no destination. The caller logs those lines
+/// ([`super::log_file`]), so none vanishes silently.
 #[must_use]
 pub fn parse_access_line(line: &str) -> Option<RunEvent> {
     let mut fields = line.split_ascii_whitespace();

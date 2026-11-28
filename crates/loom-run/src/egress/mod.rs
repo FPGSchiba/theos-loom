@@ -7,6 +7,7 @@
 //! proxy's lifecycle is Podman's, Linux only (D2).
 
 pub mod access_log;
+pub mod log_file;
 #[cfg(target_os = "linux")]
 pub(crate) mod proxy;
 pub mod squid_conf;

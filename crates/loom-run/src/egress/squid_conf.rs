@@ -8,12 +8,17 @@ use std::net::IpAddr;
 /// The port Squid listens on.
 pub const PROXY_PORT: u16 = 3128;
 
-/// The file Squid writes its access log to. The image's entrypoint follows it onto the
-/// container's standard output, where Loom reads it.
+/// The file Squid writes its access log to, in the container. Loom mounts a file of the run's
+/// directory there and reads it from the host (Squid's `proxy` user cannot open the
+/// container's standard output).
 pub const ACCESS_LOG: &str = "/var/log/squid/access.log";
 
 /// Blocked always (spec §5.3 step 4, plus multicast and reserved ranges). None of them overlaps
 /// another: Squid ignores the wider of two overlapping ranges in one ACL.
+///
+/// `::ffff:0:0/96` (IPv4-mapped IPv6) is left out on purpose: Squid stores every IPv4 address
+/// mapped, so that range would be `0.0.0.0/0` and block all of IPv4. A mapped literal such as
+/// `[::ffff:10.1.2.3]` is caught by the IPv4 ranges (tried: 403 from `10.0.0.0/8`).
 pub const DEFAULT_BLOCKED: &[&str] = &[
     "10.0.0.0/8",
     "172.16.0.0/12",

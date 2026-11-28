@@ -15,7 +15,7 @@ mod support;
 #[path = "support/world.rs"]
 mod world;
 
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use loom_core::run::{RunEvent, RunId, StopCause};
 use loom_run::config::RunConfig;
@@ -26,6 +26,8 @@ use world::{World, ended, fake_line};
 const PORT: u16 = 8080;
 /// How many subnets a network tries before the test gives up.
 const SUBNET_TRIES: u32 = 64;
+/// Long enough for a first pull of the images.
+const FIRST_EVENT: Duration = Duration::from_secs(300);
 
 /// Two test servers (the fake in `serve` mode): one on a public-looking egress network, one on
 /// a private network. Everything is labelled with an id of its own and removed on drop.
@@ -191,5 +193,115 @@ async fn a_direct_connection_without_the_proxy_fails() {
     );
     assert_eq!(egress(&events), Vec::<&RunEvent>::new(), "{events:#?}");
     assert_nothing_left(id);
+    world.end().await;
+}
+
+// AC: TU-03.5
+#[tokio::test(flavor = "multi_thread")]
+async fn a_name_that_resolves_to_a_private_address_is_blocked() {
+    let servers = Servers::start();
+    let world = World::new().await;
+    let config = servers.config(&world);
+    // Squid resolves the name itself and checks the address it gets (R-c): `localhost` is
+    // 127.0.0.1, so the request never leaves.
+    let url = format!("http://localhost:{PORT}/");
+    let fake = launcher(&config, "request").with_env("FAKE_URL", &url);
+
+    let (id, events, _guard) = world.run(config, fake).await;
+
+    assert_eq!(ended(&events), &StopCause::Completed, "{events:#?}");
+    assert_eq!(
+        fake_line(&events, "fake_request")["status"],
+        403,
+        "{events:#?}"
+    );
+    let blocked = RunEvent::Egress {
+        host: "localhost".to_owned(),
+        port: Some(PORT),
+        allowed: false,
+    };
+    assert_eq!(egress(&events), vec![&blocked], "{events:#?}");
+    assert_nothing_left(id);
+    world.end().await;
+}
+
+// AC: TU-03.5
+#[tokio::test(flavor = "multi_thread")]
+async fn a_connect_tunnel_is_logged_with_host_and_port() {
+    let servers = Servers::start();
+    let world = World::new().await;
+    let config = servers.config(&world);
+    let addr = format!("{}:{PORT}", servers.public);
+    let fake = launcher(&config, "tunnel").with_env("FAKE_ADDR", &addr);
+
+    let (id, events, _guard) = world.run(config, fake).await;
+
+    assert_eq!(ended(&events), &StopCause::Completed, "{events:#?}");
+    assert_eq!(
+        fake_line(&events, "fake_tunnel")["status"],
+        200,
+        "{events:#?}"
+    );
+    let tunnel = RunEvent::Egress {
+        host: servers.public.clone(),
+        port: Some(PORT),
+        allowed: true,
+    };
+    assert_eq!(egress(&events), vec![&tunnel], "{events:#?}");
+    assert_nothing_left(id);
+    world.end().await;
+}
+
+// AC: TU-03.5
+#[tokio::test(flavor = "multi_thread")]
+async fn a_tunnel_still_open_when_the_run_is_cancelled_is_logged() {
+    let servers = Servers::start();
+    let world = World::new().await;
+    let config = servers.config(&world);
+    let addr = format!("{}:{PORT}", servers.public);
+    let fake = launcher(&config, "tunnel")
+        .with_env("FAKE_ADDR", &addr)
+        .with_env("FAKE_THEN", "hold");
+    let (handle, mut rx, _guard) = world.start(config, fake);
+    let id = handle.id;
+    let mut events = Vec::new();
+    // Wait until the tunnel is open: Squid logs it only when it closes, during the stop.
+    loop {
+        let event = tokio::time::timeout(FIRST_EVENT, rx.recv())
+            .await
+            .expect("the tunnel opens in time")
+            .unwrap_or_else(|| panic!("the run ended early: {events:#?}"));
+        let open = matches!(&event, RunEvent::Unknown { raw } if raw.contains("fake_tunnel"));
+        events.push(event);
+        if open {
+            break;
+        }
+    }
+    assert_eq!(
+        egress(&events),
+        Vec::<&RunEvent>::new(),
+        "logged before it closed"
+    );
+
+    handle.cancel();
+    while let Some(event) = rx.recv().await {
+        events.push(event);
+    }
+
+    assert_eq!(ended(&events), &StopCause::Cancelled, "{events:#?}");
+    assert_eq!(
+        fake_line(&events, "fake_tunnel")["status"],
+        200,
+        "{events:#?}"
+    );
+    let tunnel = RunEvent::Egress {
+        host: servers.public.clone(),
+        port: Some(PORT),
+        allowed: true,
+    };
+    // `ended` above checked that `RunEnded` is the last event, so the tunnel came before it.
+    assert_eq!(egress(&events), vec![&tunnel], "{events:#?}");
+    assert_nothing_left(id);
+    handle.join().await;
     world.end().await;
 }

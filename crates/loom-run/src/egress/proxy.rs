@@ -1,31 +1,35 @@
 //! One run's proxy container (R-b): Squid on the run's internal network and on the egress
-//! network, with the generated config; its log followed with `podman logs --follow` and read
-//! into `Egress` events. Linux only (D2).
+//! network, with the generated config. Its access log is a file in the run's directory, mounted
+//! into the container and followed into `Egress` events ([`super::log_file`]); Squid's own
+//! output only tells when it is ready. Linux only (D2).
 
-use std::path::Path;
+use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
 use loom_core::run::{RunEvent, RunId};
-use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader, Lines};
+use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader};
 use tokio::process::Child;
-use tokio::sync::{mpsc, oneshot};
-use tokio::task::JoinHandle;
-use tokio::time::{Instant, timeout, timeout_at};
+use tokio::sync::mpsc;
+use tokio::time::{Instant, timeout};
 
-use super::access_log::parse_access_line;
-use super::squid_conf::{PROXY_PORT, check_range, squid_conf};
+use super::log_file::LogFollower;
+use super::squid_conf::{ACCESS_LOG, PROXY_PORT, check_range, squid_conf};
 use crate::launcher::LaunchError;
 use crate::podman::Podman;
 
-/// What Squid logs once it accepts connections; the run's container starts only after it.
+/// What Squid prints once it accepts connections; the run's container starts only after it.
 const READY_MARK: &str = "Accepting HTTP Socket connections";
 /// How long Squid may take to get ready once its container runs.
 const READY_LIMIT: Duration = Duration::from_secs(30);
-/// `Egress` events buffered before the log reader waits for the runner.
+/// `Egress` events buffered before the log follower waits for the runner.
 const EVENT_BUFFER: usize = 1024;
 /// Where the config is mounted.
 const CONF_IN_CONTAINER: &str = "/etc/squid/squid.conf";
+/// The access log's mode on the host: Loom reads it, Squid (its `proxy` user, which is no user
+/// of Loom's host) may only append to it.
+const ACCESS_LOG_MODE: u32 = 0o602;
 
 /// The proxy container's name, which is also its host name on the run's network.
 #[must_use]
@@ -53,31 +57,28 @@ pub(crate) struct ProxySpec<'a> {
     pub(crate) image: &'a str,
     /// Extra blocked ranges, from the run config.
     pub(crate) blocked: &'a [String],
-    /// Where the config file is written, in the run's directory.
-    pub(crate) conf: &'a Path,
+    /// The directory for the config and the access log, in the run's directory.
+    pub(crate) dir: &'a Path,
 }
 
-/// A started proxy: the task that reads its log, and the events it reads.
+/// A started proxy: the follower of its access log, and the events it reads.
 pub(crate) struct Proxy {
-    reader: JoinHandle<()>,
+    log: LogFollower,
     events: Option<mpsc::Receiver<RunEvent>>,
 }
 
 impl Proxy {
-    /// Writes the config, starts the proxy and waits until it accepts connections.
+    /// Writes the config and an empty access log, starts the proxy and waits until it accepts
+    /// connections.
     ///
     /// # Errors
-    /// A bad blocked range, the config not written, a Podman call's error, or a proxy that
-    /// does not get ready within [`READY_LIMIT`].
+    /// A bad blocked range, a file not written, a Podman call's error, or a proxy that does not
+    /// get ready within [`READY_LIMIT`].
     pub(crate) async fn start(podman: &Podman, spec: &ProxySpec<'_>) -> Result<Self, LaunchError> {
         for range in spec.blocked {
             check_range(range).map_err(LaunchError::Other)?;
         }
-        tokio::fs::write(spec.conf, squid_conf(spec.blocked))
-            .await
-            .map_err(|e| {
-                LaunchError::Other(format!("cannot write {}: {e}", spec.conf.display()))
-            })?;
+        let (conf, log) = write_files(spec).await?;
         podman.network_ensure(spec.egress_network).await?;
         let name = proxy_name(spec.run);
         let args: Vec<String> = vec![
@@ -94,32 +95,30 @@ impl Proxy {
             "--network".into(),
             spec.egress_network.into(),
             "-v".into(),
-            format!("{}:{CONF_IN_CONTAINER}:ro,z", spec.conf.display()),
+            format!("{}:{CONF_IN_CONTAINER}:ro,z", conf.display()),
+            "-v".into(),
+            format!("{}:{ACCESS_LOG}:z", log.display()),
+            // Squid itself is the container's first process, so `podman stop` reaches it and it
+            // logs its open tunnels as it ends; `-d 1` prints when it is ready.
+            "--entrypoint".into(),
+            "/usr/sbin/squid".into(),
             spec.image.into(),
+            "-f".into(),
+            CONF_IN_CONTAINER.into(),
+            "-N".into(),
+            "-d".into(),
+            "1".into(),
         ];
         podman.run_detached(&args).await?;
-        let mut logs = podman.logs_follow(&name);
-        logs.stdout(Stdio::piped()).stderr(Stdio::piped());
-        let child = logs.spawn().map_err(|source| LaunchError::Spawn {
-            program: "podman logs".to_owned(),
-            source,
-        })?;
-        let (ready_tx, ready_rx) = oneshot::channel();
+        wait_ready(podman, &name).await?;
         let (events_tx, events) = mpsc::channel(EVENT_BUFFER);
-        let reader = tokio::spawn(read_log(child, ready_tx, events_tx));
-        let proxy = Self {
-            reader,
+        let log = LogFollower::start(&log, events_tx)
+            .await
+            .map_err(|e| LaunchError::Other(format!("cannot read {}: {e}", log.display())))?;
+        Ok(Self {
+            log,
             events: Some(events),
-        };
-        match timeout(READY_LIMIT, ready_rx).await {
-            Ok(Ok(())) => Ok(proxy),
-            Ok(Err(_)) => Err(LaunchError::Other(
-                "the proxy ended before it accepted connections".to_owned(),
-            )),
-            Err(_) => Err(LaunchError::Other(format!(
-                "the proxy did not accept connections within {READY_LIMIT:?}"
-            ))),
-        }
+        })
     }
 
     /// The `Egress` events, once.
@@ -127,65 +126,81 @@ impl Proxy {
         self.events.take()
     }
 
-    /// Waits until the log is read to its end (the proxy is gone), at most until `deadline`;
-    /// then stops reading.
-    pub(crate) async fn finish(mut self, deadline: Instant) {
-        if timeout_at(deadline, &mut self.reader).await.is_err() {
-            tracing::warn!("the proxy's log did not end in time");
-        }
-        // Dropping the task's future also kills `podman logs`.
-        self.reader.abort();
+    /// Reads the rest of the access log, once the proxy is stopped, at most until `deadline`.
+    pub(crate) async fn finish(self, deadline: Instant) {
+        self.log.finish(deadline).await;
     }
 }
 
-impl Drop for Proxy {
-    fn drop(&mut self) {
-        self.reader.abort();
+/// Writes the config and the empty access log into the spec's directory.
+async fn write_files(spec: &ProxySpec<'_>) -> Result<(PathBuf, PathBuf), LaunchError> {
+    let failed = |path: &Path, e: std::io::Error| {
+        LaunchError::Other(format!("cannot write {}: {e}", path.display()))
+    };
+    tokio::fs::create_dir_all(spec.dir)
+        .await
+        .map_err(|e| failed(spec.dir, e))?;
+    let conf = spec.dir.join("squid.conf");
+    tokio::fs::write(&conf, squid_conf(spec.blocked))
+        .await
+        .map_err(|e| failed(&conf, e))?;
+    let log = spec.dir.join("access.log");
+    tokio::fs::write(&log, "")
+        .await
+        .map_err(|e| failed(&log, e))?;
+    tokio::fs::set_permissions(&log, std::fs::Permissions::from_mode(ACCESS_LOG_MODE))
+        .await
+        .map_err(|e| failed(&log, e))?;
+    Ok((conf, log))
+}
+
+/// Waits until the proxy prints [`READY_MARK`], at most [`READY_LIMIT`].
+async fn wait_ready(podman: &Podman, name: &str) -> Result<(), LaunchError> {
+    let mut logs = podman.logs_follow(name);
+    logs.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let child = logs.spawn().map_err(|source| LaunchError::Spawn {
+        program: "podman logs".to_owned(),
+        source,
+    })?;
+    // Dropping `child` at the end kills `podman logs`.
+    match timeout(READY_LIMIT, find_mark(child)).await {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(LaunchError::Other(
+            "the proxy ended before it accepted connections".to_owned(),
+        )),
+        Err(_) => Err(LaunchError::Other(format!(
+            "the proxy did not accept connections within {READY_LIMIT:?}"
+        ))),
     }
 }
 
-/// Reads the proxy's output to its end: the first [`READY_MARK`] fires `ready`, each access
-/// line becomes an event. Squid's own log lines are skipped.
-async fn read_log(mut child: Child, ready: oneshot::Sender<()>, events: mpsc::Sender<RunEvent>) {
-    let mut ready = Some(ready);
-    let mut out = child.stdout.take().map(|o| BufReader::new(o).lines());
-    let mut err = child.stderr.take().map(|e| BufReader::new(e).lines());
-    while out.is_some() || err.is_some() {
-        let line = tokio::select! {
-            line = next(&mut out), if out.is_some() => line,
-            line = next(&mut err), if err.is_some() => line,
+/// Whether the output of `child` (either stream) shows [`READY_MARK`] before it ends.
+async fn find_mark(mut child: Child) -> bool {
+    let (Some(out), Some(err)) = (child.stdout.take(), child.stderr.take()) else {
+        return false;
+    };
+    let out = has_mark(out);
+    let err = has_mark(err);
+    tokio::pin!(out, err);
+    let (mut out_ended, mut err_ended) = (false, false);
+    while !(out_ended && err_ended) {
+        let found = tokio::select! {
+            found = &mut out, if !out_ended => { out_ended = true; found }
+            found = &mut err, if !err_ended => { err_ended = true; found }
         };
-        let Some(line) = line else { continue };
-        if line.contains(READY_MARK)
-            && let Some(ready) = ready.take()
-        {
-            // Nobody waiting any more is no error.
-            let _ = ready.send(());
-        }
-        if let Some(event) = parse_access_line(&line) {
-            tracing::debug!(?event, "egress");
-            // The runner may have stopped listening; the log is still read to its end.
-            let _ = events.send(event).await;
+        if found {
+            return true;
         }
     }
-    if let Err(error) = child.wait().await {
-        tracing::debug!(%error, "waiting for `podman logs` failed");
-    }
+    false
 }
 
-/// The next line of `lines`; at its end (or on an error) `lines` becomes `None`.
-async fn next<R: AsyncRead + Unpin>(lines: &mut Option<Lines<BufReader<R>>>) -> Option<String> {
-    let reader = lines.as_mut()?;
-    match reader.next_line().await {
-        Ok(Some(line)) => Some(line),
-        Ok(None) => {
-            *lines = None;
-            None
-        }
-        Err(error) => {
-            tracing::warn!(%error, "could not read the proxy's log");
-            *lines = None;
-            None
+async fn has_mark<R: AsyncRead + Unpin>(pipe: R) -> bool {
+    let mut lines = BufReader::new(pipe).lines();
+    while let Ok(Some(line)) = lines.next_line().await {
+        if line.contains(READY_MARK) {
+            return true;
         }
     }
+    false
 }

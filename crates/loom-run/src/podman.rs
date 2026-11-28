@@ -209,6 +209,32 @@ impl Podman {
         self.output(&args).await.map(drop)
     }
 
+    /// `podman rm --force` of every container, running or not, with `label` (`key=value`),
+    /// without waiting; none is no error.
+    ///
+    /// # Errors
+    /// The call's error.
+    pub async fn rm_by_label(&self, label: &str) -> Result<(), PodmanError> {
+        let filter = format!("label={label}");
+        self.output(&[
+            "rm", "--force", "--ignore", "--time", "0", "--filter", &filter,
+        ])
+        .await
+        .map(drop)
+    }
+
+    /// Removes every network with `label` (`key=value`) that no container uses
+    /// (`podman network prune`); none is no error.
+    ///
+    /// # Errors
+    /// The call's error.
+    pub async fn network_prune_by_label(&self, label: &str) -> Result<(), PodmanError> {
+        let filter = format!("label={label}");
+        self.output(&["network", "prune", "--force", "--filter", &filter])
+            .await
+            .map(drop)
+    }
+
     /// Podman's id of `image` (`podman image inspect`).
     ///
     /// # Errors
