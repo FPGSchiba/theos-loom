@@ -223,7 +223,7 @@ async fn the_kit_files_are_read_only() {
 async fn a_kit_version_that_is_a_path_or_an_option_is_refused() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let config = config(&tmp.path().join("data"));
-    for version in ["../x", "a/b", "a\\b", "-x", ""] {
+    for version in ["../x", "a/b", "a\\b", "-x", "", ".", "..", "x.partial"] {
         let reference = KitRef {
             repository: "r".to_owned(),
             version: version.to_owned(),
