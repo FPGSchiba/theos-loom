@@ -9,7 +9,7 @@ Date: 28 Nov 2026 · Decided by: Jann · Surfaced by: P01 refinement
 - A criterion's id is the key plus its number: `ED-12.3` for a story's third criterion, `ED-4.R2`
   for an epic's requirement line R2. Tests carry these as `AC: <id>`. The PO keeps writing plain
   numbers in the files.
-- Prerequisites in another component go in a Loom key, `needs: [EN-4, EN-7.2]`, by key. The PO's
+- Prerequisites in another component go in a Loom key, `needs: [EN-4, EN-7]`, by the key of an epic or a story. The PO's
   `after` keeps the prerequisites inside the initiative, in her forms. Loom's dependencies are
   both together; cycles and unknown keys are checked across both.
 
