@@ -992,6 +992,8 @@ dependencies = [
  "rustls-native-certs",
  "serde",
  "serde_json",
+ "sha2 0.11.2",
+ "tempfile",
  "thiserror",
  "tokio",
  "toml",

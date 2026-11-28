@@ -9,6 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use loom_core::run::{PriceListStore, Usage};
+use serde::Deserialize;
 use serde_json::Value;
 use thiserror::Error;
 use ureq::tls::{Certificate, RootCerts, TlsConfig, TlsProvider};
@@ -16,7 +17,8 @@ use ureq::tls::{Certificate, RootCerts, TlsConfig, TlsProvider};
 const FETCH_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Prices of one model, USD per token. A missing price means "not priced".
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ModelPrice {
     /// Input tokens.
     pub input: Option<f64>,
