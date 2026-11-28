@@ -9,3 +9,14 @@ license.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+loom-core = { path = "../loom-core" }
+sqlx.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+serde_json.workspace = true
